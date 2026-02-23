@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('likes', function (Blueprint $table) {
+        Schema::create('failed_jobs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('created_at')->useCurrent();
-            $table->unique(['user_id', 'post_id']);
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
         });
     }
 
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('likes');
+        Schema::dropIfExists('failed_jobs');
     }
 };
