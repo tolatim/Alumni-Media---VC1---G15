@@ -1,5 +1,7 @@
 <template>
+    
     <Navbar />
+
   <main class="bg-gray-100 min-h-screen py-6">
     <div class="max-w-6xl mx-auto px-4">
       
