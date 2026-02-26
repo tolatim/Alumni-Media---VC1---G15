@@ -1,9 +1,9 @@
 <template>
   <div>
-    <nav v-if="user">
+    <!-- <nav v-if="user">
       Welcome, {{ user.name }} |
       <button @click="logout">Logout</button>
-    </nav>
+    </nav> -->
     <!-- <button v-on:click="logout">logout</button> -->
     <router-view />
   </div>
@@ -25,6 +25,7 @@ export default {
   methods: {
     logout() {
       localStorage.removeItem("token")
+      localStorage.removeItem("user")
       this.user = null
       this.$router.push("/login")
     }
