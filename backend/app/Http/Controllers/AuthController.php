@@ -21,11 +21,7 @@ class AuthController extends Controller
         ]);
 
         // Create user (hash password!)
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
+        $user = User::create($request -> all());
 
         // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
@@ -61,12 +57,12 @@ class AuthController extends Controller
         $cachedUser = Cache::get('user:' . $user->id);
 
         if ($cachedUser) {
-            $userData = [
-                'name' => $cachedUser['name']
-            ];
+            $userData = $cachedUser;
         } else {
             $userData = [
-                'name' => $user->name
+                'id' => $user -> id,
+                'name' => $user->name,
+                'email' => $user -> email
             ];
             Cache::put('user:' . $user->id, $userData, 300); // cache 5 minutes
         }
