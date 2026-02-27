@@ -1,22 +1,25 @@
 <?php
 
 use App\Http\Controllers\AuthController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
-Route::get('/test', [AuthController::class], 'test');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/user', [AuthController::class, 'me']);
+
+    Route::get('/feed', [PostController::class, 'index']);
+    Route::post('/posts', [PostController::class, 'store']);
+
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/suggestions', [UserController::class, 'suggestions']);
+    Route::get('/profiles/{id}', [UserController::class, 'show']);
+    Route::put('/profile', [UserController::class, 'updateMyProfile']);
+    Route::post('/profile', [UserController::class, 'updateMyProfile']);
+    Route::post('/profile/change-password', [UserController::class, 'changePassword']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
 });
