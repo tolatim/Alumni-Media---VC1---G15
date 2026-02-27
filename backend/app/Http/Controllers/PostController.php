@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Models\PostUser;
 
 class PostController extends Controller
 {
     public function index()
     {
-        // Logic to retrieve and return posts
+        return PostUser::with('user')->latest()->get();
     }
 
     public function store(Request $request)
@@ -33,9 +34,10 @@ class PostController extends Controller
        return response()->json($post, 201);
     }
 
-    public function show($id)
+    public function show(Post $post)
     {
-        // Logic to retrieve and return a specific post
+        $post = PostUser::with('user')->findOrFail($id);
+        return response()->json($post);
     }
 
     public function update(Request $request, $id)
