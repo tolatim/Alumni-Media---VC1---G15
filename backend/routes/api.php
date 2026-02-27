@@ -15,19 +15,8 @@ use App\Http\Controllers\PostController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::get('/test', [AuthController::class, 'test']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
-});
-
-
-// posts routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/posts', [PostController::class, 'index']);
-    Route::post('/posts', [PostController::class, 'store']);
-    // Route::get('/posts/{id}', [PostController::class, 'show']);
-    // Route::put('/posts/{id}', [PostController::class, 'update']);
-    // Route::delete('/posts/{id}', [PostController::class, 'destroy']);
 });

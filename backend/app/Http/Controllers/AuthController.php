@@ -13,7 +13,6 @@ class AuthController extends Controller
     // Register
     public function register(Request $request)
     {
-<<<<<<< HEAD
         try {
             // Validate
             $request->validate([
@@ -36,27 +35,11 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password),
         ]);
-=======
-        // Validate
-        $request->validate([
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed', // requires password_confirmation
-        ]);
-
-        // Create user (hash password!)
-        $user = User::create($request -> all());
->>>>>>> feature/user-authentication
 
         // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
             'id' => $user->id,
-<<<<<<< HEAD
             'first_name' => $user->first_name,
-=======
-            'fist_name' => $user->fist_name,
->>>>>>> feature/user-authentication
             'last_name' => $user->last_name,
             'email' => $user->email
         ], 300);
