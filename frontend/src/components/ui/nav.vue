@@ -13,11 +13,18 @@
       </RouterLink>
 
       <RouterLink
-        v-if="user"
-        :to="{ name: 'Profile', params: { id: user.id } }"
+        to="/connection"
         class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        Profile
+        Connection
+      </RouterLink>
+
+
+      <RouterLink
+        to="/message"
+        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+      >
+        Message
       </RouterLink>
 
       <button
@@ -33,7 +40,7 @@
         class="w-11 h-11 rounded-full overflow-hidden border-2 border-teal-500"
       >
         <img
-          :src="user.profile?.avatar || 'https://i.pravatar.cc/150'"
+          :src="user.profile?.avatar"
           alt="User Profile"
           class="w-full h-full object-cover"
         >

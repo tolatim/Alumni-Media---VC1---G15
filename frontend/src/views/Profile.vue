@@ -86,7 +86,10 @@ const errorMessage = ref('')
 const loggedInUser = ref(null)
 
 const coverImage = computed(() => {
-  return 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop'
+  return (
+    user.value?.profile?.cover ||
+    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop'
+  )
 })
 
 const isOwnProfile = computed(() => {
