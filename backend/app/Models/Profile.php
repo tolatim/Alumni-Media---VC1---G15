@@ -16,6 +16,7 @@ class Profile extends Model
         'headline',
         'phone',
         'bio',
+        'skills',
         'avatar',
         'cover',
         'location',

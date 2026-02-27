@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -62,6 +63,7 @@ class UserController extends Controller
             'headline' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:30',
             'bio' => 'nullable|string|max:5000',
+            'skills' => 'nullable|string|max:2000',
             'avatar_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'cover_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:8192',
             'location' => 'nullable|string|max:255',
@@ -99,6 +101,7 @@ class UserController extends Controller
                 'headline' => $validated['headline'] ?? null,
                 'phone' => $validated['phone'] ?? null,
                 'bio' => $validated['bio'] ?? null,
+                'skills' => $validated['skills'] ?? null,
                 'avatar' => $avatarPath,
                 'cover' => $coverPath,
                 'location' => $validated['location'] ?? null,
@@ -111,6 +114,30 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Profile updated successfully',
             'data' => $user->fresh()->load(['role', 'profile']),
+        ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'old_password' => 'required|string',
+            'new_password' => 'required|string|min:6|confirmed|different:old_password',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['old_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Old password is incorrect.',
+            ], 422);
+        }
+
+        $user->update([
+            'password' => $validated['new_password'],
+        ]);
+
+        return response()->json([
+            'message' => 'Password changed successfully.',
         ]);
     }
 

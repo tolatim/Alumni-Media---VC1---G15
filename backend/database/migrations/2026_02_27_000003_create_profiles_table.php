@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('headline')->nullable();
             $table->string('phone', 30)->nullable();
             $table->text('bio')->nullable();
+            $table->text('skills')->nullable();
             $table->string('avatar')->nullable();
             $table->string('location')->nullable();
             $table->unsignedSmallInteger('graduate_year')->nullable();

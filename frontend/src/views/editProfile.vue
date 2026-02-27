@@ -2,12 +2,6 @@
   <div class="min-h-screen bg-gray-100 p-6">
     <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6">
       <h2 class="font-semibold text-gray-700">Edit Profile</h2>
-      <div class="space-x-2">
-        <button @click="saveProfile" :disabled="loading" class="bg-teal-600 text-white px-4 py-1.5 rounded-md hover:bg-teal-700 disabled:opacity-60">
-          {{ loading ? 'Saving...' : 'Save' }}
-        </button>
-        <button @click="goBack" class="bg-gray-200 px-4 py-1.5 rounded-md hover:bg-gray-300">Cancel</button>
-      </div>
     </div>
 
     <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-4xl mx-auto">
@@ -79,6 +73,17 @@
           <textarea v-model="form.bio" rows="4" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
         </div>
 
+        <div class="mt-6">
+          <label class="block text-sm text-gray-600 mb-1">Skills</label>
+          <input
+            v-model="form.skills"
+            type="text"
+            placeholder="Example: Vue, Laravel, MySQL"
+            class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
+          />
+          <p class="text-xs text-gray-500 mt-1">Use comma to separate skills.</p>
+        </div>
+
         <div class="flex justify-end mt-6 space-x-2">
           <button @click="saveProfile" :disabled="loading" class="bg-teal-600 text-white px-5 py-2 rounded-md hover:bg-teal-700 disabled:opacity-60">
             {{ loading ? 'Saving...' : 'Save Changes' }}
@@ -116,6 +121,7 @@ const form = reactive({
   graduate_year: null,
   location: '',
   bio: '',
+  skills: '',
   currentAvatarUrl: '',
   currentCoverUrl: '',
 })
@@ -152,6 +158,7 @@ const loadCurrentProfile = async () => {
     form.graduate_year = user.profile?.graduate_year || null
     form.location = user.profile?.location || ''
     form.bio = user.profile?.bio || ''
+    form.skills = user.profile?.skills || ''
     form.currentAvatarUrl = user.profile?.avatar || ''
     form.currentCoverUrl = user.profile?.cover || ''
   } catch {
@@ -174,6 +181,7 @@ const saveProfile = async () => {
     formData.append('phone', form.phone || '')
     formData.append('location', form.location || '')
     formData.append('bio', form.bio || '')
+    formData.append('skills', form.skills || '')
 
     if (form.graduate_year) {
       formData.append('graduate_year', String(form.graduate_year))
