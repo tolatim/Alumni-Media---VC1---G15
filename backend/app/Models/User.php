@@ -12,7 +12,8 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
         'role_id',
@@ -26,6 +27,10 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+    ];
+
+    protected $appends = [
+        'name',
     ];
 
     public function role()
@@ -86,5 +91,15 @@ class User extends Authenticatable
     public function reviewedReports()
     {
         return $this->hasMany(Report::class, 'reviewed_by');
+    }
+
+    public function getNameAttribute(): string
+    {
+        $full = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        if ($full !== '') {
+            return $full;
+        }
+
+        return (string) ($this->attributes['name'] ?? '');
     }
 }

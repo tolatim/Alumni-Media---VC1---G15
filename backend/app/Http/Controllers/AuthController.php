@@ -12,7 +12,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
         ]);
@@ -20,7 +21,8 @@ class AuthController extends Controller
         $defaultRole = Role::firstOrCreate(['name' => 'user']);
 
         $user = User::create([
-            'name' => $validated['name'],
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role_id' => $defaultRole->id,
@@ -62,8 +64,6 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        $user = $request->user()->load(['role', 'profile']);
-
-        return response()->json($user);
+        return response()->json($request->user()->load(['role', 'profile']));
     }
 }

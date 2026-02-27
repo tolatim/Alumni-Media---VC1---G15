@@ -6,10 +6,10 @@
 
     <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-4xl mx-auto">
       <div class="h-48 relative">
-        <img :src="coverPreview" class="w-full h-full object-cover">
+        <img :src="coverPreview || defaultCover" class="w-full h-full object-cover">
 
         <div class="absolute -bottom-12 left-8">
-          <img :src="avatarPreview" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
+          <img :src="avatarPreview || 'https://i.pravatar.cc/150'" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
         </div>
       </div>
 
@@ -19,10 +19,14 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-sm text-gray-600 mb-1">Full Name</label>
-            <input v-model="form.name" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
+            <label class="block text-sm text-gray-600 mb-1">First Name</label>
+            <input v-model="form.first_name" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
           </div>
 
+          <div>
+            <label class="block text-sm text-gray-600 mb-1">Last Name</label>
+            <input v-model="form.last_name" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
+          </div>
           <div>
             <label class="block text-sm text-gray-600 mb-1">Headline / Job Title</label>
             <input v-model="form.headline" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
@@ -113,7 +117,8 @@ const avatarFilePreview = ref('')
 const coverFilePreview = ref('')
 
 const form = reactive({
-  name: '',
+  first_name: '',
+  last_name: '',
   headline: '',
   current_job: '',
   company: '',
@@ -150,7 +155,8 @@ const loadCurrentProfile = async () => {
 
     currentUserId.value = user.id
 
-    form.name = user.name || ''
+    form.first_name = user.first_name || ''
+    form.last_name = user.last_name || ''
     form.headline = user.profile?.headline || ''
     form.current_job = user.profile?.current_job || ''
     form.company = user.profile?.company || ''
@@ -174,7 +180,8 @@ const saveProfile = async () => {
   try {
     const formData = new FormData()
     formData.append('_method', 'PUT')
-    formData.append('name', form.name || '')
+    formData.append('first_name', form.first_name || '')
+    formData.append('last_name', form.last_name || '')
     formData.append('headline', form.headline || '')
     formData.append('current_job', form.current_job || '')
     formData.append('company', form.company || '')

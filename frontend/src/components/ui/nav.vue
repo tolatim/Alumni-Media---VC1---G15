@@ -19,13 +19,20 @@
         Connection
       </RouterLink>
 
-
       <RouterLink
         to="/message"
         class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
         Message
       </RouterLink>
+      
+      <RouterLink
+        to="/notification"
+        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+      >
+        Notification
+      </RouterLink>
+
 
       <button
         @click="logout"
@@ -40,7 +47,7 @@
         class="w-11 h-11 rounded-full overflow-hidden border-2 border-teal-500"
       >
         <img
-          :src="user.profile?.avatar"
+          :src="user.profile?.avatar || 'https://i.pravatar.cc/150'"
           alt="User Profile"
           class="w-full h-full object-cover"
         >

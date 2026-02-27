@@ -5,6 +5,7 @@
       <button @click="logout">Logout</button>
     </nav> -->
     <!-- <button v-on:click="logout">logout</button> -->
+    <!-- </nav> -->
     <router-view />
   </div>
 </template>

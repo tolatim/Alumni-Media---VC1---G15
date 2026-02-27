@@ -59,7 +59,9 @@ class UserController extends Controller
     public function updateMyProfile(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'nullable|string|max:100',
+            'last_name' => 'nullable|string|max:100',
+            'name' => 'nullable|string|max:255',
             'headline' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:30',
             'bio' => 'nullable|string|max:5000',
@@ -91,8 +93,24 @@ class UserController extends Controller
             $coverPath = $request->file('cover_file')->store('profiles/covers', 'public');
         }
 
+        $firstName = $validated['first_name'] ?? null;
+        $lastName = $validated['last_name'] ?? null;
+
+        if ((!$firstName || !$lastName) && !empty($validated['name'])) {
+            $parts = preg_split('/\s+/', trim($validated['name']));
+            $firstName = $firstName ?: ($parts[0] ?? '');
+            $lastName = $lastName ?: (count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '');
+        }
+
+        if (!$firstName || !$lastName) {
+            return response()->json([
+                'message' => 'First name and last name are required.',
+            ], 422);
+        }
+
         $user->update([
-            'name' => $validated['name'],
+            'first_name' => $firstName,
+            'last_name' => $lastName,
         ]);
 
         $user->profile()->updateOrCreate(

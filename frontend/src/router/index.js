@@ -1,12 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
+import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
   { path: '/login', component: Login },
+  { path: '/register', component: Register },
   {
     path: '/profile',
     redirect: () => {
@@ -43,7 +45,7 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  if (to.path === '/login' && token) {
+  if ((to.path === '/login' || to.path === '/register') && token) {
     next('/')
     return
   }

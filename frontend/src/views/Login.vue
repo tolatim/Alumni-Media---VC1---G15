@@ -4,8 +4,9 @@
       <div class="overlay">
         <h1>Reconnect with Excellence.</h1>
         <p>
-          Join over 5,000 PNC former colleagues. Access exclusive industry insights,
-          professional networking, and career opportunities designed for our alumni community.
+          Join over 5,000 PNC former colleagues. Access exclusive industry
+          insights, professional networking, and career opportunities designed
+          for our alumni community.
         </p>
       </div>
     </div>
@@ -20,52 +21,67 @@
           <input type="email" v-model="email" placeholder="e.g. name@alumni.com" required>
 
           <label>Password</label>
-          <input type="password" v-model="password" placeholder="••••••••" required>
+          <input type="password" v-model="password" placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" required>
 
-          <p v-if="error" class="error">{{ error }}</p>
+          <div class="options">
+            <!-- <label>
+              <input type="checkbox" v-model="remember" />
+              Remember me for 30 days
+            </label> -->
+            <!-- <a href="#">Forgot password?</a> -->
+            <p style="color: red">{{ error }}</p>
+          </div>
 
-          <button type="submit" :disabled="loading">
-            {{ loading ? 'Logging in...' : 'Login to Portal ?' }}
+          <button
+            type="submit"
+            :class="{ loading: loading }"
+            :disabled="loading"
+          >
+            <span class="spinner"></span>
+            <span>{{ loading ? "Logging in..." : "Login to Portal â†’" }}</span>
           </button>
         </form>
+
+        <div class="new-user">
+          <strong>Don't have an account?</strong>
+          <a href="/register"> Register</a>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<script>
-import api from '../services/api'
+<script setup>
+import { ref } from "vue";
+import { loginUser } from "@/services/authService";
+import { useRouter } from "vue-router";
 
-export default {
-  data() {
-    return {
-      email: '',
-      password: '',
-      error: '',
-      loading: false,
-    }
-  },
-  methods: {
-    async login() {
-      this.error = ''
-      this.loading = true
+const router = useRouter();
 
-      try {
-        const res = await api.post('/login', {
-          email: this.email,
-          password: this.password,
-        })
+const email = ref("");
+const password = ref("");
+const error = ref("");
+const loading = ref(false); // âœ… IMPORTANT
 
-        localStorage.setItem('token', res.data.token)
-        localStorage.setItem('user', JSON.stringify(res.data.user))
-        this.$router.push('/')
-      } catch {
-        this.error = 'Invalid email or password'
-      } finally {
-        this.loading = false
-      }
-    },
-  },
+async function login() {
+  error.value = "";
+  loading.value = true;
+
+  try {
+    const res = await loginUser({
+      email: email.value,
+      password: password.value,
+    });
+
+    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("user", JSON.stringify(res.data.user));
+
+    router.push("/");
+  } catch (err) {
+    error.value = err.response?.data?.message || "Invalid email or password";
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 
@@ -79,7 +95,8 @@ export default {
 .left-panel {
   flex: 1;
   background: linear-gradient(rgba(37, 99, 235, 0.85), rgba(37, 99, 235, 0.85)),
-    url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d') center/cover no-repeat;
+    url("https://images.unsplash.com/photo-1521737604893-d14cc237f11d")
+      center/cover no-repeat;
   color: white;
   display: flex;
   align-items: center;
@@ -111,6 +128,10 @@ export default {
   padding: 35px;
   border-radius: 10px;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+h2 {
+  margin-bottom: 6px;
 }
 
 .subtitle {
@@ -159,5 +180,34 @@ button:disabled {
   color: #dc2626;
   font-size: 13px;
   margin-top: 10px;
+}
+button.loading .spinner {
+  display: inline-block;
+}
+
+button.loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+  margin-right: 8px;
+}
+
+button.loading .spinner {
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
