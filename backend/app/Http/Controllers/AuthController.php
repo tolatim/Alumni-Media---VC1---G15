@@ -2,82 +2,68 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Register
     public function register(Request $request)
     {
-        // Validate
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed', // requires password_confirmation
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
-        // Create user (hash password!)
+        $defaultRole = Role::firstOrCreate(['name' => 'user']);
+
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role_id' => $defaultRole->id,
         ]);
 
-        // Cache user data for 5 minutes
-        Cache::put('user:' . $user->id, [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email
-        ], 300);
+        $user->profile()->create([]);
 
-        // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'User created successfully',
-            'user' => $user,
-            'token' => $token
+            'token' => $token,
+            'user' => $user->load(['role', 'profile']),
         ], 201);
     }
 
-    // Login
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
-                'message' => 'Invalid credentials'
+                'message' => 'Invalid credentials',
             ], 401);
         }
 
-        $user = Auth::user();
-
-        // Check cache first
-        $cachedUser = Cache::get('user:' . $user->id);
-
-        if ($cachedUser) {
-            $userData = [
-                'name' => $cachedUser['name']
-            ];
-        } else {
-            $userData = [
-                'name' => $user->name
-            ];
-            Cache::put('user:' . $user->id, $userData, 300); // cache 5 minutes
-        }
-
-        // Create token
+        $user = User::with(['role', 'profile'])->findOrFail(Auth::id());
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'status' => 'Login successfully',
             'token' => $token,
-            'user' => $userData
+            'user' => $user,
         ]);
+    }
+
+    public function me(Request $request)
+    {
+        $user = $request->user()->load(['role', 'profile']);
+
+        return response()->json($user);
     }
 }

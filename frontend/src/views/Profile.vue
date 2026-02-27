@@ -1,116 +1,135 @@
 <template>
-    
-    <Navbar />
+  <Navbar />
 
   <main class="bg-gray-100 min-h-screen py-6">
     <div class="max-w-6xl mx-auto px-4">
-      
-      <!-- Profile Card -->
-      <div class="bg-white rounded-xl shadow overflow-hidden">
-        
-        <!-- Cover Background -->
+      <div v-if="errorMessage" class="bg-red-50 text-red-600 rounded-lg p-4 mb-4">
+        {{ errorMessage }}
+      </div>
+
+      <div v-if="user" class="bg-white rounded-xl shadow overflow-hidden">
         <div class="h-60 w-full relative">
           <img
-            v-if="user?.cover"
-            :src="user.cover"
+            :src="coverImage"
             class="w-full h-full object-cover"
-          />
-          <img
-            v-else
-            src="https://png.pngtree.com/thumb_back/fh260/background/20241018/pngtree-alumni-reunion-invitation-image_16224990.jpg"
-            class="w-full h-full object-cover"
-          />
+          >
         </div>
 
-        <!-- Profile Section -->
         <div class="px-6 pb-6 relative">
-          
-          <!-- Profile Image -->
           <div class="absolute -top-16 left-6">
             <img
-              v-if="user?.image"
-              :src="user.image"
+              :src="user.profile?.avatar || 'https://i.pravatar.cc/150'"
               class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md"
-            />
-            <img
-              v-else
-              src="https://i.pravatar.cc/150"
-              class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md"
-            />
+            >
           </div>
 
-          <!-- User Info -->
           <div class="pt-20">
-            <h1 class="text-2xl font-bold text-gray-800">
-              {{ user?.name }}
-            </h1>
+            <h1 class="text-2xl font-bold text-gray-800">{{ user.name }}</h1>
 
             <p class="text-gray-500 mt-1">
-              {{ user?.title || "Job Titile here..." }}
+              {{ user.profile?.headline || user.profile?.current_job || 'Add your headline' }}
             </p>
 
             <p class="text-sm text-gray-400 mt-1">
-              {{ user?.location || "Living location" }}
+              {{ user.profile?.location || 'No location added' }}
             </p>
 
-            <!-- Buttons -->
-            <div class="flex gap-4 mt-4">
-              <RouterLink to="/profile/edit"
+            <div class="flex gap-4 mt-4" v-if="isOwnProfile">
+              <RouterLink
+                to="/profile/edit"
                 class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
               >
                 Edit Profile
-              </RouterLink>
-              <RouterLink to="profile/sesion/add"
-                class="border border-teal-500 text-teal-500 hover:bg-teal-50 px-6 py-2 rounded-lg font-medium transition"
-              >
-                Add Profile Session
               </RouterLink>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- About Section -->
-      <div class="bg-white rounded-xl shadow mt-6 p-6">
+      <div v-if="user" class="bg-white rounded-xl shadow mt-6 p-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-3">About</h2>
         <p class="text-gray-600 leading-relaxed">
-          {{ user?.about || 
-          "I am a Passerelles Numeriques Cambodia Alumni" }}
+          {{ user.profile?.bio || 'No bio added yet.' }}
         </p>
       </div>
 
-      <!-- Experience Section -->
-      <div class="bg-white rounded-xl shadow mt-6 p-6">
-        <div class="flex justify-between items-center">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">Experience</h2>
-          <RouterLink to="/experience/edit" class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition">
-            Add Experience
-          </RouterLink>
+      <div v-if="user" class="bg-white rounded-xl shadow mt-6 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold text-gray-800">Posts</h2>
+          <span class="text-sm text-gray-500">{{ user.posts?.length || 0 }} total</span>
         </div>
-        <div>
-          <h3 class="font-semibold text-gray-700">
-            Software Engineer
-          </h3>
-          <p class="text-sm text-gray-500">
-            Startup Inc â€¢ Jun 2018 â€“ Dec 2020
-          </p>
-        </div>
-      </div>
 
+        <div v-if="user.posts?.length" class="space-y-4">
+          <article v-for="post in user.posts" :key="post.id" class="border rounded-lg p-4">
+            <p class="text-gray-800 whitespace-pre-wrap">{{ post.post_content }}</p>
+            <p class="text-xs text-gray-500 mt-3">
+              {{ formatDate(post.created_at) }} • {{ post.likes_count || 0 }} likes • {{ post.comments_count || 0 }} comments
+            </p>
+          </article>
+        </div>
+
+        <p v-else class="text-gray-500">No posts yet.</p>
+      </div>
     </div>
   </main>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import axios from "axios";
-// component import
-import Navbar from "../components/ui/nav.vue";
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import Navbar from '@/components/ui/nav.vue'
+import api from '@/services/api'
 
-const user = ref(null);
+const route = useRoute()
+const user = ref(null)
+const errorMessage = ref('')
+const loggedInUser = ref(null)
+
+const coverImage = computed(() => {
+  return 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop'
+})
+
+const isOwnProfile = computed(() => {
+  return loggedInUser.value?.id === user.value?.id
+})
+
+const loadLoggedInUser = async () => {
+  try {
+    const response = await api.get('/me')
+    loggedInUser.value = response.data
+  } catch {
+    loggedInUser.value = null
+  }
+}
+
+const loadProfile = async (id) => {
+  errorMessage.value = ''
+
+  try {
+    const response = await api.get(`/profiles/${id}`)
+    user.value = response.data.data
+  } catch {
+    user.value = null
+    errorMessage.value = 'Profile not found or failed to load.'
+  }
+}
+
+const formatDate = (value) => {
+  if (!value) return 'Unknown time'
+  return new Date(value).toLocaleString()
+}
+
+watch(
+  () => route.params.id,
+  (id) => {
+    if (id) loadProfile(id)
+  }
+)
 
 onMounted(async () => {
-  const response = await axios.get("http://127.0.0.1:8000/api/show");
-  user.value = response.data.data;
-});
+  await loadLoggedInUser()
+  if (route.params.id) {
+    await loadProfile(route.params.id)
+  }
+})
 </script>
