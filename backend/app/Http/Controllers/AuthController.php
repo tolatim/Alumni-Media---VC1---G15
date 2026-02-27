@@ -13,16 +13,25 @@ class AuthController extends Controller
     // Register
     public function register(Request $request)
     {
-        // Validate
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed', // requires password_confirmation
-        ]);
-
+        try {
+            // Validate
+            $request->validate([
+                'first_name' => 'required|string|max:100',
+                'last_name' => 'required|string|max:100',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|string|min:6|confirmed', // requires password_confirmation
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Return custom JSON instead of default 422
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->validator->errors()->first(), // first error message
+            ], 400);
+        }
         // Create user (hash password!)
         $user = User::create([
-            'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => bcrypt($request->password),
         ]);
@@ -30,7 +39,8 @@ class AuthController extends Controller
         // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
             'id' => $user->id,
-            'name' => $user->name,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
             'email' => $user->email
         ], 300);
 
