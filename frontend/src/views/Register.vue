@@ -9,20 +9,16 @@
 
       <form @submit.prevent="register">
         <div class="row">
-          <div>
-            <label>Name</label>
-            <input v-model="name" placeholder="e.g. John" required />
-          </div>
 
-          <!-- <div>
+          <div>
             <label>First Name</label>
-            <input v-model="firstName" placeholder="e.g. John" required />
+            <input v-model="first_name" placeholder="e.g. John" required />
           </div>
 
           <div>
             <label>Last Name</label>
-            <input v-model="lastName" placeholder="e.g. Doe" required />
-          </div> -->
+            <input v-model="last_name" placeholder="e.g. Doe" required />
+          </div>
         </div>
 
         <label>Email Address</label>
@@ -94,7 +90,8 @@ import { useRouter } from "vue-router"
 
 const router = useRouter()
 
-const name = ref("")
+const first_name = ref("")
+const last_name = ref("")
 const email = ref("")
 const password = ref("")
 const confirmPassword = ref("")
@@ -116,7 +113,8 @@ async function register() {
 
   try {
     const res = await registerUser({
-      name: name.value,
+      first_name: first_name.value,
+      last_name: last_name.value,
       email: email.value,
       password: password.value,
       password_confirmation: confirmPassword.value,
