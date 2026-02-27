@@ -42,29 +42,29 @@
           <!-- User Info -->
           <div class="pt-20">
             <h1 class="text-2xl font-bold text-gray-800">
-              {{ user?.name || "Alex Rivera" }}
+              {{ user?.name }}
             </h1>
 
             <p class="text-gray-500 mt-1">
-              {{ user?.title || "Senior Full-Stack Developer | Open to Collaborations" }}
+              {{ user?.title || "Job Titile here..." }}
             </p>
 
             <p class="text-sm text-gray-400 mt-1">
-              {{ user?.location || "San Francisco, CA" }}
+              {{ user?.location || "Living location" }}
             </p>
 
             <!-- Buttons -->
             <div class="flex gap-4 mt-4">
-              <button
+              <RouterLink to="/profile/edit"
                 class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
               >
                 Edit Profile
-              </button>
-              <button
+              </RouterLink>
+              <RouterLink to="profile/sesion/add"
                 class="border border-teal-500 text-teal-500 hover:bg-teal-50 px-6 py-2 rounded-lg font-medium transition"
               >
                 Add Profile Session
-              </button>
+              </RouterLink>
             </div>
           </div>
         </div>
@@ -75,26 +75,18 @@
         <h2 class="text-lg font-semibold text-gray-800 mb-3">About</h2>
         <p class="text-gray-600 leading-relaxed">
           {{ user?.about || 
-          "Passionate Full-Stack Developer with 8+ years of experience building scalable web applications. Specialized in React, Node.js, and cloud architecture." }}
+          "I am a Passerelles Numeriques Cambodia Alumni" }}
         </p>
       </div>
 
       <!-- Experience Section -->
       <div class="bg-white rounded-xl shadow mt-6 p-6">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">Experience</h2>
-
-        <div class="mb-4">
-          <h3 class="font-semibold text-gray-700">
-            Senior Full-Stack Developer
-          </h3>
-          <p class="text-sm text-gray-500">
-            Tech Corp • Jan 2021 – Present
-          </p>
-          <p class="text-gray-600 mt-2 text-sm">
-            Leading development of enterprise dashboard using React and GraphQL.
-          </p>
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">Experience</h2>
+          <RouterLink to="/experience/edit" class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition">
+            Add Experience
+          </RouterLink>
         </div>
-
         <div>
           <h3 class="font-semibold text-gray-700">
             Software Engineer

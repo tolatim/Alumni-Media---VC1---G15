@@ -15,7 +15,7 @@
       <!-- Info -->
       <div class="pt-12 pb-6 px-6 text-center">
         <h3 class="font-semibold text-lg text-gray-800">
-          Alex Rivera
+          {{ user?.name }}
         </h3>
 
         <p class="text-sm text-gray-500">
@@ -65,13 +65,19 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const storedUser = localStorage.getItem('user');
+const user = ref(
+  storedUser ? JSON.parse(storedUser) : null
+)
 
 const logout = () => {
   // remove token (if using localStorage)
   localStorage.removeItem('token')
+  localStorage.removeItem('user')
 
   // redirect to login
   router.push('/login')

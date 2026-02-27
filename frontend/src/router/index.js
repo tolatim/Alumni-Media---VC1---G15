@@ -2,13 +2,24 @@ import { createRouter, createWebHistory } from "vue-router"
 import Home from "../views/Home.vue"
 import Login from "../views/Login.vue"
 import profile from "../views/Profile.vue";
+import editProfile from "@/views/editProfile.vue";
 
 const routes = [
   { path: "/", component: Home, meta: { requiresAuth: true } },
   { path: "/login", component: Login },
   
   {
-    path:"/show", component: profile
+    path:"/profile/:id",
+    component: profile,
+    name: 'Profile',
+    meta: {requiresAuth: true}
+  },
+
+  {
+    path: '/profile/edit',
+    name: 'EditProfile',
+    component: editProfile,
+    meta: { requiresAuth: true }
   }
 ]
 

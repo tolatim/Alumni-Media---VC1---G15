@@ -10,7 +10,7 @@ class UserController extends Controller
     //
     public function index()
     {
-        $user = User::find(1);
+        $user = User::all();
 
         if (!$user) {
             return response()->json([
@@ -20,6 +20,21 @@ class UserController extends Controller
 
         return response()->json([
             "message" => "This is user data",
+            "data" => $user
+        ]);
+    }
+
+    public function show($id){
+        $user = User::find($id);
+
+        if(!$user){
+            return response()->json([
+                "message"=>"user not found"
+            ], 404);
+        }
+
+        return response()->json([
+            "message"=>"This find seccusfully",
             "data" => $user
         ]);
     }
