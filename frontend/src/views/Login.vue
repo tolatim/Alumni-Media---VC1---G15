@@ -5,8 +5,9 @@
       <div class="overlay">
         <h1>Reconnect with Excellence.</h1>
         <p>
-          Join over 5,000 PNC former colleagues. Access exclusive industry insights,
-          professional networking, and career opportunities designed for our alumni community.
+          Join over 5,000 PNC former colleagues. Access exclusive industry
+          insights, professional networking, and career opportunities designed
+          for our alumni community.
         </p>
       </div>
     </div>
@@ -37,55 +38,63 @@
           />
 
           <div class="options">
-            <label>
+            <!-- <label>
               <input type="checkbox" v-model="remember" />
               Remember me for 30 days
-            </label>
-            <a href="#">Forgot password?</a>
+            </label> -->
+            <!-- <a href="#">Forgot password?</a> -->
+            <p style="color: red">{{ error }}</p>
           </div>
 
-          <button type="submit">Login to Portal →</button>
+          <button
+            type="submit"
+            :class="{ loading: loading }"
+            :disabled="loading"
+          >
+            <span class="spinner"></span>
+            <span>{{ loading ? "Logging in..." : "Login to Portal →" }}</span>
+          </button>
         </form>
 
         <div class="new-user">
-          <strong>New here?</strong>
-          <p>Contact admin to get your account.</p>
-          <a href="#">Contact Admin</a>
+          <strong>Don't have an account?</strong>
+          <a href="/register"> Register</a>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script>
-import api from "../services/api"
+<script setup>
+import { ref } from "vue";
+import { loginUser } from "@/services/authService";
+import { useRouter } from "vue-router";
 
-export default {
-  data() {
-    return {
-      email: "",
-      password: "",
-      error: ""
-    }
-  },
-  methods: {
-    async login() {
-      try {
-        const res = await api.post("/login", {
-          email: this.email,
-          password: this.password
-        })
+const router = useRouter();
 
-        // ✅ store token & user
-        localStorage.setItem("token", res.data.token)
-        localStorage.setItem("user", JSON.stringify(res.data.user))
+const email = ref("");
+const password = ref("");
+const error = ref("");
+const loading = ref(false); // ✅ IMPORTANT
 
-        // redirect
-        this.$router.push("/")
-      } catch (err) {
-        this.error = "Invalid email or password"
-      }
-    }
+async function login() {
+  error.value = "";
+  loading.value = true;
+
+  try {
+    const res = await loginUser({
+      email: email.value,
+      password: password.value,
+    });
+
+    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("user", JSON.stringify(res.data));
+
+    router.push("/");
+  } catch (err) {
+    error.value = err.response?.data?.message || "Invalid email or password";
+  } finally {
+    loading.value = false;
   }
 }
 </script>
@@ -100,7 +109,7 @@ export default {
 /* LEFT SIDE */
 .left-panel {
   flex: 1;
-  background: linear-gradient(rgba(37,99,235,0.85), rgba(37,99,235,0.85)),
+  background: linear-gradient(rgba(37, 99, 235, 0.85), rgba(37, 99, 235, 0.85)),
     url("https://images.unsplash.com/photo-1521737604893-d14cc237f11d")
       center/cover no-repeat;
   color: white;
@@ -134,7 +143,7 @@ export default {
   background: white;
   padding: 35px;
   border-radius: 10px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
 }
 
 h2 {
@@ -194,5 +203,34 @@ button:hover {
   color: #2563eb;
   text-decoration: none;
   font-weight: bold;
+}
+button.loading .spinner {
+  display: inline-block;
+}
+
+button.loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+  margin-right: 8px;
+}
+
+button.loading .spinner {
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
