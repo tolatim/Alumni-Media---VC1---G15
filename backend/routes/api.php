@@ -8,18 +8,6 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::get('/user', [AuthController::class, 'me']);
-
-    Route::get('/feed', [PostController::class, 'index']);
-    Route::post('/posts', [PostController::class, 'store']);
-
-    Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/suggestions', [UserController::class, 'suggestions']);
-    Route::get('/profiles/{id}', [UserController::class, 'show']);
-    Route::put('/profile', [UserController::class, 'updateMyProfile']);
-    Route::post('/profile', [UserController::class, 'updateMyProfile']);
-    Route::post('/profile/change-password', [UserController::class, 'changePassword']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-});
+Route::apiResource('/users', UserController::class);
+Route::get('/users', [UserController::class, 'index']);
+Route::middleware('auth:sanctum')->patch('/user/profile', [UserController::class, 'update']);

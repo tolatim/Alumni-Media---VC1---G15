@@ -5,28 +5,11 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-4xl mx-auto">
-      <div class="h-48 relative">
-        <img :src="coverPreview || defaultCover" class="w-full h-full object-cover">
-
-        <div class="absolute -bottom-12 left-8">
-          <img :src="avatarPreview || 'https://i.pravatar.cc/150'" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
-        </div>
-      </div>
-
-      <div class="pt-16 p-8">
+      <div class="pt-4 p-8">
         <p v-if="errorMessage" class="text-sm text-red-500 mb-4">{{ errorMessage }}</p>
         <p v-if="successMessage" class="text-sm text-green-600 mb-4">{{ successMessage }}</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">First Name</label>
-            <input v-model="form.first_name" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
-          </div>
-
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">Last Name</label>
-            <input v-model="form.last_name" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
-          </div>
           <div>
             <label class="block text-sm text-gray-600 mb-1">Headline / Job Title</label>
             <input v-model="form.headline" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
@@ -58,20 +41,6 @@
           <input v-model="form.location" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
         </div>
 
-        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">Upload Profile Photo</label>
-            <input type="file" accept="image/*" @change="onAvatarFileChange" class="w-full border rounded-md px-3 py-2 bg-white" />
-            <p class="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (max 5MB)</p>
-          </div>
-
-          <div>
-            <label class="block text-sm text-gray-600 mb-1">Upload Cover Photo</label>
-            <input type="file" accept="image/*" @change="onCoverFileChange" class="w-full border rounded-md px-3 py-2 bg-white" />
-            <p class="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (max 8MB)</p>
-          </div>
-        </div>
-
         <div class="mt-6">
           <label class="block text-sm text-gray-600 mb-1">About / Bio</label>
           <textarea v-model="form.bio" rows="4" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
@@ -100,25 +69,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import { updateProfile } from '@/services/authService'
+import { getProfile } from '@/services/authService'
 
 const router = useRouter()
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
-const currentUserId = ref(null)
-const defaultCover = 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop'
-
-const avatarFile = ref(null)
-const coverFile = ref(null)
-const avatarFilePreview = ref('')
-const coverFilePreview = ref('')
 
 const form = reactive({
-  first_name: '',
-  last_name: '',
   headline: '',
   current_job: '',
   company: '',
@@ -127,47 +89,46 @@ const form = reactive({
   location: '',
   bio: '',
   skills: '',
-  currentAvatarUrl: '',
-  currentCoverUrl: '',
 })
 
-const avatarPreview = computed(() => avatarFilePreview.value || form.currentAvatarUrl)
-const coverPreview = computed(() => coverFilePreview.value || form.currentCoverUrl)
+// Load current authenticated user's profile
+// const loadProfile = async () => {
+//   errorMessage.value = ''
+//   try {
+//     const token = localStorage.getItem('token')
+//     const response = localStorage.getItem('user')
+//     const user = response
+//     form.headline = user['headline'] || ''
+//     form.current_job = user.profile?.current_job || ''
+//     form.company = user.profile?.company || ''
+//     form.phone = user.profile?.phone || ''
+//     form.graduate_year = user.profile?.graduate_year || null
+//     form.location = user.profile?.location || ''
+//     form.bio = user.profile?.bio || ''
+//     form.skills = user.profile?.skills || ''
+//   } catch (err) {
+//     errorMessage.value = 'Failed to load your profile.'
+//   }
+// }
 
-const onAvatarFileChange = (event) => {
-  const file = event.target.files?.[0]
-  avatarFile.value = file || null
-  avatarFilePreview.value = file ? URL.createObjectURL(file) : ''
-}
-
-const onCoverFileChange = (event) => {
-  const file = event.target.files?.[0]
-  coverFile.value = file || null
-  coverFilePreview.value = file ? URL.createObjectURL(file) : ''
-}
-
-const loadCurrentProfile = async () => {
+const loadProfile = async () => {
   errorMessage.value = ''
 
   try {
-    const response = await api.get('/me')
-    const user = response.data
+    const userString = JSON.parse(localStorage.getItem('user'))
+    if (!userString) throw new Error('No user in localStorage')
 
-    currentUserId.value = user.id
-
-    form.first_name = user.first_name || ''
-    form.last_name = user.last_name || ''
-    form.headline = user.profile?.headline || ''
-    form.current_job = user.profile?.current_job || ''
-    form.company = user.profile?.company || ''
-    form.phone = user.profile?.phone || ''
-    form.graduate_year = user.profile?.graduate_year || null
-    form.location = user.profile?.location || ''
-    form.bio = user.profile?.bio || ''
-    form.skills = user.profile?.skills || ''
-    form.currentAvatarUrl = user.profile?.avatar || ''
-    form.currentCoverUrl = user.profile?.cover || ''
-  } catch {
+    const response = await getProfile(userString.id)
+    const user = response.data.user
+    form.headline = user.headline || ''
+    form.current_job = user.current_job || ''
+    form.company = user.company || ''
+    form.phone = user.phone || ''
+    form.graduate_year = user.graduate_year || null
+    form.location = user.location || ''
+    form.bio = user.bio || ''
+    form.skills = user.skills || ''
+  } catch (err) {
     errorMessage.value = 'Failed to load your profile.'
   }
 }
@@ -178,51 +139,26 @@ const saveProfile = async () => {
   successMessage.value = ''
 
   try {
-    const formData = new FormData()
-    formData.append('_method', 'PUT')
-    formData.append('first_name', form.first_name || '')
-    formData.append('last_name', form.last_name || '')
-    formData.append('headline', form.headline || '')
-    formData.append('current_job', form.current_job || '')
-    formData.append('company', form.company || '')
-    formData.append('phone', form.phone || '')
-    formData.append('location', form.location || '')
-    formData.append('bio', form.bio || '')
-    formData.append('skills', form.skills || '')
+    const token = localStorage.getItem('token')
+    const payload = { ...form }
 
-    if (form.graduate_year) {
-      formData.append('graduate_year', String(form.graduate_year))
-    }
+    const response = await updateProfile(payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      }
+    })
 
-    if (avatarFile.value) {
-      formData.append('avatar_file', avatarFile.value)
-    }
-
-    if (coverFile.value) {
-      formData.append('cover_file', coverFile.value)
-    }
-
-    const response = await api.post('/profile', formData)
-    localStorage.setItem('user', JSON.stringify(response.data.data))
-    successMessage.value = 'Profile updated successfully.'
-
-    if (currentUserId.value) {
-      router.push(`/profile/${currentUserId.value}`)
-    }
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to save profile.'
+    successMessage.value = response.data.message || 'Profile updated successfully.'
+    // optionally update localStorage with new user data
+    localStorage.setItem('user', JSON.stringify(response.data.user))
+  } catch (err) {
+    errorMessage.value = err.response?.data?.message || 'Failed to save profile.'
   } finally {
     loading.value = false
   }
 }
 
-const goBack = () => {
-  if (currentUserId.value) {
-    router.push(`/profile/${currentUserId.value}`)
-  } else {
-    router.push('/')
-  }
-}
+const goBack = () => router.back()
 
-onMounted(loadCurrentProfile)
+onMounted(loadProfile)
 </script>
