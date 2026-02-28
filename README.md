@@ -72,8 +72,7 @@ npm install
 npm run dev
 ```
 
-.Env
-member need to create file name .env in folder frontend
+members need to create file name .env in folder frontend
 then write this
 ```
 VITE_API_URL=http://127.0.0.1:8000/api
