@@ -28,3 +28,4 @@ Thumbs.db
 /frontend/.eslintcache
 /frontend/*.tsbuildinfo
 /frontend/*.log
+/frontend/*.env
