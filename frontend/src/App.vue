@@ -4,7 +4,6 @@
       Welcome, {{ user.name }} |
       <button @click="logout">Logout</button>
     </nav>
-    <!-- <button v-on:click="logout">logout</button> -->
     <router-view />
   </div>
 </template>
@@ -25,6 +24,7 @@ export default {
   methods: {
     logout() {
       localStorage.removeItem("token")
+      localStorage.removeItem("user")
       this.user = null
       this.$router.push("/login")
     }

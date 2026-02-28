@@ -4,49 +4,82 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Http\Models\PostUser;
+use App\Models\Post;
 
 class PostController extends Controller
 {
     public function index()
     {
-        return PostUser::with('user')->latest()->get();
+        return Post::with('user')->latest()->get();
     }
 
+    // store post
     public function store(Request $request)
     {
-       $request->validate([
-            'content' => 'required|string',
-            'image'=> 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-       ]);
+        if (!$request->user()) {
+            return response()->json([
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
 
-       $imagePath = null ;
-       
-       if ($request-> hasFile('image')){
-          $imagePath = $request->file(('image'))->store('posts','public');
-       }
-       
-       $post = PostUser::create([
-        'user_id'=> auth()->id(),
-        'content' => $request->content,
-        'image' => $imagePath,
-       ]);
-       return response()->json($post, 201);
+        $request->validate([
+            'content' => 'required|string|max:500',
+        ]);
+
+        $post = Post::create([
+            'user_id' => $request->user()->id,
+            'content' => $request->content,
+        ]);
+
+
+        return response()->json([
+            'message' => 'Post created successfully',
+            'post' => $post
+        ], 201);
     }
 
-    public function show(Post $post)
+    // show post
+    public function show($id)
     {
-        $post = PostUser::with('user')->findOrFail($id);
+        $post = Post::with('user')->findOrFail($id);
+
         return response()->json($post);
     }
 
+    // update post
     public function update(Request $request, $id)
     {
-        // Logic to update a specific post
+        $post = Post::find($id);
+        
+        if (!$post){
+            return response()->json(['message'=>'Post not found',404]);
+        }
+
+        $request->validate([
+            'content' => 'required|string'
+        ]);
+
+        $post->update([
+            'content'=> $request->content,
+        ]);
+
+        return response()->json([
+            'message'=> 'Post updated successfully',
+            'post'=> $post
+        ]);
+
     }
 
+    // delete post
     public function destroy($id)
     {
-        // Logic to delete a specific post
+        $post = Post::find($id);
+        if(!$post){
+            return response()->json(['message' => 'Post not found'], 404);
+        }
+
+        $post -> delete();
+
+        return response()->json(['message' => 'Post deleted successfully']);
     }
 }
