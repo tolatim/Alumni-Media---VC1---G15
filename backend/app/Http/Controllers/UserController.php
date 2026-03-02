@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +19,41 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Users fetched successfully',
             'data' => $users,
+        ]);
+    }
+
+    public function feed()
+    {
+        if (!Schema::hasTable('posts')) {
+            return response()->json([
+                'message' => 'Feed fetched successfully',
+                'data' => [],
+            ]);
+        }
+
+        $query = Post::query()->latest()->with(['user.role']);
+
+        if (Schema::hasTable('post_media')) {
+            $query->with(['media']);
+        }
+
+        $countableRelations = [];
+        if (Schema::hasTable('likes')) {
+            $countableRelations[] = 'likes';
+        }
+        if (Schema::hasTable('comments')) {
+            $countableRelations[] = 'comments';
+        }
+
+        if (!empty($countableRelations)) {
+            $query->withCount($countableRelations);
+        }
+
+        $posts = $query->get();
+
+        return response()->json([
+            'message' => 'Feed fetched successfully',
+            'data' => $posts,
         ]);
     }
 
@@ -89,7 +125,6 @@ class UserController extends Controller
             'graduate_year' => 'nullable|integer|min:1900|max:2100',
             'current_job' => 'nullable|string|max:255',
             'company' => 'nullable|string|max:255',
-            // Backward compatibility with old frontend field names.
             'position' => 'nullable|string|max:255',
             'education' => 'nullable|string|max:255',
         ]);
@@ -126,9 +161,6 @@ class UserController extends Controller
         $user->update([
             'first_name' => $firstName,
             'last_name' => $lastName,
-        ]);
-
-        $user->update([
             'headline' => $validated['headline'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'bio' => $validated['bio'] ?? null,
@@ -190,4 +222,3 @@ class UserController extends Controller
         }
     }
 }
-

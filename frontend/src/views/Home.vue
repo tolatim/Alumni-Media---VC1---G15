@@ -33,20 +33,35 @@ const errorMessage = ref('')
 const loadHomeData = async () => {
   errorMessage.value = ''
 
-  try {
-    const [meRes, feedRes, suggestionRes] = await Promise.all([
-      api.get('/me'),
-      api.get('/feed'),
-      api.get('/users/suggestions'),
-    ])
+  const [meRes, feedRes, suggestionRes] = await Promise.allSettled([
+    api.get('/me'),
+    api.get('/feed'),
+    api.get('/users/suggestions'),
+  ])
 
-    currentUser.value = meRes.data
-    localStorage.setItem('user', JSON.stringify(meRes.data))
+  if (meRes.status === 'fulfilled') {
+    currentUser.value = meRes.value.data
+    localStorage.setItem('user', JSON.stringify(meRes.value.data))
+  } else {
+    currentUser.value = null
+    errorMessage.value = meRes.reason?.response?.data?.message || 'Failed to load your account.'
+    return
+  }
 
-    posts.value = feedRes.data.data || []
-    suggestions.value = suggestionRes.data.data || []
-  } catch {
-    errorMessage.value = 'Failed to load home page data.'
+  if (feedRes.status === 'fulfilled') {
+    posts.value = feedRes.value.data?.data || []
+  } else {
+    posts.value = []
+  }
+
+  if (suggestionRes.status === 'fulfilled') {
+    suggestions.value = suggestionRes.value.data?.data || []
+  } else {
+    suggestions.value = []
+  }
+
+  if (feedRes.status === 'rejected' || suggestionRes.status === 'rejected') {
+    errorMessage.value = 'Some home sections failed to load.'
   }
 }
 
