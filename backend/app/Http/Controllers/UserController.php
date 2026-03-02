@@ -84,6 +84,7 @@ class UserController extends Controller
             'bio' => 'nullable|string|max:5000',
             'skills' => 'nullable|string|max:2000',
             'avatar_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'cover_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:8192',
             'location' => 'nullable|string|max:255',
             'graduate_year' => 'nullable|integer|min:1900|max:2100',
             'current_job' => 'nullable|string|max:255',
@@ -95,10 +96,16 @@ class UserController extends Controller
 
         $user = $request->user();
         $avatarPath = $user->getRawOriginal('avatar');
+        $coverPath = $user->getRawOriginal('cover');
 
         if ($request->hasFile('avatar_file')) {
             $this->deleteLocalPublicFile($user->getRawOriginal('avatar'));
             $avatarPath = $request->file('avatar_file')->store('profiles/avatars', 'public');
+        }
+
+        if ($request->hasFile('cover_file')) {
+            $this->deleteLocalPublicFile($user->getRawOriginal('cover'));
+            $coverPath = $request->file('cover_file')->store('profiles/covers', 'public');
         }
 
         $firstName = $validated['first_name'] ?? null;
@@ -127,6 +134,7 @@ class UserController extends Controller
             'bio' => $validated['bio'] ?? null,
             'skills' => $validated['skills'] ?? null,
             'avatar' => $avatarPath,
+            'cover' => $coverPath,
             'location' => $validated['location'] ?? null,
             'graduate_year' => $validated['graduate_year'] ?? ($validated['education'] ?? null),
             'current_job' => $validated['current_job'] ?? ($validated['position'] ?? null),
@@ -182,3 +190,4 @@ class UserController extends Controller
         }
     }
 }
+

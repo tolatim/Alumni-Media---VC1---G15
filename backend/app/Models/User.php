@@ -23,6 +23,7 @@ class User extends Authenticatable
         'bio',
         'skills',
         'avatar',
+        'cover',
         'location',
         'graduate_year',
         'current_job',
@@ -117,14 +118,19 @@ class User extends Authenticatable
                 $avatar = Storage::disk('public')->url($avatar);
             }
         }
-
+        $cover = $this->cover;
+        if ($cover && !str_starts_with($cover, 'http://') && !str_starts_with($cover, 'https://')) {
+            if (!str_starts_with($cover, '/storage/')) {
+                $cover = Storage::disk('public')->url($cover);
+            }
+        }
         return [
             'headline' => $this->headline,
             'phone' => $this->phone,
             'bio' => $this->bio,
             'skills' => $this->skills,
             'avatar' => $avatar,
-            'cover' => null,
+            'cover' => $cover,
             'location' => $this->location,
             'graduate_year' => $this->graduate_year,
             'current_job' => $this->current_job,
@@ -132,3 +138,4 @@ class User extends Authenticatable
         ];
     }
 }
+

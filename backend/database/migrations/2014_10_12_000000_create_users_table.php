@@ -23,6 +23,7 @@ return new class extends Migration
             $table->text('bio')->nullable();
             $table->text('skills')->nullable();
             $table->string('avatar')->nullable();
+            $table->string('cover')->nullable();
             $table->string('location')->nullable();
             $table->unsignedSmallInteger('graduate_year')->nullable();
             $table->string('current_job')->nullable();
