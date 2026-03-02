@@ -195,9 +195,19 @@ const loadProfile = async (id) => {
   try {
     const response = await api.get(`/profiles/${id}`)
     user.value = response.data.data
-  } catch {
+  } catch (error) {
+    const isOwnProfile =
+      loggedInUser.value?.id &&
+      String(loggedInUser.value.id) === String(id)
+
+    if (isOwnProfile) {
+      user.value = loggedInUser.value
+      return
+    }
+
     user.value = null
-    errorMessage.value = 'Profile not found or failed to load.'
+    errorMessage.value =
+      error?.response?.data?.message || 'Profile not found or failed to load.'
   }
 }
 

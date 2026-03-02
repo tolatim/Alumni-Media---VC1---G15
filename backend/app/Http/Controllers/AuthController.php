@@ -25,14 +25,12 @@ class AuthController extends Controller
             'password' => $validated['password'],
         ]);
 
-        $user->profile()->create([]);
-
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'User created successfully',
             'token' => $token,
-            'user' => $user->load(['role', 'profile']),
+            'user' => $user->load(['role']),
         ], 201);
     }
 
@@ -49,7 +47,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = User::with(['role', 'profile'])->findOrFail(Auth::id());
+        $user = User::with(['role'])->findOrFail(Auth::id());
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -61,6 +59,6 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user()->load(['role', 'profile']));
+        return response()->json($request->user()->load(['role']));
     }
 }

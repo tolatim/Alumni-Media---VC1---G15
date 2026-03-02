@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -17,6 +18,15 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        'headline',
+        'phone',
+        'bio',
+        'skills',
+        'avatar',
+        'location',
+        'graduate_year',
+        'current_job',
+        'company',
     ];
 
     protected $hidden = [
@@ -31,6 +41,7 @@ class User extends Authenticatable
 
     protected $appends = [
         'name',
+        'profile',
     ];
 
     public function role()
@@ -96,5 +107,28 @@ class User extends Authenticatable
         }
 
         return (string) ($this->attributes['name'] ?? '');
+    }
+
+    public function getProfileAttribute(): array
+    {
+        $avatar = $this->avatar;
+        if ($avatar && !str_starts_with($avatar, 'http://') && !str_starts_with($avatar, 'https://')) {
+            if (!str_starts_with($avatar, '/storage/')) {
+                $avatar = Storage::disk('public')->url($avatar);
+            }
+        }
+
+        return [
+            'headline' => $this->headline,
+            'phone' => $this->phone,
+            'bio' => $this->bio,
+            'skills' => $this->skills,
+            'avatar' => $avatar,
+            'cover' => null,
+            'location' => $this->location,
+            'graduate_year' => $this->graduate_year,
+            'current_job' => $this->current_job,
+            'company' => $this->company,
+        ];
     }
 }

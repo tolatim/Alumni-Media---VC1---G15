@@ -12,8 +12,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
 
-    Route::get('/feed', [PostController::class, 'index']);
-    Route::post('/posts', [PostController::class, 'store']);
+    // Route::get('/feed', [PostController::class, 'index']);
+    // Route::post('/posts', [PostController::class, 'store']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/suggestions', [UserController::class, 'suggestions']);

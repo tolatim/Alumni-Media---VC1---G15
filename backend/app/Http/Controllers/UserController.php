@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -12,7 +13,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('profile')->latest()->get();
+        $users = User::latest()->get();
 
         return response()->json([
             'message' => 'Users fetched successfully',
@@ -22,13 +23,29 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $user = User::with([
-            'role',
-            'profile',
-            'posts' => function ($query) {
-                $query->latest()->withCount(['likes', 'comments']);
-            },
-        ])->find($id);
+        $query = User::query()->with(['role']);
+
+        if (Schema::hasTable('posts')) {
+            $query->with([
+                'posts' => function ($postQuery) {
+                    $postQuery->latest();
+
+                    $countableRelations = [];
+                    if (Schema::hasTable('likes')) {
+                        $countableRelations[] = 'likes';
+                    }
+                    if (Schema::hasTable('comments')) {
+                        $countableRelations[] = 'comments';
+                    }
+
+                    if (!empty($countableRelations)) {
+                        $postQuery->withCount($countableRelations);
+                    }
+                },
+            ]);
+        }
+
+        $user = $query->find($id);
 
         if (!$user) {
             return response()->json([
@@ -44,7 +61,7 @@ class UserController extends Controller
 
     public function suggestions(Request $request)
     {
-        $suggestions = User::with('profile')
+        $suggestions = User::query()
             ->where('id', '!=', $request->user()->id)
             ->inRandomOrder()
             ->limit(5)
@@ -67,7 +84,6 @@ class UserController extends Controller
             'bio' => 'nullable|string|max:5000',
             'skills' => 'nullable|string|max:2000',
             'avatar_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
-            'cover_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:8192',
             'location' => 'nullable|string|max:255',
             'graduate_year' => 'nullable|integer|min:1900|max:2100',
             'current_job' => 'nullable|string|max:255',
@@ -78,19 +94,11 @@ class UserController extends Controller
         ]);
 
         $user = $request->user();
-        $profile = $user->profile;
-
-        $avatarPath = $profile?->getRawOriginal('avatar');
-        $coverPath = $profile?->getRawOriginal('cover');
+        $avatarPath = $user->getRawOriginal('avatar');
 
         if ($request->hasFile('avatar_file')) {
-            $this->deleteLocalPublicFile($profile?->getRawOriginal('avatar'));
+            $this->deleteLocalPublicFile($user->getRawOriginal('avatar'));
             $avatarPath = $request->file('avatar_file')->store('profiles/avatars', 'public');
-        }
-
-        if ($request->hasFile('cover_file')) {
-            $this->deleteLocalPublicFile($profile?->getRawOriginal('cover'));
-            $coverPath = $request->file('cover_file')->store('profiles/covers', 'public');
         }
 
         $firstName = $validated['first_name'] ?? null;
@@ -113,25 +121,21 @@ class UserController extends Controller
             'last_name' => $lastName,
         ]);
 
-        $user->profile()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'headline' => $validated['headline'] ?? null,
-                'phone' => $validated['phone'] ?? null,
-                'bio' => $validated['bio'] ?? null,
-                'skills' => $validated['skills'] ?? null,
-                'avatar' => $avatarPath,
-                'cover' => $coverPath,
-                'location' => $validated['location'] ?? null,
-                'graduate_year' => $validated['graduate_year'] ?? ($validated['education'] ?? null),
-                'current_job' => $validated['current_job'] ?? ($validated['position'] ?? null),
-                'company' => $validated['company'] ?? null,
-            ]
-        );
+        $user->update([
+            'headline' => $validated['headline'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'bio' => $validated['bio'] ?? null,
+            'skills' => $validated['skills'] ?? null,
+            'avatar' => $avatarPath,
+            'location' => $validated['location'] ?? null,
+            'graduate_year' => $validated['graduate_year'] ?? ($validated['education'] ?? null),
+            'current_job' => $validated['current_job'] ?? ($validated['position'] ?? null),
+            'company' => $validated['company'] ?? null,
+        ]);
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'data' => $user->fresh()->load(['role', 'profile']),
+            'data' => $user->fresh()->load(['role']),
         ]);
     }
 

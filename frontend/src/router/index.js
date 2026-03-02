@@ -19,15 +19,15 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/profile/:id',
-    component: Profile,
-    name: 'Profile',
-    meta: { requiresAuth: true },
-  },
-  {
     path: '/profile/edit',
     name: 'EditProfile',
     component: EditProfile,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile/:id',
+    component: Profile,
+    name: 'Profile',
     meta: { requiresAuth: true },
   },
 ]
