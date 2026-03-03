@@ -23,7 +23,7 @@ import Navbar from '@/components/ui/nav.vue'
 import userLeftSideBar from '@/components/ui/userLeftSideBar.vue'
 import centerFeed from '@/components/ui/centerFeed.vue'
 import userRightSideBar from '@/components/ui/userRightSideBar.vue'
-import api from '@/services/api'
+import api from '@/services/api'z
 
 const currentUser = ref(null)
 const posts = ref([])

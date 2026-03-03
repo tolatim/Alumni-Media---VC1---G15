@@ -4,6 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
+// import Create from '../views/CreatePost.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -30,6 +31,12 @@ const routes = [
     component: EditProfile,
     meta: { requiresAuth: true },
   },
+  // {
+  // path: '/create-post/:id?',
+  // name: 'CreatePost',
+  // component: CreatePost,
+  // meta: { requiresAuth: true },
+  // }
 ]
 
 const router = createRouter({
@@ -52,5 +59,11 @@ router.beforeEach((to, from, next) => {
 
   next()
 })
+ 
+
+
+
+
 
 export default router
+
