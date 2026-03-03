@@ -82,6 +82,7 @@ class UserController extends Controller
         }
         // Update user with validated data
         $user->update($validated);
+        $user->refresh();
         return response()->json([
             'message' => 'Profile updated successfully',
             'user' => $user,

@@ -28,7 +28,7 @@
           <!-- Avatar -->
           <div class="absolute -top-20 left-8">
             <img
-              :src="user.avatar_url || 'https://i.pravatar.cc/150'"
+              :src="user.avatar_url || defaultAvatar"
               class="w-36 h-36 rounded-full border-4 border-white object-cover shadow-md"
             />
           </div>
@@ -229,6 +229,7 @@ import Navbar from "@/components/ui/nav.vue";
 import api from "@/services/api";
 import { getUser } from "@/services/authService";
 import defaultBackground from "@/assets/images/3840x2160-white-solid-color-background.jpg";
+import defaultAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
 const route = useRoute();
 const user = ref(null);
 const errorMessage = ref("");

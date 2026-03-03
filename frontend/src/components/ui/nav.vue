@@ -60,13 +60,15 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import { getUser } from '@/services/authService'
 
 const router = useRouter()
 const user = ref(null)
 
 const fetchMe = async () => {
   try {
-    const response = await api.get('/me')
+    const user_id  = JSON.parse(localStorage.getItem('user').id)
+    const response = await getUser(user_id)
     user.value = response.data
     localStorage.setItem('user', JSON.stringify(response.data))
   } catch {

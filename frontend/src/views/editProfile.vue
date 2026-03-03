@@ -24,7 +24,7 @@
           <div class="relative h-60 w-full group">
             <!-- Cover Image -->
             <img
-              :src="previewCover || profile_photo.cover_url || ''"
+              :src="previewCover || profile_photo.cover_url || defaultBackground"
               class="w-full h-full object-cover"
             />
 
@@ -46,7 +46,7 @@
             <label class="cursor-pointer group relative block">
               <img
                 :src="
-                  previewImage || avatar.avatar_url || '/default-avatar.png'
+                  previewImage || avatar.avatar_url || defaultAvatar
                 "
                 class="w-28 h-28 rounded-full border-4 border-white shadow-md object-cover transition group-hover:opacity-80"
               />
@@ -179,7 +179,8 @@ import { useRouter } from "vue-router";
 import api from "@/services/api";
 import { updateProfile } from "@/services/authService";
 import { getProfile } from "@/services/authService";
-import { updateProfileAvatar } from "@/services/authService";
+import defaultBackground from "@/assets/images/3840x2160-white-solid-color-background.jpg";
+import defaultAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
 
 const router = useRouter();
 const loading = ref(false);
@@ -208,8 +209,6 @@ const handleCoverUpload = (event) => {
 
   selectedCover.value = file;
   previewCover.value = URL.createObjectURL(file);
-
-  console.log(selectedCover.value);
 };
 
 const form = reactive({
@@ -236,16 +235,16 @@ const loadProfile = async () => {
 
     const response = await getProfile(userString.id);
     const user = response.data.user;
-    form.headline = user.headline || "";
-    form.current_job = user.current_job || "";
-    form.company = user.company || "";
-    form.phone = user.phone || "";
-    form.graduate_year = user.graduate_year || null;
-    form.location = user.location || "";
-    form.bio = user.bio || "";
-    form.skills = user.skills || "";
-    avatar.avatar_url = user.avatar_url || "";
-    profile_photo.cover_url = user.cover_url || "";
+    form.headline = user.headline || "Not provided";
+    form.current_job = user.current_job || "Not provided";
+    form.company = user.company || "Not provided";
+    form.phone = user.phone || "Not provided";
+    form.graduate_year = user.graduate_year || 2000;
+    form.location = user.location || "Not provided";
+    form.bio = user.bio || "Not provided";
+    form.skills = user.skills || "Not provided";
+    avatar.avatar_url = user.avatar_url || null;
+    profile_photo.cover_url = user.cover_url || null;
   } catch (err) {
     errorMessage.value = "Failed to load your profile.";
   }
@@ -277,8 +276,10 @@ const saveProfile = async () => {
     const response = await updateProfile(formData, {
       headers: {
         Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
       },
     });
+    console.log(response.data.user);
     successMessage.value = response.data.message;
   } catch (err) {
     errorMessage.value = "Failed to save profile.";

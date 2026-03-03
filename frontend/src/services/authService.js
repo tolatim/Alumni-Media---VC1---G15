@@ -22,10 +22,6 @@ export const logoutUser = () => {
 export const updateProfile = (data, config) => {
     return api.post("/user/profile", data, config)
 }
-// Update profile avatar
-export const updateProfileAvatar = (data, config) => {
-    return api.post("/user/profile/avatar", data, config)
-}
 
 // Load Profile
 
