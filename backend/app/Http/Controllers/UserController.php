@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Connection;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -57,6 +58,177 @@ class UserController extends Controller
         ]);
     }
 
+    public function pendingConnections(Request $request)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+                'data' => [],
+            ], 503);
+        }
+
+        $user = $request->user();
+
+        $pending = Connection::query()
+            ->with(['requester.role'])
+            ->where('addressee_id', $user->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'message' => 'Pending connections fetched successfully',
+            'data' => $pending,
+        ]);
+    }
+
+    public function myConnections(Request $request)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+                'data' => [],
+                'count' => 0,
+            ], 503);
+        }
+
+        $user = $request->user();
+
+        $connections = Connection::query()
+            ->with(['requester.role', 'addressee.role'])
+            ->where('status', 'accepted')
+            ->where(function ($query) use ($user) {
+                $query
+                    ->where('requester_id', $user->id)
+                    ->orWhere('addressee_id', $user->id);
+            })
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'message' => 'My connections fetched successfully',
+            'data' => $connections,
+            'count' => $connections->count(),
+        ]);
+    }
+
+    public function sendConnectionRequest(Request $request)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+            ], 503);
+        }
+
+        $validated = $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        $me = $request->user();
+        $targetId = (int) $validated['user_id'];
+
+        if ($targetId === (int) $me->id) {
+            return response()->json([
+                'message' => 'You cannot connect with yourself.',
+            ], 422);
+        }
+
+        $existing = Connection::query()
+            ->where(function ($query) use ($me, $targetId) {
+                $query
+                    ->where('requester_id', $me->id)
+                    ->where('addressee_id', $targetId);
+            })
+            ->orWhere(function ($query) use ($me, $targetId) {
+                $query
+                    ->where('requester_id', $targetId)
+                    ->where('addressee_id', $me->id);
+            })
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Connection already exists or is pending.',
+                'data' => $existing,
+            ], 409);
+        }
+
+        $connection = Connection::create([
+            'requester_id' => $me->id,
+            'addressee_id' => $targetId,
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Connection request sent successfully',
+            'data' => $connection->load(['requester', 'addressee']),
+        ], 201);
+    }
+
+    public function acceptConnection(Request $request, $id)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+            ], 503);
+        }
+
+        $me = $request->user();
+
+        $connection = Connection::query()
+            ->where('id', $id)
+            ->where('addressee_id', $me->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$connection) {
+            return response()->json([
+                'message' => 'Connection request not found.',
+            ], 404);
+        }
+
+        $connection->update([
+            'status' => 'accepted',
+        ]);
+
+        return response()->json([
+            'message' => 'Connection accepted successfully',
+            'data' => $connection->fresh()->load(['requester', 'addressee']),
+        ]);
+    }
+
+    public function rejectConnection(Request $request, $id)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+            ], 503);
+        }
+
+        $me = $request->user();
+
+        $connection = Connection::query()
+            ->where('id', $id)
+            ->where('addressee_id', $me->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$connection) {
+            return response()->json([
+                'message' => 'Connection request not found.',
+            ], 404);
+        }
+
+        $connection->update([
+            'status' => 'blocked',
+        ]);
+
+        return response()->json([
+            'message' => 'Connection blocked successfully',
+            'data' => $connection->fresh()->load(['requester', 'addressee']),
+        ]);
+    }
+
     public function show($id)
     {
         $query = User::query()->with(['role']);
@@ -97,10 +269,35 @@ class UserController extends Controller
 
     public function suggestions(Request $request)
     {
+        $me = $request->user();
+
+        $excludedIds = [];
+
+        if (Schema::hasTable('connections')) {
+            $excludedIds = Connection::query()
+                ->where(function ($query) use ($me) {
+                    $query
+                        ->where('requester_id', $me->id)
+                        ->orWhere('addressee_id', $me->id);
+                })
+                ->whereIn('status', ['pending', 'accepted', 'blocked'])
+                ->get()
+                ->map(function ($connection) use ($me) {
+                    return (int) ($connection->requester_id === $me->id
+                        ? $connection->addressee_id
+                        : $connection->requester_id);
+                })
+                ->values()
+                ->all();
+        }
+
         $suggestions = User::query()
-            ->where('id', '!=', $request->user()->id)
+            ->where('id', '!=', $me->id)
+            ->when(!empty($excludedIds), function ($query) use ($excludedIds) {
+                $query->whereNotIn('id', $excludedIds);
+            })
             ->inRandomOrder()
-            ->limit(5)
+            ->limit(8)
             ->get();
 
         return response()->json([

@@ -45,13 +45,14 @@
 </template>
 
 <script setup>
+import { useRoute, useRouter } from 'vue-router';
+const router = useRouter();
 defineProps({
   user: {
     type: Object,
     default: null,
   },
 })
-
 const logout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')

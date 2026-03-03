@@ -78,11 +78,5 @@ const fetchMe = async () => {
   }
 }
 
-const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  router.push('/login')
-}
-
 onMounted(fetchMe)
 </script>

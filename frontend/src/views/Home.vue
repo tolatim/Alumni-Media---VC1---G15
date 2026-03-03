@@ -10,7 +10,13 @@
         @post-created="prependPost"
       />
 
-      <userRightSideBar :suggestions="suggestions" />
+      <userRightSideBar
+        :suggestions="suggestions"
+        :pending-requests="pendingRequests"
+        @send-request="sendConnectionRequest"
+        @accept-request="acceptConnectionRequest"
+        @reject-request="rejectConnectionRequest"
+      />
     </div>
 
     <p v-if="errorMessage" class="text-center text-red-500 mt-4">{{ errorMessage }}</p>
@@ -28,15 +34,17 @@ import api from '@/services/api'
 const currentUser = ref(null)
 const posts = ref([])
 const suggestions = ref([])
+const pendingRequests = ref([])
 const errorMessage = ref('')
 
 const loadHomeData = async () => {
   errorMessage.value = ''
 
-  const [meRes, feedRes, suggestionRes] = await Promise.allSettled([
+  const [meRes, feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
     api.get('/me'),
     api.get('/feed'),
     api.get('/users/suggestions'),
+    api.get('/connections/pending'),
   ])
 
   if (meRes.status === 'fulfilled') {
@@ -60,13 +68,61 @@ const loadHomeData = async () => {
     suggestions.value = []
   }
 
-  if (feedRes.status === 'rejected' || suggestionRes.status === 'rejected') {
+  if (pendingRes.status === 'fulfilled') {
+    pendingRequests.value = pendingRes.value.data?.data || []
+  } else {
+    pendingRequests.value = []
+  }
+
+  if (
+    feedRes.status === 'rejected' ||
+    suggestionRes.status === 'rejected' ||
+    pendingRes.status === 'rejected'
+  ) {
     errorMessage.value = 'Some home sections failed to load.'
   }
 }
 
 const prependPost = (newPost) => {
   posts.value = [newPost, ...posts.value]
+}
+
+const sendConnectionRequest = async (userId) => {
+  try {
+    await api.post('/connections/request', { user_id: userId })
+    suggestions.value = suggestions.value.filter((person) => person.id !== userId)
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to send connection request.'
+  }
+}
+
+const acceptConnectionRequest = async (requestId) => {
+  try {
+    await api.post(`/connections/${requestId}/accept`)
+    pendingRequests.value = pendingRequests.value.filter((request) => request.id !== requestId)
+    await refreshSuggestions()
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to accept request.'
+  }
+}
+
+const rejectConnectionRequest = async (requestId) => {
+  try {
+    await api.post(`/connections/${requestId}/reject`)
+    pendingRequests.value = pendingRequests.value.filter((request) => request.id !== requestId)
+    await refreshSuggestions()
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to reject request.'
+  }
+}
+
+const refreshSuggestions = async () => {
+  try {
+    const response = await api.get('/users/suggestions')
+    suggestions.value = response.data?.data || []
+  } catch {
+    suggestions.value = []
+  }
 }
 
 onMounted(loadHomeData)

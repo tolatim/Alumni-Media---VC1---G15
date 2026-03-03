@@ -4,6 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
+import Connect from '@/views/connect.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -16,6 +17,12 @@ const routes = [
       const user = savedUser ? JSON.parse(savedUser) : null
       return user?.id ? `/profile/${user.id}` : '/'
     },
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/connection',
+    name: 'Connection',
+    component: Connect,
     meta: { requiresAuth: true },
   },
   {
