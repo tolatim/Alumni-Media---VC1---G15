@@ -4,6 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
+import Connect from '@/views/connect.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -19,15 +20,21 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/profile/:id',
-    component: Profile,
-    name: 'Profile',
+    path: '/connection',
+    name: 'Connection',
+    component: Connect,
     meta: { requiresAuth: true },
   },
   {
     path: '/profile/edit',
     name: 'EditProfile',
     component: EditProfile,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile/:id',
+    component: Profile,
+    name: 'Profile',
     meta: { requiresAuth: true },
   },
 ]

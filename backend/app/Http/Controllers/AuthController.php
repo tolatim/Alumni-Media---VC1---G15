@@ -3,25 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+<<<<<<< HEAD
 use App\Models\Notification;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+=======
+>>>>>>> feature/user-connection
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Register
     public function register(Request $request)
     {
-        // Validate
-        $request->validate([
+        $validated = $request->validate([
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed', // requires password_confirmation
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
+<<<<<<< HEAD
         // Create user (hash password!)
         $user = User::create($request->all());
 
@@ -35,36 +38,38 @@ class AuthController extends Controller
             'created_at' => now(),
         ]);
 
+=======
+        $user = User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+        ]);
+>>>>>>> feature/user-connection
 
-        // Cache user data for 5 minutes
-        Cache::put('user:' . $user->id, [
-            'id' => $user->id,
-            'fist_name' => $user->fist_name,
-            'last_name' => $user->last_name,
-            'email' => $user->email
-        ], 300);
-
-        // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'User created successfully',
-            'user' => $user,
-            'token' => $token
+            'user' => $user->load(['role']),
+            'token' => $token,
         ], 201);
     }
 
-    // Login
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
-                'message' => 'Invalid credentials'
+                'message' => 'Invalid credentials',
             ], 401);
         }
 
+<<<<<<< HEAD
         $user = Auth::user();
         
         Notification::create([
@@ -93,12 +98,20 @@ class AuthController extends Controller
         }
 
         // Create token
+=======
+        $user = User::with(['role'])->findOrFail(Auth::id());
+>>>>>>> feature/user-connection
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'status' => 'Login successfully',
             'token' => $token,
-            'user' => $user
+            'user' => $user,
         ]);
+    }
+
+    public function me(Request $request)
+    {
+        return response()->json($request->user()->load(['role']));
     }
 }
