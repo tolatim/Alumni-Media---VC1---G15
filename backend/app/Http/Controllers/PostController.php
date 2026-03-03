@@ -16,25 +16,20 @@ class PostController extends Controller
     // store post
     public function store(Request $request)
     {
-        if (!$request->user()) {
-            return response()->json([
-                'message' => 'Unauthenticated.'
-            ], 401);
-        }
-
         $request->validate([
-            'content' => 'required|string|max:500',
+            'title' => 'nullable|string',
+            'content' => 'nullable|string',
         ]);
 
         $post = Post::create([
-            'user_id' => $request->user()->id,
+            'user_id' => auth() -> id(), // safer
+            'title' => $request->title,
             'content' => $request->content,
         ]);
 
-
         return response()->json([
-            'message' => 'Post created successfully',
-            'post' => $post
+            "message" => "Post successfully",
+            "post" => $post
         ], 201);
     }
 
@@ -50,9 +45,9 @@ class PostController extends Controller
     public function update(Request $request, $id)
     {
         $post = Post::find($id);
-        
-        if (!$post){
-            return response()->json(['message'=>'Post not found',404]);
+
+        if (!$post) {
+            return response()->json(['message' => 'Post not found', 404]);
         }
 
         $request->validate([
@@ -60,25 +55,24 @@ class PostController extends Controller
         ]);
 
         $post->update([
-            'content'=> $request->content,
+            'content' => $request->content,
         ]);
 
         return response()->json([
-            'message'=> 'Post updated successfully',
-            'post'=> $post
+            'message' => 'Post updated successfully',
+            'post' => $post
         ]);
-
     }
 
     // delete post
     public function destroy($id)
     {
         $post = Post::find($id);
-        if(!$post){
+        if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
         }
 
-        $post -> delete();
+        $post->delete();
 
         return response()->json(['message' => 'Post deleted successfully']);
     }

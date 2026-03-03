@@ -23,7 +23,8 @@ import Navbar from '@/components/ui/nav.vue'
 import userLeftSideBar from '@/components/ui/userLeftSideBar.vue'
 import centerFeed from '@/components/ui/centerFeed.vue'
 import userRightSideBar from '@/components/ui/userRightSideBar.vue'
-import api from '@/services/api'z
+import api from '@/services/api'
+import { getUser } from '@/services/authService'
 
 const currentUser = ref(null)
 const posts = ref([])
@@ -34,18 +35,21 @@ const loadHomeData = async () => {
   errorMessage.value = ''
 
   try {
-    const [meRes, feedRes, suggestionRes] = await Promise.all([
-      api.get('/me'),
-      api.get('/feed'),
-      api.get('/users/suggestions'),
-    ])
+    const user_id = JSON.parse(localStorage.getItem('user')).id
+    if (!user_id) {
+      throw new Error('No user in localStorage')
+    }
 
-    currentUser.value = meRes.data
-    localStorage.setItem('user', JSON.stringify(meRes.data))
+    // Fetch the current user
+    const ress = await getUser(user_id)
+    currentUser.value = ress.data.user
 
-    posts.value = feedRes.data.data || []
-    suggestions.value = suggestionRes.data.data || []
-  } catch {
+    // Update localStorage with fresh user data
+
+    // localStorage.setItem('user', JSON.stringify({ user: currentUser.value }))
+    
+  } catch (err) {
+    console.error(err)
     errorMessage.value = 'Failed to load home page data.'
   }
 }

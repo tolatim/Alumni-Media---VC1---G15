@@ -37,7 +37,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         return response()->json([
-            'user' => $user
+            'user' => $user,
         ]);
     }
 
@@ -50,17 +50,24 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'headline' => 'nullable|string',
             'phone' => 'nullable|string',
             'bio' => 'nullable|string',
             'skills' => 'nullable|string',
             'location' => 'nullable|string',
-            'graduate_year' => 'nullable|string',
+            'graduate_year' => 'nullable|int',
             'current_job' => 'nullable|string',
             'company' => 'nullable|string',
         ]);
+        if($request -> hasFile('profile_photo')) {
+            if($user -> profile_photo){
+                Storage::disk('public') ->delete($user->profile_photo);
+            }
 
-        // Handle avatar upload
+            $path = $request->file('profile_photo')->store('cover', 'public');
+            $validated['profile_photo'] = $path;
+        }
         if ($request->hasFile('avatar')) {
 
             // Delete old avatar if exists
@@ -69,48 +76,18 @@ class UserController extends Controller
             }
 
             // Store in storage/app/public/avatars
-            $path = $request->file('avatar')
-                ->store('avatars', 'public');
+            $path = $request->file('avatar')->store('avatars', 'public');
 
             $validated['avatar'] = $path;
         }
-
         // Update user with validated data
         $user->update($validated);
-
+        $user->refresh();
         return response()->json([
             'message' => 'Profile updated successfully',
             'user' => $user,
-            'avatar_url' => $user->avatar
-                ? env('APP_URL') . Storage::url($user->avatar)
-                : null
         ], 200);
     }
-
-
-    // public function updateProfile(Request $request)
-    // {
-    //     $user = auth()->user();
-
-    //     if ($request->hasFile('profile_photo')) {
-
-    //         $path = $request->file('profile_photo')
-    //             ->store('profile_photos', 'public');
-
-    //         $user->profile_photo = $path;
-    //         $user->save();
-
-    //         return response()->json([
-    //             'message' => 'Uploaded',
-    //             'profile_photo' => $user->profile_photo
-    //         ]);
-    //     }
-
-    //     return response()->json([
-    //         'message' => 'No file received',
-    //         'profile_photo' => null
-    //     ]);
-    // }
     /**
      * Remove the specified resource from storage.
      */

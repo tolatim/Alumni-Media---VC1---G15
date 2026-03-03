@@ -3,16 +3,16 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
       <div class="h-20 bg-blue-800 relative">
         <img
-          :src="user?.profile?.avatar || 'https://i.pravatar.cc/150'"
+          :src="user?.avatar_url || defaultAvatar"
           class="w-20 h-20 rounded-full border-4 border-white absolute -bottom-10 left-1/2 -translate-x-1/2 object-cover"
         >
       </div>
 
       <div class="pt-12 pb-6 px-6 text-center">
-        <h3 class="font-semibold text-lg text-gray-800">{{ user?.name || 'Guest User' }}</h3>
+        <h3 class="font-semibold text-lg text-gray-800">{{ user?.first_name + user?.last_name || 'Guest User' }}</h3>
 
         <p class="text-sm text-gray-500">
-          {{ user?.profile?.headline || user?.profile?.current_job || 'Welcome to Alumni Media' }}
+          {{ user?.headline || user?.current_job || 'Welcome to Alumni Media' }}
         </p>
 
         <RouterLink
@@ -38,6 +38,8 @@
 </template>
 
 <script setup>
+import { data } from 'autoprefixer';
+import defaultAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 defineProps({
   user: {
     type: Object,

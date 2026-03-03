@@ -11,4 +11,8 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::apiResource('/users', UserController::class);
 Route::get('/users', [UserController::class, 'index']);
 Route::middleware('auth:sanctum')->patch('/user/profile', [UserController::class, 'update']);
-// Route::middleware('auth:sanctum')->patch('/user/profile', [UserController::class, 'updateProfile']);
+
+Route::apiResource('/posts', PostController::class);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/posts', [PostController::class, 'store']);
+});
