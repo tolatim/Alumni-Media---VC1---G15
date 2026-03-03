@@ -1,9 +1,11 @@
 <template>
   <div>
-    <nav v-if="user">
+    <!-- <nav v-if="user">
       Welcome, {{ user.name }} |
       <button @click="logout">Logout</button>
-    </nav>
+    </nav> -->
+    <!-- <button v-on:click="logout">logout</button> -->
+    <!-- </nav> -->
     <router-view />
   </div>
 </template>

@@ -1,6 +1,5 @@
 <template>
   <div class="login-container">
-    <!-- LEFT SIDE -->
     <div class="left-panel">
       <div class="overlay">
         <h1>Reconnect with Excellence.</h1>
@@ -12,30 +11,17 @@
       </div>
     </div>
 
-    <!-- RIGHT SIDE -->
     <div class="right-panel">
       <div class="login-card">
         <h2>Welcome Back</h2>
-        <p class="subtitle">
-          Please enter your credentials to access the alumni portal.
-        </p>
+        <p class="subtitle">Please enter your credentials to access the alumni portal.</p>
 
         <form @submit.prevent="login">
           <label>Email Address</label>
-          <input
-            type="email"
-            v-model="email"
-            placeholder="e.g. name@alumni.com"
-            required
-          />
+          <input type="email" v-model="email" placeholder="e.g. name@alumni.com" required>
 
           <label>Password</label>
-          <input
-            type="password"
-            v-model="password"
-            placeholder="••••••••"
-            required
-          />
+          <input type="password" v-model="password" placeholder="��������" required>
 
           <div class="options">
             <!-- <label>
@@ -88,7 +74,7 @@ async function login() {
     });
 
     localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data));
+    localStorage.setItem("user", JSON.stringify(res.data.user));
 
     router.push("/");
   } catch (err) {
@@ -106,7 +92,6 @@ async function login() {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* LEFT SIDE */
 .left-panel {
   flex: 1;
   background: linear-gradient(rgba(37, 99, 235, 0.85), rgba(37, 99, 235, 0.85)),
@@ -129,7 +114,6 @@ async function login() {
   opacity: 0.9;
 }
 
-/* RIGHT SIDE */
 .right-panel {
   flex: 1;
   background: #f4f6f9;
@@ -171,16 +155,10 @@ input {
   border: 1px solid #ddd;
 }
 
-.options {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  margin: 15px 0;
-}
-
 button {
   width: 100%;
   padding: 14px;
+  margin-top: 18px;
   border: none;
   border-radius: 6px;
   background: #2563eb;
@@ -193,16 +171,15 @@ button:hover {
   background: #1e4ed8;
 }
 
-.new-user {
-  margin-top: 25px;
-  font-size: 14px;
-  text-align: center;
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.new-user a {
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: bold;
+.error {
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 10px;
 }
 button.loading .spinner {
   display: inline-block;

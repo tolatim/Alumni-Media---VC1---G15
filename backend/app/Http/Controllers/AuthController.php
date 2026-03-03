@@ -22,12 +22,7 @@ class AuthController extends Controller
         ]);
 
         // Create user (hash password!)
-        $user = User::create([
-            'first_name' => $request -> first_name,
-            'last_name' => $request -> last_name,
-            'email' => $request -> email,
-            'password' => $request -> password
-        ]);
+        $user = User::create($request -> all());
 
         // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
@@ -81,7 +76,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'Login successfully',
             'token' => $token,
-            'user' => $userData
+            'user' => $user
         ]);
     }
 }
