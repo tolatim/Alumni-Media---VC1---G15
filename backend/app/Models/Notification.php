@@ -36,4 +36,10 @@ class Notification extends Model
     {
         return $this->morphTo();
     }
+
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
 }

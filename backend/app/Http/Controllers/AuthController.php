@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Notification;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -22,7 +23,18 @@ class AuthController extends Controller
         ]);
 
         // Create user (hash password!)
-        $user = User::create($request -> all());
+        $user = User::create($request->all());
+
+
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'register_success',
+            'data' => [
+                'message' => 'Welcome! Your account was created successfully.',
+            ],
+            'created_at' => now(),
+        ]);
+
 
         // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
@@ -54,6 +66,16 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+        
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'login_success',
+            'data' => [
+                'message' => 'You logged in successfully.',
+            ],
+            'created_at' => now(),
+        ]);
+
 
         // Check cache first
         $cachedUser = Cache::get('user:' . $user->id);
@@ -62,10 +84,10 @@ class AuthController extends Controller
             $userData = $cachedUser;
         } else {
             $userData = [
-                'id' => $user -> id,
+                'id' => $user->id,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
-                'email' => $user -> email
+                'email' => $user->email
             ];
             Cache::put('user:' . $user->id, $userData, 300); // cache 5 minutes
         }
