@@ -40,6 +40,28 @@
                 Edit Profile
               </RouterLink>
             </div>
+            <div class="flex gap-4 mt-4" v-else>
+              <RouterLink
+                v-if="connectionStatus === 'accepted'"
+                to="/message"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition"
+              >
+                Message
+              </RouterLink>
+              <button
+                v-else-if="connectionStatus === 'none'"
+                @click="sendConnectionRequest"
+                class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
+              >
+                Connect
+              </button>
+              <span
+                v-else-if="connectionStatus === 'pending'"
+                class="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-600"
+              >
+                Pending Request
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -156,6 +178,7 @@ const route = useRoute()
 const user = ref(null)
 const errorMessage = ref('')
 const loggedInUser = ref(null)
+const connectionStatus = ref('none')
 
 const oldPassword = ref('')
 const newPassword = ref('')
@@ -214,6 +237,31 @@ const loadProfile = async (id) => {
   }
 }
 
+const loadConnectionStatus = async (id) => {
+  if (!loggedInUser.value?.id || String(loggedInUser.value.id) === String(id)) {
+    connectionStatus.value = 'self'
+    return
+  }
+
+  try {
+    const response = await api.get(`/connections/status/${id}`)
+    connectionStatus.value = response.data?.data?.status || 'none'
+  } catch {
+    connectionStatus.value = 'none'
+  }
+}
+
+const sendConnectionRequest = async () => {
+  if (!user.value?.id) return
+
+  try {
+    await api.post('/connections/request', { user_id: user.value.id })
+    connectionStatus.value = 'pending'
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to send connection request.'
+  }
+}
+
 const changePassword = async () => {
   passwordError.value = ''
   passwordMessage.value = ''
@@ -245,7 +293,10 @@ const changePassword = async () => {
 watch(
   () => route.params.id,
   (id) => {
-    if (id) loadProfile(id)
+    if (id) {
+      loadProfile(id)
+      loadConnectionStatus(id)
+    }
   }
 )
 
@@ -253,6 +304,7 @@ onMounted(async () => {
   await loadLoggedInUser()
   if (route.params.id) {
     await loadProfile(route.params.id)
+    await loadConnectionStatus(route.params.id)
   }
 })
 </script>

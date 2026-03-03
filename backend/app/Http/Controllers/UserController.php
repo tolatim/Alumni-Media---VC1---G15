@@ -112,6 +112,43 @@ class UserController extends Controller
         ]);
     }
 
+    public function connectionStatus(Request $request, $userId)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+                'data' => ['status' => 'none', 'connection' => null],
+            ], 503);
+        }
+
+        $me = $request->user();
+        $targetId = (int) $userId;
+
+        if ($targetId === (int) $me->id) {
+            return response()->json([
+                'message' => 'Self profile',
+                'data' => ['status' => 'self', 'connection' => null],
+            ]);
+        }
+
+        $connection = Connection::query()
+            ->where(function ($query) use ($me, $targetId) {
+                $query->where('requester_id', $me->id)->where('addressee_id', $targetId);
+            })
+            ->orWhere(function ($query) use ($me, $targetId) {
+                $query->where('requester_id', $targetId)->where('addressee_id', $me->id);
+            })
+            ->first();
+
+        return response()->json([
+            'message' => 'Connection status fetched successfully',
+            'data' => [
+                'status' => $connection?->status ?? 'none',
+                'connection' => $connection,
+            ],
+        ]);
+    }
+
     public function sendConnectionRequest(Request $request)
     {
         if (!Schema::hasTable('connections')) {
@@ -226,6 +263,89 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Connection blocked successfully',
             'data' => $connection->fresh()->load(['requester', 'addressee']),
+        ]);
+    }
+
+    public function unfriend(Request $request, $userId)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+            ], 503);
+        }
+
+        $me = $request->user();
+        $targetId = (int) $userId;
+
+        $connection = Connection::query()
+            ->where('status', 'accepted')
+            ->where(function ($query) use ($me, $targetId) {
+                $query
+                    ->where(function ($q) use ($me, $targetId) {
+                        $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
+                    })
+                    ->orWhere(function ($q) use ($me, $targetId) {
+                        $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
+                    });
+            })
+            ->first();
+
+        if (!$connection) {
+            return response()->json([
+                'message' => 'Friend connection not found.',
+            ], 404);
+        }
+
+        $connection->delete();
+
+        return response()->json([
+            'message' => 'Unfriended successfully',
+        ]);
+    }
+
+    public function blockUser(Request $request, $userId)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+            ], 503);
+        }
+
+        $me = $request->user();
+        $targetId = (int) $userId;
+
+        if ($targetId === (int) $me->id) {
+            return response()->json([
+                'message' => 'You cannot block yourself.',
+            ], 422);
+        }
+
+        $connection = Connection::query()
+            ->where(function ($query) use ($me, $targetId) {
+                $query
+                    ->where('requester_id', $me->id)
+                    ->where('addressee_id', $targetId);
+            })
+            ->orWhere(function ($query) use ($me, $targetId) {
+                $query
+                    ->where('requester_id', $targetId)
+                    ->where('addressee_id', $me->id);
+            })
+            ->first();
+
+        if ($connection) {
+            $connection->update(['status' => 'blocked']);
+        } else {
+            $connection = Connection::create([
+                'requester_id' => $me->id,
+                'addressee_id' => $targetId,
+                'status' => 'blocked',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'User blocked successfully',
+            'data' => $connection,
         ]);
     }
 

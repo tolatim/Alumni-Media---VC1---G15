@@ -90,18 +90,42 @@
         <div class="bg-white rounded-xl shadow p-5">
           <h3 class="text-lg font-semibold text-gray-800 mb-4">My Friends</h3>
           <div class="space-y-3">
-            <RouterLink
+            <div
               v-for="friend in friends"
               :key="friend.id"
-              :to="{ name: 'Profile', params: { id: friend.id } }"
-              class="flex items-center gap-3"
+              class="border rounded-lg p-3 flex justify-between relative"
             >
-              <img :src="friend.profile?.avatar" class="w-9 h-9 rounded-full object-cover">
-              <div class="min-w-0">
-                <p class="text-sm font-medium text-gray-800 truncate">{{ friend.name }}</p>
-                <p class="text-xs text-gray-500 truncate">{{ friend.profile?.headline || 'Connected' }}</p>
+              <RouterLink
+                :to="{ name: 'Profile', params: { id: friend.id } }"
+                class="flex items-center gap-3 "
+              >
+                <img :src="friend.profile?.avatar" class="w-9 h-9 rounded-full object-cover">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ friend.name }}</p>
+                  <p class="text-xs text-gray-500 truncate">{{ friend.profile?.headline || 'Connected' }}</p>
+                </div>
+              </RouterLink>
+              <div class="px-2 py-1 cursor-pointer" @click="toggleFriendMenu(friend.id)">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
               </div>
-            </RouterLink>
+              <div
+                v-if="openFriendMenuId === friend.id"
+                class="flex gap-2 mt-3 flex-col absolute -right-20 top-0 bg-white rounded-md border p-2 z-10"
+              >
+                <button
+                  @click="onClickUnfriend(friend.id)"
+                  class="text-xs px-3 py-1 rounded-full border hover:bg-gray-100"
+                >
+                  Unfriend
+                </button>
+                <button
+                  @click="onClickBlock(friend.id)"
+                  class="text-xs px-3 py-1 rounded-full border text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  Block
+                </button>
+              </div>
+            </div>
             <p v-if="!friends.length" class="text-sm text-gray-500">No friends yet.</p>
           </div>
         </div>
@@ -121,6 +145,7 @@ const errorMessage = ref('')
 const pendingRequests = ref([])
 const suggestions = ref([])
 const connectionRows = ref([])
+const openFriendMenuId = ref(null)
 
 const friends = computed(() => {
   const meRaw = localStorage.getItem('user')
@@ -205,6 +230,47 @@ const refreshSuggestions = async () => {
   }
 }
 
+const toggleFriendMenu = (friendId) => {
+  openFriendMenuId.value = openFriendMenuId.value === friendId ? null : friendId
+}
+
+const unfriend = async (userId) => {
+  try {
+    await api.post(`/connections/user/${userId}/unfriend`)
+    connectionRows.value = connectionRows.value.filter((row) => {
+      return !(
+        (row.requester_id === userId || row.addressee_id === userId) &&
+        row.status === 'accepted'
+      )
+    })
+    await refreshSuggestions()
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to unfriend user.'
+  }
+}
+
+const blockUser = async (userId) => {
+  try {
+    await api.post(`/connections/user/${userId}/block`)
+    connectionRows.value = connectionRows.value.filter((row) => {
+      return !(row.requester_id === userId || row.addressee_id === userId)
+    })
+    pendingRequests.value = pendingRequests.value.filter((row) => row.requester_id !== userId)
+    suggestions.value = suggestions.value.filter((person) => person.id !== userId)
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to block user.'
+  }
+}
+
+const onClickUnfriend = async (userId) => {
+  await unfriend(userId)
+  openFriendMenuId.value = null
+}
+
+const onClickBlock = async (userId) => {
+  await blockUser(userId)
+  openFriendMenuId.value = null
+}
+
 onMounted(loadData)
 </script>
-
