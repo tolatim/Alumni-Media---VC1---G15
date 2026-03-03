@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -36,8 +37,8 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'User created successfully',
+            'token' => $token,
             'user' => $user,
-            'token' => $token
         ], 201);
     }
 
@@ -75,7 +76,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'Login successfully',
             'token' => $token,
-            'user' => $user
+            'user' => $user,
         ]);
     }
 }
