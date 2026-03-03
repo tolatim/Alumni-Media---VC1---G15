@@ -27,11 +27,13 @@ class User extends Authenticatable
         'bio',
         'skills',
         'avatar',
+        'avatar_url',
         'location',
         'graduate_year',
         'current_job',
         'company',
-        'profile_photo'
+        'profile_photo',
+        'cover_url'
     ];
 
     /**
@@ -53,4 +55,18 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed'
     ];
+    protected $appends = ['avatar_url','cover_url'];
+
+    public function getAvatarUrlAttribute()
+    {
+        return $this->avatar
+            ? env('APP_URL') . asset('storage/' . $this->avatar)
+            : null;
+    }
+    public function getCoverUrlAttribute()
+    {
+        return $this->avatar
+            ? env('APP_URL') . asset('storage/' . $this->profile_photo)
+            : null;
+    }
 }
