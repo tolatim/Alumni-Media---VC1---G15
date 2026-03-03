@@ -6,10 +6,16 @@
 
     <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-4xl mx-auto">
       <div class="h-48 relative">
-        <img :src="coverPreview || defaultCover" class="w-full h-full object-cover">
+        <img v-if="coverPreview" :src="coverPreview" class="w-full h-full object-cover">
+        <div v-else class="w-full h-full bg-blue-600">
 
-        <div class="absolute -bottom-12 left-8">
-          <img :src="avatarPreview || 'https://i.pravatar.cc/150'" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
+        </div>
+
+        <div  class="absolute -bottom-12 left-8">
+          <img v-if="avatarPreview" :src="avatarPreview" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
+          <div class="rounded-full border-4 border-blue-300 bg-white w-24 h-24" v-else>
+
+          </div>
         </div>
       </div>
 
@@ -109,7 +115,6 @@ const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 const currentUserId = ref(null)
-const defaultCover = 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop'
 
 const avatarFile = ref(null)
 const coverFile = ref(null)

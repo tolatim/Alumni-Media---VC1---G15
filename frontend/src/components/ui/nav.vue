@@ -7,39 +7,43 @@
     <div class="flex items-center gap-4">
       <RouterLink
         to="/"
-        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        Home
+        <i class="fa-solid fa-house"></i>
+        <span class="font-sm">
+          Home
+        </span>
       </RouterLink>
 
       <RouterLink
         to="/connection"
-        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        Connection
+        <i class="fa-solid fa-people-arrows"></i>
+        <span class="font-sm">
+          Connection
+        </span>
       </RouterLink>
 
       <RouterLink
         to="/message"
-        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        Message
+        <i class="fa-solid fa-message"></i>
+        <span class="font-sm">
+          Message
+        </span>
       </RouterLink>
       
       <RouterLink
         to="/notification"
-        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        Notification
+        <i class="fa-solid fa-bell"></i>
+        <span class="font-sm">
+          Notification
+        </span>
       </RouterLink>
-
-
-      <button
-        @click="logout"
-        class="px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 font-medium transition"
-      >
-        Logout
-      </button>
 
       <RouterLink
         v-if="user"
@@ -47,7 +51,7 @@
         class="w-11 h-11 rounded-full overflow-hidden border-2 border-teal-500"
       >
         <img
-          :src="user.profile?.avatar || 'https://i.pravatar.cc/150'"
+          :src="user.profile?.avatar"
           alt="User Profile"
           class="w-full h-full object-cover"
         >

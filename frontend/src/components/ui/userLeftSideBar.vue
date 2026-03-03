@@ -3,7 +3,7 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
       <div class="h-20 bg-blue-800 relative">
         <img
-          :src="user?.profile?.avatar || 'https://i.pravatar.cc/150'"
+          :src="user?.profile?.avatar"
           class="w-20 h-20 rounded-full border-4 border-white absolute -bottom-10 left-1/2 -translate-x-1/2 object-cover"
         >
       </div>
@@ -32,6 +32,13 @@
         <p class="hover:text-blue-600 cursor-pointer transition">Groups</p>
         <p class="hover:text-blue-600 cursor-pointer transition">Events</p>
         <p class="hover:text-blue-600 cursor-pointer transition">Connections</p>
+        <button
+        @click="logout"
+        class="px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 font-medium transition"
+      >
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        Logout
+      </button>
       </div>
     </div>
   </div>
@@ -44,4 +51,10 @@ defineProps({
     default: null,
   },
 })
+
+const logout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  router.push('/login')
+}
 </script>

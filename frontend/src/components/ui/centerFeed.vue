@@ -3,7 +3,7 @@
     <div class="bg-white rounded-xl shadow p-4">
       <form @submit.prevent="submitPost">
         <div class="flex items-center gap-3">
-          <img :src="currentUser?.profile?.avatar || 'https://i.pravatar.cc/150'" class="w-10 h-10 rounded-full object-cover">
+          <img :src="currentUser?.profile?.avatar" class="w-10 h-10 rounded-full object-cover">
           <input
             v-model="postContent"
             type="text"
@@ -35,7 +35,7 @@
         <img :src="post.user?.profile?.avatar || 'https://i.pravatar.cc/51'" class="w-10 h-10 rounded-full object-cover">
         <div>
           <h4 class="font-semibold">{{ post.user?.name || 'Unknown user' }}</h4>
-          <p class="text-xs text-gray-500">{{ formatDate(post.created_at) }} • Public</p>
+          <p class="text-xs text-gray-500">{{ formatDate(post.created_at) }} ï¿½ Public</p>
         </div>
       </div>
 

@@ -8,13 +8,17 @@
       </div>
 
       <div v-if="user" class="bg-white rounded-xl shadow overflow-hidden">
-        <div class="h-60 w-full relative">
+        <div v-if="coverImage" class="h-60 w-full relative">
           <img :src="coverImage" class="w-full h-full object-cover">
+        </div>
+        <div v-else class="h-60 w-full relative bg-blue-400">
+
         </div>
 
         <div class="px-6 pb-6 relative">
-          <div class="absolute -top-16 left-6">
-            <img :src="user.profile?.avatar || 'https://i.pravatar.cc/150'" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
+          <div  class="absolute -top-16 left-6">
+            <img v-if="user.profile?.avatar" :src="user.profile?.avatar" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
+            <div v-else class="rounded-full border-4 border-blue-500 w-32 h-32 bg-white"></div>
           </div>
 
           <div class="pt-20">
@@ -162,8 +166,7 @@ const passwordMessage = ref('')
 
 const coverImage = computed(() => {
   return (
-    user.value?.profile?.cover ||
-    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop'
+    user.value?.profile?.cover
   )
 })
 
