@@ -28,7 +28,7 @@
           <!-- Avatar -->
           <div class="absolute -top-20 left-8">
             <img
-              :src="user.avatar_url || 'https://i.pravatar.cc/150'"
+              :src="user.avatar_url || '@/assets/images/blank-profile-picture-973460_1280.webp'"
               class="w-36 h-36 rounded-full border-4 border-white object-cover shadow-md"
             />
           </div>
