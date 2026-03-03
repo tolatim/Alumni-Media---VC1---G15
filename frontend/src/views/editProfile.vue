@@ -243,8 +243,8 @@ const loadProfile = async () => {
     form.location = user.location || "Not provided";
     form.bio = user.bio || "Not provided";
     form.skills = user.skills || "Not provided";
-    avatar.avatar_url = user.avatar_url || null;
-    profile_photo.cover_url = user.cover_url || null;
+    avatar.avatar_url = user.avatar_url || defaultAvatar;
+    profile_photo.cover_url = user.cover_url || defaultBackground;
   } catch (err) {
     errorMessage.value = "Failed to load your profile.";
   }
