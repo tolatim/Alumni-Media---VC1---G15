@@ -3,16 +3,16 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
       <div class="h-20 bg-blue-800 relative">
         <img
-          :src="user?.avatar_url || defaultAvatar"
+          :src="user?.profile?.avatar || fallbackAvatar"
           class="w-20 h-20 rounded-full border-4 border-white absolute -bottom-10 left-1/2 -translate-x-1/2 object-cover"
         >
       </div>
 
       <div class="pt-12 pb-6 px-6 text-center">
-        <h3 class="font-semibold text-lg text-gray-800">{{ user?.first_name + user?.last_name || 'Guest User' }}</h3>
+        <h3 class="font-semibold text-lg text-gray-800">{{ user?.name || 'Guest User' }}</h3>
 
         <p class="text-sm text-gray-500">
-          {{ user?.headline || user?.current_job || 'Welcome to Alumni Media' }}
+          {{ user?.profile?.headline || user?.profile?.current_job || 'Welcome to Alumni Media' }}
         </p>
 
         <RouterLink
@@ -29,17 +29,17 @@
       <h4 class="font-semibold text-gray-700">Quick Links</h4>
 
       <div class="space-y-2 text-gray-600 text-sm">
+        <RouterLink to="/connection" class="block hover:text-blue-600 transition">Connections</RouterLink>
         <p class="hover:text-blue-600 cursor-pointer transition">Groups</p>
         <p class="hover:text-blue-600 cursor-pointer transition">Events</p>
-        <p class="hover:text-blue-600 cursor-pointer transition">Connections</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { data } from 'autoprefixer';
-import defaultAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+
 defineProps({
   user: {
     type: Object,
