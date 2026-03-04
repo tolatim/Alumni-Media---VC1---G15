@@ -47,7 +47,7 @@
         class="w-11 h-11 rounded-full overflow-hidden border-2 border-teal-500"
       >
         <img
-          :src="user.profile?.avatar || 'https://i.pravatar.cc/150'"
+          :src="user.profile?.avatar || defaultAvatar"
           alt="User Profile"
           class="w-full h-full object-cover"
         >
@@ -61,7 +61,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { getUser } from '@/services/authService'
-
+import defaultAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 const router = useRouter()
 const user = ref(null)
 

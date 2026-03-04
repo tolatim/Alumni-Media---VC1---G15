@@ -4,6 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
+import CreatePostModal from '@/components/CreatePostModal.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -30,6 +31,11 @@ const routes = [
     component: EditProfile,
     meta: { requiresAuth: true },
   },
+  {
+    path: '/post',
+    component: CreatePostModal,
+    name: 'post'
+  }
 ]
 
 const router = createRouter({
