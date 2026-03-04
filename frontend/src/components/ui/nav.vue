@@ -10,9 +10,7 @@
         class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
         <i class="fa-solid fa-house"></i>
-        <span class="font-sm">
-          Home
-        </span>
+        <span class="font-sm">Home</span>
       </RouterLink>
 
       <RouterLink
@@ -20,9 +18,7 @@
         class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
         <i class="fa-solid fa-people-arrows"></i>
-        <span class="font-sm">
-          Connection
-        </span>
+        <span class="font-sm">Connection</span>
       </RouterLink>
 
       <RouterLink
@@ -30,19 +26,15 @@
         class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
         <i class="fa-solid fa-message"></i>
-        <span class="font-sm">
-          Message
-        </span>
+        <span class="font-sm">Message</span>
       </RouterLink>
-      
+
       <RouterLink
         to="/notification"
         class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
         <i class="fa-solid fa-bell"></i>
-        <span class="font-sm">
-          Notification
-        </span>
+        <span class="font-sm">Notification</span>
       </RouterLink>
 
       <RouterLink
@@ -51,7 +43,7 @@
         class="w-11 h-11 rounded-full overflow-hidden border-2 border-teal-500"
       >
         <img
-          :src="user.profile?.avatar"
+          :src="user.profile?.avatar || fallbackAvatar"
           alt="User Profile"
           class="w-full h-full object-cover"
         >
@@ -62,10 +54,9 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
-const router = useRouter()
 const user = ref(null)
 
 const fetchMe = async () => {

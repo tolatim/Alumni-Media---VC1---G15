@@ -6,16 +6,10 @@
 
     <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-4xl mx-auto">
       <div class="h-48 relative">
-        <img v-if="coverPreview" :src="coverPreview" class="w-full h-full object-cover">
-        <div v-else class="w-full h-full bg-blue-600">
+        <img :src="coverPreview || defaultCover" class="w-full h-full object-cover">
 
-        </div>
-
-        <div  class="absolute -bottom-12 left-8">
-          <img v-if="avatarPreview" :src="avatarPreview" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
-          <div class="rounded-full border-4 border-blue-300 bg-white w-24 h-24" v-else>
-
-          </div>
+        <div class="absolute -bottom-12 left-8">
+          <img :src="avatarPreview || fallbackAvatar" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
         </div>
       </div>
 
@@ -33,6 +27,7 @@
             <label class="block text-sm text-gray-600 mb-1">Last Name</label>
             <input v-model="form.last_name" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
           </div>
+
           <div>
             <label class="block text-sm text-gray-600 mb-1">Headline / Job Title</label>
             <input v-model="form.headline" type="text" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
@@ -109,6 +104,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
 
 const router = useRouter()
 const loading = ref(false)

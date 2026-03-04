@@ -20,6 +20,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connections/{id}/reject', [UserController::class, 'rejectConnection']);
     Route::post('/connections/user/{userId}/unfriend', [UserController::class, 'unfriend']);
     Route::post('/connections/user/{userId}/block', [UserController::class, 'blockUser']);
+
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/suggestions', [UserController::class, 'suggestions']);
     Route::get('/users/{id}', [UserController::class, 'show']);

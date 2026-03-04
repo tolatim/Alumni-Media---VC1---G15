@@ -3,7 +3,7 @@
     <div class="bg-white rounded-xl shadow p-4">
       <form @submit.prevent="submitPost">
         <div class="flex items-center gap-3">
-          <img :src="currentUser?.profile?.avatar" class="w-10 h-10 rounded-full object-cover">
+          <img :src="currentUser?.profile?.avatar || fallbackAvatar" class="w-10 h-10 rounded-full object-cover">
           <input
             v-model="postContent"
             type="text"
@@ -32,10 +32,10 @@
       class="bg-white rounded-xl shadow p-4"
     >
       <div class="flex items-center gap-3">
-        <img :src="post.user?.profile?.avatar || 'https://i.pravatar.cc/51'" class="w-10 h-10 rounded-full object-cover">
+        <img :src="post.user?.profile?.avatar || fallbackAvatar" class="w-10 h-10 rounded-full object-cover">
         <div>
           <h4 class="font-semibold">{{ post.user?.name || 'Unknown user' }}</h4>
-          <p class="text-xs text-gray-500">{{ formatDate(post.created_at) }} ï¿½ Public</p>
+          <p class="text-xs text-gray-500">{{ formatDate(post.created_at) }} • Public</p>
         </div>
       </div>
 
@@ -60,6 +60,7 @@
 <script setup>
 import { ref } from 'vue'
 import api from '@/services/api'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
 const props = defineProps({
   posts: {

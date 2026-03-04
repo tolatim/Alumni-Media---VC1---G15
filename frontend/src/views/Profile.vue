@@ -8,17 +8,13 @@
       </div>
 
       <div v-if="user" class="bg-white rounded-xl shadow overflow-hidden">
-        <div v-if="coverImage" class="h-60 w-full relative">
+        <div class="h-60 w-full relative">
           <img :src="coverImage" class="w-full h-full object-cover">
-        </div>
-        <div v-else class="h-60 w-full relative bg-blue-400">
-
         </div>
 
         <div class="px-6 pb-6 relative">
-          <div  class="absolute -top-16 left-6">
-            <img v-if="user.profile?.avatar" :src="user.profile?.avatar" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
-            <div v-else class="rounded-full border-4 border-blue-500 w-32 h-32 bg-white"></div>
+          <div class="absolute -top-16 left-6">
+            <img :src="user.profile?.avatar || fallbackAvatar" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
           </div>
 
           <div class="pt-20">
@@ -173,6 +169,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
 import api from '@/services/api'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
 
 const route = useRoute()
 const user = ref(null)
@@ -187,15 +185,9 @@ const passwordLoading = ref(false)
 const passwordError = ref('')
 const passwordMessage = ref('')
 
-const coverImage = computed(() => {
-  return (
-    user.value?.profile?.cover
-  )
-})
+const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
 
-const isOwnProfile = computed(() => {
-  return loggedInUser.value?.id === user.value?.id
-})
+const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
 
 const skillsList = computed(() => {
   const skills = user.value?.profile?.skills
@@ -222,18 +214,15 @@ const loadProfile = async (id) => {
     const response = await api.get(`/profiles/${id}`)
     user.value = response.data.data
   } catch (error) {
-    const isOwnProfile =
-      loggedInUser.value?.id &&
-      String(loggedInUser.value.id) === String(id)
+    const own = loggedInUser.value?.id && String(loggedInUser.value.id) === String(id)
 
-    if (isOwnProfile) {
+    if (own) {
       user.value = loggedInUser.value
       return
     }
 
     user.value = null
-    errorMessage.value =
-      error?.response?.data?.message || 'Profile not found or failed to load.'
+    errorMessage.value = error?.response?.data?.message || 'Profile not found or failed to load.'
   }
 }
 

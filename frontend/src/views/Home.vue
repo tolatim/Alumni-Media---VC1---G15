@@ -56,29 +56,11 @@ const loadHomeData = async () => {
     return
   }
 
-  if (feedRes.status === 'fulfilled') {
-    posts.value = feedRes.value.data?.data || []
-  } else {
-    posts.value = []
-  }
+  posts.value = feedRes.status === 'fulfilled' ? (feedRes.value.data?.data || []) : []
+  suggestions.value = suggestionRes.status === 'fulfilled' ? (suggestionRes.value.data?.data || []) : []
+  pendingRequests.value = pendingRes.status === 'fulfilled' ? (pendingRes.value.data?.data || []) : []
 
-  if (suggestionRes.status === 'fulfilled') {
-    suggestions.value = suggestionRes.value.data?.data || []
-  } else {
-    suggestions.value = []
-  }
-
-  if (pendingRes.status === 'fulfilled') {
-    pendingRequests.value = pendingRes.value.data?.data || []
-  } else {
-    pendingRequests.value = []
-  }
-
-  if (
-    feedRes.status === 'rejected' ||
-    suggestionRes.status === 'rejected' ||
-    pendingRes.status === 'rejected'
-  ) {
+  if (feedRes.status === 'rejected' || suggestionRes.status === 'rejected' || pendingRes.status === 'rejected') {
     errorMessage.value = 'Some home sections failed to load.'
   }
 }

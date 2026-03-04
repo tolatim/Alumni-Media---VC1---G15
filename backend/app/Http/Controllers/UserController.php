@@ -98,8 +98,7 @@ class UserController extends Controller
             ->with(['requester.role', 'addressee.role'])
             ->where('status', 'accepted')
             ->where(function ($query) use ($user) {
-                $query
-                    ->where('requester_id', $user->id)
+                $query->where('requester_id', $user->id)
                     ->orWhere('addressee_id', $user->id);
             })
             ->latest()
@@ -133,10 +132,12 @@ class UserController extends Controller
 
         $connection = Connection::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query->where('requester_id', $me->id)->where('addressee_id', $targetId);
+                $query->where('requester_id', $me->id)
+                    ->where('addressee_id', $targetId);
             })
             ->orWhere(function ($query) use ($me, $targetId) {
-                $query->where('requester_id', $targetId)->where('addressee_id', $me->id);
+                $query->where('requester_id', $targetId)
+                    ->where('addressee_id', $me->id);
             })
             ->first();
 
@@ -172,13 +173,11 @@ class UserController extends Controller
 
         $existing = Connection::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query
-                    ->where('requester_id', $me->id)
+                $query->where('requester_id', $me->id)
                     ->where('addressee_id', $targetId);
             })
             ->orWhere(function ($query) use ($me, $targetId) {
-                $query
-                    ->where('requester_id', $targetId)
+                $query->where('requester_id', $targetId)
                     ->where('addressee_id', $me->id);
             })
             ->first();
@@ -224,9 +223,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        $connection->update([
-            'status' => 'accepted',
-        ]);
+        $connection->update(['status' => 'accepted']);
 
         return response()->json([
             'message' => 'Connection accepted successfully',
@@ -256,9 +253,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        $connection->update([
-            'status' => 'blocked',
-        ]);
+        $connection->update(['status' => 'blocked']);
 
         return response()->json([
             'message' => 'Connection blocked successfully',
@@ -280,13 +275,11 @@ class UserController extends Controller
         $connection = Connection::query()
             ->where('status', 'accepted')
             ->where(function ($query) use ($me, $targetId) {
-                $query
-                    ->where(function ($q) use ($me, $targetId) {
-                        $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
-                    })
-                    ->orWhere(function ($q) use ($me, $targetId) {
-                        $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
-                    });
+                $query->where(function ($q) use ($me, $targetId) {
+                    $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
+                })->orWhere(function ($q) use ($me, $targetId) {
+                    $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
+                });
             })
             ->first();
 
@@ -322,13 +315,11 @@ class UserController extends Controller
 
         $connection = Connection::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query
-                    ->where('requester_id', $me->id)
+                $query->where('requester_id', $me->id)
                     ->where('addressee_id', $targetId);
             })
             ->orWhere(function ($query) use ($me, $targetId) {
-                $query
-                    ->where('requester_id', $targetId)
+                $query->where('requester_id', $targetId)
                     ->where('addressee_id', $me->id);
             })
             ->first();
@@ -396,8 +387,7 @@ class UserController extends Controller
         if (Schema::hasTable('connections')) {
             $excludedIds = Connection::query()
                 ->where(function ($query) use ($me) {
-                    $query
-                        ->where('requester_id', $me->id)
+                    $query->where('requester_id', $me->id)
                         ->orWhere('addressee_id', $me->id);
                 })
                 ->whereIn('status', ['pending', 'accepted', 'blocked'])
