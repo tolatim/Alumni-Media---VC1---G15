@@ -15,13 +15,11 @@
         <p v-if="errorMessage" class="text-red-500 text-sm mt-2">{{ errorMessage }}</p>
 
         <div class="flex justify-end mt-4">
-          <button
-            type="submit"
-            :disabled="isPosting"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-          >
-            {{ isPosting ? 'Posting...' : 'Post' }}
-          </button>
+          
+          <RouterLink to="/post" 
+          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60">
+           Post
+          </RouterLink>
         </div>
       </form>
     </div>
@@ -40,12 +38,6 @@
       </div>
 
       <p class="mt-3 text-gray-700 whitespace-pre-wrap">{{ post.post_content }}</p>
-
-      <img
-        v-if="post.media?.length"
-        :src="post.media[0].file_path"
-        class="rounded-lg mt-4 w-full h-72 object-cover"
-      >
 
       <div class="flex justify-between text-sm text-gray-500 mt-4">
         <span>{{ post.likes_count || 0 }} likes</span>
@@ -71,4 +63,7 @@ defineProps({
     default: null,
   },
 })
+
+
+
 </script>
