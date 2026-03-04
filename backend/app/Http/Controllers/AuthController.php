@@ -3,15 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-<<<<<<< HEAD
 use App\Models\Notification;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-=======
->>>>>>> feature/user-connection
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+// use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -24,7 +21,6 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-<<<<<<< HEAD
         // Create user (hash password!)
         $user = User::create($request->all());
 
@@ -38,14 +34,12 @@ class AuthController extends Controller
             'created_at' => now(),
         ]);
 
-=======
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);
->>>>>>> feature/user-connection
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -69,7 +63,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-<<<<<<< HEAD
         $user = Auth::user();
         
         Notification::create([
@@ -98,9 +91,7 @@ class AuthController extends Controller
         }
 
         // Create token
-=======
         $user = User::with(['role'])->findOrFail(Auth::id());
->>>>>>> feature/user-connection
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

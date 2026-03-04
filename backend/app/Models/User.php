@@ -56,12 +56,12 @@ class User extends Authenticatable
         'password' => 'hashed'
     ];
 
-<<<<<<< HEAD
       public function notifications()
     {
         return $this->hasMany(Notification::class);
     }
-=======
+    
+  
     protected $appends = [
         'name',
         'profile',
@@ -107,10 +107,6 @@ class User extends Authenticatable
         return $this->hasMany(Connection::class, 'addressee_id');
     }
 
-    public function notifications()
-    {
-        return $this->hasMany(Notification::class);
-    }
 
     public function reports()
     {
@@ -159,6 +155,5 @@ class User extends Authenticatable
             'company' => $this->company,
         ];
     }
->>>>>>> feature/user-connection
 }
 

@@ -5,6 +5,7 @@ import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
 import Connect from '@/views/connect.vue'
+import Notification from '@/views/Notification.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -24,6 +25,12 @@ const routes = [
     name: 'Connection',
     component: Connect,
     meta: { requiresAuth: true },
+  },
+  {
+    path:'/notification',
+    name: 'Notification',
+    component: Notification,
+    meta: {requiresAuth: true}
   },
   {
     path: '/profile/edit',

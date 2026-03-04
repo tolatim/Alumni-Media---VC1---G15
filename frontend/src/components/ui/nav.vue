@@ -35,15 +35,23 @@
         </span>
       </RouterLink>
       
+      <!-- Notification -->
       <RouterLink
         to="/notification"
-        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="relative flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
         <i class="fa-solid fa-bell"></i>
-        <span class="font-sm">
-          Notification
+        <span class="text-sm">Notification</span>
+
+        <!-- Badge -->
+        <span
+          v-if="notifications.length > 0"
+          class="absolute top-0 right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full"
+        >
+          {{ notifications.length }}
         </span>
       </RouterLink>
+
 
       <RouterLink
         v-if="user"
@@ -77,6 +85,21 @@ const fetchMe = async () => {
     user.value = null
   }
 }
+// State
+const notifications = ref([])
 
-onMounted(fetchMe)
+// Fetch notifications
+const fetchNotification = async () => {
+  try {
+    const response = await api.get('/notifications')
+    notifications.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error)
+  }
+}
+
+onMounted(() => {
+  fetchMe()
+  fetchNotification()
+})
 </script>

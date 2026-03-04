@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-<<<<<<< HEAD
 Route::apiResource('/users', UserController::class);
 Route::get('/users', [UserController::class, 'index']);
 Route::middleware('auth:sanctum')->patch('/user/profile', [UserController::class, 'update']);
@@ -33,8 +32,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return response()->json(['message' => 'Marked as read']);
     });
+
+    Route::delete('/notifications/{notification}', function (Request $request, Notification $notification) {
+        abort_unless($notification->user_id === $request->user()->id, 403);
+
+        $notification->delete();
+
+        return response()->json(['message' => 'Notification deleted']);
+    });
 });
-=======
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
@@ -54,4 +60,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile/change-password', [UserController::class, 'changePassword']);
 });
->>>>>>> feature/user-connection
