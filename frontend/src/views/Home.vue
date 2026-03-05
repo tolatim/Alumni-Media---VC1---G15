@@ -36,13 +36,13 @@ const loadHomeData = async () => {
   errorMessage.value = "";
 
   try {
-    const user_id = JSON.parse(localStorage.getItem("user")).id;
-    if (!user_id) {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
       throw new Error("No user in localStorage");
     }
 
     // Fetch the current user
-    const ress = await getUser(user_id);
+    const ress = await getUser(user.id);
     currentUser.value = ress.data.user;
 
     // Update localStorage with fresh user data

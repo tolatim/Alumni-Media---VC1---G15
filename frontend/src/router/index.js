@@ -4,7 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
-import CreatePostModal from '@/components/CreatePostModal.vue'
+import Admin from '@/views/Admin.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -32,10 +32,10 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/post',
-    component: CreatePostModal,
-    name: 'post'
-  }
+    path: '/admin',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
 ]
 
 const router = createRouter({
@@ -45,7 +45,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
-
+  const user = JSON.parse(localStorage.getItem('user'))
   if (to.meta.requiresAuth && !token) {
     next('/login')
     return
@@ -54,6 +54,18 @@ router.beforeEach((to, from, next) => {
   if ((to.path === '/login' || to.path === '/register') && token) {
     next('/')
     return
+  }
+
+  if (to.meta.requiresAdmin) {
+    if (!token) {
+      next('/login')
+      return
+    }else if (user.role) {
+      if (user.role !== 'admin') {
+        next('/')
+        return
+      }
+    }
   }
 
   next()
