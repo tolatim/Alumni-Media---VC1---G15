@@ -33,3 +33,11 @@ export const getProfile = (data) => {
 export const getUser = (data) => {
     return api.get("/users/" + data)
 }
+// Post 
+export const createPost = (data) => {
+    return api.post("/posts", data)
+}
+// get all posts
+export const getPosts = () => {
+    return api.get("/posts")
+}

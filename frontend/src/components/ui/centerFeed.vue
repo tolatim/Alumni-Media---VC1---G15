@@ -1,59 +1,88 @@
 <template>
-  <div class="col-span-6 space-y-6">
-    <div class="bg-white rounded-xl shadow p-4">
-      <form @submit.prevent="submitPost">
-        <div class="flex items-center gap-3">
-          <img :src="currentUser?.avatar_url || defaultAvatar" class="w-10 h-10 rounded-full object-cover">
+  <div class="col-span-6 space-y-5">
+    <div class="bg-white rounded-2xl border border-gray-200/70 shadow-sm p-4 sm:p-5">
+      <div class="flex items-center gap-3">
+        <img
+          :src="currentUser?.avatar_url || defaultAvatar"
+          class="w-11 h-11 rounded-full object-cover ring-2 ring-blue-100"
+        >
+        <div class="flex-1">
           <input
-            v-model="postContent"
+            v-model="searchQuery"
             type="text"
-            placeholder="Share an update with your alumni network..."
-            class="flex-1 bg-gray-100 rounded-full px-4 py-2 focus:outline-none"
+            placeholder="Search posts..."
+            class="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-500 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
         </div>
+      </div>
 
-        <p v-if="errorMessage" class="text-red-500 text-sm mt-2">{{ errorMessage }}</p>
-
-        <div class="flex justify-end mt-4">
-          
-          <RouterLink to="/post" 
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60">
-           Post
-          </RouterLink>
-        </div>
-      </form>
+      <div class="mt-4 flex items-center justify-end">
+        <RouterLink
+          to="/post"
+          class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        >
+          Create Post
+        </RouterLink>
+      </div>
     </div>
 
-    <div
-      v-for="post in posts"
+    <article
+      v-for="post in filteredPosts"
       :key="post.id"
-      class="bg-white rounded-xl shadow p-4"
+      class="bg-white rounded-2xl border border-gray-200/70 shadow-sm p-5"
     >
       <div class="flex items-center gap-3">
-        <img :src="user?.data?.avatar_url || 'https://i.pravatar.cc/51'" class="w-10 h-10 rounded-full object-cover">
-        <div>
-          <h4 class="font-semibold">{{ post.user?.name || 'Unknown user' }}</h4>
-          <p class="text-xs text-gray-500">{{ formatDate(post.created_at) }} � Public</p>
+        <img
+          :src="post.user?.avatar_url || currentUser?.avatar_url || defaultAvatar"
+          class="w-10 h-10 rounded-full object-cover"
+        >
+        <div class="min-w-0">
+          <p class="truncate text-sm font-semibold text-gray-800">
+            {{ post.user?.name || currentUser?.name || 'Alumni Member' }}
+          </p>
+          <p class="text-xs text-gray-500">{{ formatDate(post.created_at) }}</p>
         </div>
       </div>
 
-      <p class="mt-3 text-gray-700 whitespace-pre-wrap">{{ post.post_content }}</p>
+      <h4 class="mt-4 text-lg font-semibold text-gray-900 break-words">
+        {{ post.title }}
+      </h4>
+      <p class="mt-2 whitespace-pre-line break-words text-gray-700 leading-relaxed">
+        {{ post.content }}
+      </p>
 
-      <div class="flex justify-between text-sm text-gray-500 mt-4">
-        <span>{{ post.likes_count || 0 }} likes</span>
-        <span>{{ post.comments_count || 0 }} comments</span>
+      <div class="mt-5 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold tracking-wide text-blue-700 transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1"
+        >
+          <span aria-hidden="true">✎</span>
+          <span>Update</span>
+        </button>
+        <button
+          @clcik = deletePost(id)
+          class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-semibold tracking-wide text-red-700 transition hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-1"
+        >
+          <span aria-hidden="true">🗑</span>
+          <span>Delete</span>
+        </button>
       </div>
-    </div>
+    </article>
 
-    <p v-if="!posts.length" class="text-center text-gray-500">No posts yet. Create the first post.</p>
+    <div
+      v-if="!filteredPosts.length"
+      class="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500"
+    >
+      {{ posts.length ? 'No matching posts found.' : 'No posts yet. Start the first conversation.' }}
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import api from '@/services/api'
+import { computed, ref } from 'vue'
 import defaultAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
-defineProps({
+
+const props = defineProps({
   posts: {
     type: Array,
     default: () => [],
@@ -64,6 +93,19 @@ defineProps({
   },
 })
 
+const searchQuery = ref('')
+const filteredPosts = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return props.posts
 
+  return props.posts.filter((post) => {
+    const title = (post.title || '').toLowerCase()
+    const content = (post.content || '').toLowerCase()
+    return title.includes(query) || content.includes(query)
+  })
+})
 
+function formatDate(date) {
+  return new Date(date).toLocaleString()
+}
 </script>

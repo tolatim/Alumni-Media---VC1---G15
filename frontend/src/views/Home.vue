@@ -25,6 +25,7 @@ import centerFeed from '@/components/ui/centerFeed.vue'
 import userRightSideBar from '@/components/ui/userRightSideBar.vue'
 import api from '@/services/api'
 import { getUser } from '@/services/authService'
+import { getPosts } from '@/services/authService'
 
 const currentUser = ref(null)
 const posts = ref([])
@@ -44,18 +45,15 @@ const loadHomeData = async () => {
     const ress = await getUser(user_id)
     currentUser.value = ress.data.user
 
-    // Update localStorage with fresh user data
+    const response = await getPosts();
 
-    // localStorage.setItem('user', JSON.stringify({ user: currentUser.value }))
+    posts.value = response.data
+    console.log(post.value)
     
   } catch (err) {
     console.error(err)
     errorMessage.value = 'Failed to load home page data.'
   }
-}
-
-const prependPost = (newPost) => {
-  posts.value = [newPost, ...posts.value]
 }
 
 onMounted(loadHomeData)
