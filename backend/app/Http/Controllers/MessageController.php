@@ -29,6 +29,7 @@ class MessageController extends Controller
     public function contacts(Request $request)
     {
         $me = $request->user();
+        $perPage = min(max((int) $request->query('per_page', 12), 1), 50);
 
         $connections = Connection::query()
             ->with(['requester', 'addressee'])
@@ -38,9 +39,9 @@ class MessageController extends Controller
                     ->orWhere('addressee_id', $me->id);
             })
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
-        $contacts = $connections->map(function ($row) use ($me) {
+        $contacts = collect($connections->items())->map(function ($row) use ($me) {
             return $row->requester_id === $me->id ? $row->addressee : $row->requester;
         })->filter()->values();
 
@@ -59,6 +60,12 @@ class MessageController extends Controller
         return response()->json([
             'message' => 'Contacts fetched successfully',
             'data' => $contacts,
+            'pagination' => [
+                'current_page' => $connections->currentPage(),
+                'last_page' => $connections->lastPage(),
+                'per_page' => $connections->perPage(),
+                'total' => $connections->total(),
+            ],
         ]);
     }
 
@@ -66,6 +73,7 @@ class MessageController extends Controller
     {
         $me = $request->user();
         $targetId = (int) $userId;
+        $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
 
         $this->assertCanMessage($me->id, $targetId);
 
@@ -80,14 +88,21 @@ class MessageController extends Controller
             })
             ->with(['sender', 'receiver'])
             ->latest()
-            ->limit(100)
-            ->get()
+            ->paginate($perPage);
+
+        $items = collect($messages->items())
             ->reverse()
             ->values();
 
         return response()->json([
             'message' => 'Messages fetched successfully',
-            'data' => $messages,
+            'data' => $items,
+            'pagination' => [
+                'current_page' => $messages->currentPage(),
+                'last_page' => $messages->lastPage(),
+                'per_page' => $messages->perPage(),
+                'total' => $messages->total(),
+            ],
         ]);
     }
 
@@ -170,7 +185,6 @@ class MessageController extends Controller
         }
 
         $connection = Connection::query()
-            ->where('status', 'accepted')
             ->where(function ($query) use ($meId, $targetId) {
                 $query->where(function ($q) use ($meId, $targetId) {
                     $q->where('requester_id', $meId)->where('addressee_id', $targetId);
@@ -181,6 +195,18 @@ class MessageController extends Controller
             ->first();
 
         if (!$connection) {
+            abort(response()->json([
+                'message' => 'You can only message users who are your friends.',
+            ], 403));
+        }
+
+        if ($connection->status === 'blocked' && (int) $connection->addressee_id === $meId) {
+            abort(response()->json([
+                'message' => 'You are blocked and cannot message this user.',
+            ], 403));
+        }
+
+        if ($connection->status !== 'accepted' && $connection->status !== 'blocked') {
             abort(response()->json([
                 'message' => 'You can only message users who are your friends.',
             ], 403));
