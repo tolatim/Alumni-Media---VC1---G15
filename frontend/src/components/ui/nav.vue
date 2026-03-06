@@ -24,9 +24,16 @@
       <RouterLink
         to="/message"
         :class="navClass('/message')"
+        class="relative"
       >
         <i class="fa-solid fa-message"></i>
         Message
+        <span
+          v-if="unreadCount > 0"
+          class="absolute -top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-[18px] text-center"
+        >
+          {{ unreadCount > 99 ? '99+' : unreadCount }}
+        </span>
       </RouterLink>
       
       <RouterLink
@@ -53,13 +60,18 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
 const route = useRoute()
 const user = ref(null)
+const unreadCount = ref(0)
+let unreadTimer = null
+const handleMessagesUpdated = () => {
+  fetchUnreadCount()
+}
 
 const navClass = (prefix) => {
   const base = 'px-4 py-2 rounded-lg font-medium transition flex flex-col items-center gap-1'
@@ -79,6 +91,33 @@ const fetchMe = async () => {
   }
 }
 
+const fetchUnreadCount = async () => {
+  try {
+    const response = await api.get('/messages/unread-count')
+    unreadCount.value = response.data?.data?.count || 0
+  } catch {
+    unreadCount.value = 0
+  }
+}
 
-onMounted(fetchMe)
+watch(
+  () => route.fullPath,
+  async () => {
+    await fetchUnreadCount()
+  }
+)
+
+onMounted(async () => {
+  await fetchMe()
+  await fetchUnreadCount()
+  unreadTimer = setInterval(fetchUnreadCount, 15000)
+  window.addEventListener('messages:updated', handleMessagesUpdated)
+})
+
+onUnmounted(() => {
+  if (unreadTimer) {
+    clearInterval(unreadTimer)
+  }
+  window.removeEventListener('messages:updated', handleMessagesUpdated)
+})
 </script>
