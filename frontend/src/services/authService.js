@@ -1,43 +1,20 @@
-import api from "./api";
+import api from './api'
 
-// Register
-export const registerUser = (data) => {
-    return api.post("/register", data)
-}
+export const registerUser = (data) => api.post('/register', data)
 
-// Login
-
-export const loginUser = (data) => {
-    return api.post("/login", data)
-}
-
-// Logout
+export const loginUser = (data) => api.post('/login', data)
 
 export const logoutUser = () => {
-    return api.post("/logout")
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
 }
 
-// Update Profile
+export const updateProfile = (data, config) => api.post('/profile', data, config)
 
-export const updateProfile = (data, config) => {
-    return api.post("/user/profile", data, config)
-}
+export const getProfile = (id) => api.get(`/users/${id}`)
 
-// Load Profile
+export const getUser = (id) => api.get(`/users/${id}`)
 
-export const getProfile = (data) => {
-    return api.get("/users/" + data)
-}
+export const createPost = (data) => api.post('/posts', data)
 
-// Get user
-export const getUser = (data) => {
-    return api.get("/users/" + data)
-}
-// Post 
-export const createPost = (data) => {
-    return api.post("/posts", data)
-}
-// get all posts
-export const getPosts = () => {
-    return api.get("/posts")
-}
+export const getPosts = () => api.get('/posts')
