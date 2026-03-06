@@ -278,9 +278,12 @@ const saveProfile = async () => {
   try {
     const formData = new FormData();
     formData.append("_method", "PATCH");
-    if (selectedImage.value) formData.append("avatar", selectedImage.value);
-    if (selectedCover.value)
+    if (selectedImage.value){
+      formData.append("avatar", selectedImage.value);
+    }
+    if (selectedCover.value){
       formData.append("profile_photo", selectedCover.value);
+    } 
     formData.append("current_job", form.current_job);
     formData.append("headline", form.headline);
     formData.append("company", form.company);

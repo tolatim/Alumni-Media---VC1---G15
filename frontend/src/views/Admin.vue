@@ -1,137 +1,188 @@
 <template>
-  <div :class="dark ? 'dark' : ''">
-    <div class="min-h-screen flex bg-gray-100 dark:bg-[#0f172a] transition-colors duration-300">
+  <div class="flex min-h-screen bg-gray-100">
 
-      <!-- Mobile Overlay -->
-      <div
-        v-if="mobileOpen"
-        @click="mobileOpen = false"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
-      ></div>
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-800 text-white flex flex-col">
+      <div class="p-6 text-xl font-bold">AlumniAdmin</div>
 
-      <!-- Sidebar -->
-      <aside
-        :class="[
-          'fixed lg:static z-50 h-full transition-all duration-300 flex flex-col backdrop-blur-xl border-r',
-          dark
-            ? 'bg-white/5 border-white/10'
-            : 'bg-white/70 border-gray-200',
-          collapsed ? 'w-20' : 'w-64',
-          mobileOpen ? 'left-0' : '-left-64 lg:left-0'
-        ]"
-      >
+      <nav class="flex-1 space-y-2 px-4">
+        <a class="flex items-center gap-3 px-4 py-2 bg-slate-700 rounded-lg">
+          Dashboard
+        </a>
 
-        <!-- Logo -->
-        <div class="h-16 flex items-center justify-between px-4 border-b border-inherit">
-          <span v-if="!collapsed" class="font-bold text-lg bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-            Admin
-          </span>
+        <a class="flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg">
+          Users
+        </a>
 
-          <button @click="toggleSidebar" class="p-1 rounded hover:bg-white/20 transition">
-            <PanelLeft size="20" />
-          </button>
+        <a class="flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg">
+          Posts
+        </a>
+
+        <a class="flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg">
+          Reports
+        </a>
+      </nav>
+
+      <div class="p-4 border-t border-slate-700 flex items-center gap-3">
+        <img
+          src="https://i.pravatar.cc/40"
+          class="w-10 h-10 rounded-full"
+        />
+        <div>
+          <p class="text-sm font-semibold">Sarah Jenkins</p>
+          <p class="text-xs text-gray-400">Lead Curator</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-6 space-y-6">
+
+      <!-- Navbar -->
+      <div class="flex items-center justify-between bg-white p-4 rounded-xl shadow">
+        <input
+          type="text"
+          placeholder="Search alumni, posts, or reports..."
+          class="w-1/2 px-4 py-2 border rounded-lg"
+        />
+
+        <div class="flex items-center gap-4">
+          <button class="text-gray-600">🔔</button>
+          <div class="font-medium">Admin Panel</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-4 gap-6">
+
+        <div class="bg-white p-6 rounded-xl shadow">
+          <p class="text-gray-500">Total Users</p>
+          <h2 class="text-2xl font-bold">12,450</h2>
         </div>
 
-        <!-- Menu -->
-        <nav class="flex-1 p-3 space-y-2">
-
-          <SidebarLink to="/admin" :collapsed="collapsed">
-            <LayoutDashboard size="18" />
-            <span>Dashboard</span>
-          </SidebarLink>
-
-          <SidebarLink to="/admin/users" :collapsed="collapsed">
-            <Users size="18" />
-            <span>Users</span>
-          </SidebarLink>
-
-          <SidebarLink to="/admin/posts" :collapsed="collapsed">
-            <FileText size="18" />
-            <span>Posts</span>
-          </SidebarLink>
-
-        </nav>
-
-        <!-- Bottom -->
-        <div class="p-4 border-t border-inherit space-y-3">
-
-          <!-- Dark Mode Toggle -->
-          <button
-            @click="dark = !dark"
-            class="flex items-center gap-3 w-full px-3 py-2 rounded-xl hover:bg-white/20 transition"
-          >
-            <Moon v-if="!dark" size="18" />
-            <Sun v-else size="18" />
-            <span v-if="!collapsed">Theme</span>
-          </button>
-
-          <button
-            class="flex items-center gap-3 w-full px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 transition"
-          >
-            <LogOut size="18" />
-            <span v-if="!collapsed">Logout</span>
-          </button>
-
+        <div class="bg-white p-6 rounded-xl shadow">
+          <p class="text-gray-500">New Posts (24h)</p>
+          <h2 class="text-2xl font-bold">452</h2>
         </div>
-      </aside>
 
-      <!-- Main -->
-      <div class="flex-1 flex flex-col">
+        <div class="bg-white p-6 rounded-xl shadow">
+          <p class="text-gray-500">Active Reports</p>
+          <h2 class="text-2xl font-bold">12</h2>
+        </div>
 
-        <!-- Topbar -->
-        <header class="h-16 flex items-center justify-between px-6 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/5 transition">
-
-          <button
-            @click="mobileOpen = true"
-            class="lg:hidden"
-          >
-            <Menu size="22" />
-          </button>
-
-          <h2 class="font-semibold text-gray-800 dark:text-gray-200">
-            Admin Panel
-          </h2>
-
-          <div></div>
-
-        </header>
-
-        <!-- Content -->
-        <main class="flex-1 p-6 text-gray-800 dark:text-gray-200">
-          <router-view />
-        </main>
+        <div class="bg-white p-6 rounded-xl shadow">
+          <p class="text-gray-500">System Status</p>
+          <h2 class="text-2xl font-bold text-green-600">Operational</h2>
+        </div>
 
       </div>
-    </div>
+
+      <!-- Chart + Activity -->
+      <div class="grid grid-cols-3 gap-6">
+
+        <!-- Chart -->
+        <div class="col-span-2 bg-white p-6 rounded-xl shadow">
+          <div class="flex justify-between mb-4">
+            <h3 class="font-semibold">User Engagement Statistics</h3>
+            <select class="border rounded-lg px-2 py-1">
+              <option>Last 30 Days</option>
+            </select>
+          </div>
+
+          <canvas ref="chart"></canvas>
+        </div>
+
+        <!-- Activity -->
+        <div class="bg-white p-6 rounded-xl shadow">
+          <h3 class="font-semibold mb-4">Recent Activity</h3>
+
+          <ul class="space-y-4 text-sm">
+            <li>Marcus T. joined the platform</li>
+            <li>Post #8492 was flagged for review</li>
+            <li>Class of '98 group verified</li>
+            <li>Spam Bot account was banned</li>
+          </ul>
+
+        </div>
+
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-white p-6 rounded-xl shadow">
+        <div class="flex justify-between mb-4">
+          <h3 class="font-semibold">Manage Users</h3>
+
+          <div class="flex gap-2">
+            <button class="px-4 py-2 border rounded-lg">Filter</button>
+            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+              + Add User
+            </button>
+          </div>
+        </div>
+
+        <table class="w-full text-sm">
+          <thead class="text-gray-500 border-b">
+            <tr>
+              <th class="text-left py-3">Name</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Login</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr class="border-b">
+              <td class="py-3 flex items-center gap-3">
+                <img src="https://i.pravatar.cc/30" class="rounded-full"/>
+                John Doe
+              </td>
+              <td>Alumnus</td>
+              <td class="text-green-600">Active</td>
+              <td>2 hours ago</td>
+              <td>✏️ 🗑️</td>
+            </tr>
+
+            <tr>
+              <td class="py-3 flex items-center gap-3">
+                <img src="https://i.pravatar.cc/31" class="rounded-full"/>
+                Jane Smith
+              </td>
+              <td>Moderator</td>
+              <td class="text-green-600">Active</td>
+              <td>14 hours ago</td>
+              <td>✏️ 🗑️</td>
+            </tr>
+
+          </tbody>
+        </table>
+
+      </div>
+
+    </main>
+
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from "vue"
-import { useRoute } from "vue-router"
-import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  LogOut,
-  PanelLeft,
-  Moon,
-  Sun,
-  Menu
-} from "lucide-vue-next"
+import { onMounted, ref } from "vue"
+import Chart from "chart.js/auto"
 
-const collapsed = ref(false)
-const mobileOpen = ref(false)
-const dark = ref(false)
+const chart = ref(null)
 
-const toggleSidebar = () => {
-  collapsed.value = !collapsed.value
-}
-
-const route = useRoute()
-
-// Auto close mobile on route change
-watch(route, () => {
-  mobileOpen.value = false
+onMounted(() => {
+  new Chart(chart.value, {
+    type: "bar",
+    data: {
+      labels: ["1 Oct","5 Oct","10 Oct","15 Oct","20 Oct","25 Oct","30 Oct"],
+      datasets: [
+        {
+          label: "Active Users",
+          data: [200,300,450,380,500,420,600],
+          backgroundColor: "#94a3b8"
+        }
+      ]
+    }
+  })
 })
 </script>

@@ -25,6 +25,7 @@ return new class extends Migration
             $table->text('skills')->nullable();
             $table->string('avatar')->nullable();
             $table->string('avatar_url')->nullable();
+            $table->string('cover_url')->nullable();
             $table->string('location')->nullable();
             $table->unsignedSmallInteger('graduate_year')->nullable();
             $table->string('current_job')->nullable();
