@@ -3,16 +3,16 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
       <div class="h-20 bg-blue-800 relative">
         <img
-          :src="user?.profile?.avatar"
+          :src="user?.avatar_url || defaultAvatar"
           class="w-20 h-20 rounded-full border-4 border-white absolute -bottom-10 left-1/2 -translate-x-1/2 object-cover"
         >
       </div>
 
       <div class="pt-12 pb-6 px-6 text-center">
-        <h3 class="font-semibold text-lg text-gray-800">{{ user?.name || 'Guest User' }}</h3>
+        <h3 class="font-semibold text-lg text-gray-800">{{ user?.first_name + user?.last_name || 'Guest User' }}</h3>
 
         <p class="text-sm text-gray-500">
-          {{ user?.profile?.headline || user?.profile?.current_job || 'Welcome to Alumni Media' }}
+          {{ user?.headline || user?.current_job || 'Welcome to Alumni Media' }}
         </p>
 
         <RouterLink
@@ -32,30 +32,18 @@
         <p class="hover:text-blue-600 cursor-pointer transition">Groups</p>
         <p class="hover:text-blue-600 cursor-pointer transition">Events</p>
         <p class="hover:text-blue-600 cursor-pointer transition">Connections</p>
-        <button
-        @click="logout"
-        class="px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 font-medium transition"
-      >
-        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-        Logout
-      </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { useRoute, useRouter } from 'vue-router';
-const router = useRouter();
+import { data } from 'autoprefixer';
+import defaultAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 defineProps({
   user: {
     type: Object,
     default: null,
   },
 })
-const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  router.push('/login')
-}
 </script>

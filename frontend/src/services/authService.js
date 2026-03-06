@@ -20,11 +20,20 @@ export const logoutUser = () => {
 // Update Profile
 
 export const updateProfile = (data, config) => {
-    return api.patch("/user/profile", data, config)
+    return api.post("/user/profile", data, config)
+}
+// Update profile avatar
+export const updateProfileAvatar = (data, config) => {
+    return api.post("/user/profile/avatar", data, config)
 }
 
 // Load Profile
 
 export const getProfile = (data) => {
+    return api.get("/users/" + data)
+}
+
+// Get user
+export const getUser = (data) => {
     return api.get("/users/" + data)
 }

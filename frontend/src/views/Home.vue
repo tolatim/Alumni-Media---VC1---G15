@@ -10,13 +10,7 @@
         @post-created="prependPost"
       />
 
-      <userRightSideBar
-        :suggestions="suggestions"
-        :pending-requests="pendingRequests"
-        @send-request="sendConnectionRequest"
-        @accept-request="acceptConnectionRequest"
-        @reject-request="rejectConnectionRequest"
-      />
+      <userRightSideBar :suggestions="suggestions" />
     </div>
 
     <p v-if="errorMessage" class="text-center text-red-500 mt-4">{{ errorMessage }}</p>
@@ -30,99 +24,38 @@ import userLeftSideBar from '@/components/ui/userLeftSideBar.vue'
 import centerFeed from '@/components/ui/centerFeed.vue'
 import userRightSideBar from '@/components/ui/userRightSideBar.vue'
 import api from '@/services/api'
+import { getUser } from '@/services/authService'
 
 const currentUser = ref(null)
 const posts = ref([])
 const suggestions = ref([])
-const pendingRequests = ref([])
 const errorMessage = ref('')
 
 const loadHomeData = async () => {
   errorMessage.value = ''
 
-  const [meRes, feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
-    api.get('/me'),
-    api.get('/feed'),
-    api.get('/users/suggestions'),
-    api.get('/connections/pending'),
-  ])
+  try {
+    const user_id = JSON.parse(localStorage.getItem('user')).id
+    if (!user_id) {
+      throw new Error('No user in localStorage')
+    }
 
-  if (meRes.status === 'fulfilled') {
-    currentUser.value = meRes.value.data
-    localStorage.setItem('user', JSON.stringify(meRes.value.data))
-  } else {
-    currentUser.value = null
-    errorMessage.value = meRes.reason?.response?.data?.message || 'Failed to load your account.'
-    return
-  }
+    // Fetch the current user
+    const ress = await getUser(user_id)
+    currentUser.value = ress.data.user
 
-  if (feedRes.status === 'fulfilled') {
-    posts.value = feedRes.value.data?.data || []
-  } else {
-    posts.value = []
-  }
+    // Update localStorage with fresh user data
 
-  if (suggestionRes.status === 'fulfilled') {
-    suggestions.value = suggestionRes.value.data?.data || []
-  } else {
-    suggestions.value = []
-  }
-
-  if (pendingRes.status === 'fulfilled') {
-    pendingRequests.value = pendingRes.value.data?.data || []
-  } else {
-    pendingRequests.value = []
-  }
-
-  if (
-    feedRes.status === 'rejected' ||
-    suggestionRes.status === 'rejected' ||
-    pendingRes.status === 'rejected'
-  ) {
-    errorMessage.value = 'Some home sections failed to load.'
+    // localStorage.setItem('user', JSON.stringify({ user: currentUser.value }))
+    
+  } catch (err) {
+    console.error(err)
+    errorMessage.value = 'Failed to load home page data.'
   }
 }
 
 const prependPost = (newPost) => {
   posts.value = [newPost, ...posts.value]
-}
-
-const sendConnectionRequest = async (userId) => {
-  try {
-    await api.post('/connections/request', { user_id: userId })
-    suggestions.value = suggestions.value.filter((person) => person.id !== userId)
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to send connection request.'
-  }
-}
-
-const acceptConnectionRequest = async (requestId) => {
-  try {
-    await api.post(`/connections/${requestId}/accept`)
-    pendingRequests.value = pendingRequests.value.filter((request) => request.id !== requestId)
-    await refreshSuggestions()
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to accept request.'
-  }
-}
-
-const rejectConnectionRequest = async (requestId) => {
-  try {
-    await api.post(`/connections/${requestId}/reject`)
-    pendingRequests.value = pendingRequests.value.filter((request) => request.id !== requestId)
-    await refreshSuggestions()
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to reject request.'
-  }
-}
-
-const refreshSuggestions = async () => {
-  try {
-    const response = await api.get('/users/suggestions')
-    suggestions.value = response.data?.data || []
-  } catch {
-    suggestions.value = []
-  }
 }
 
 onMounted(loadHomeData)
