@@ -1,7 +1,5 @@
 <template>
   <div class="col-span-6 space-y-6">
-
-    <!-- Create Post -->
     <div class="bg-white rounded-xl shadow p-4">
       <form @submit.prevent="submitPost">
         <div class="flex items-center gap-3">
@@ -51,19 +49,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Posts -->
-    <div v-for="post in posts" :key="post.id" class="bg-white rounded-xl shadow p-4">
-      <h4 class="font-semibold">{{ post.title }}</h4>
-      <p class="text-gray-700 mt-2">{{ post.content }}</p>
-      <p class="text-xs text-gray-500 mt-2">{{ formatDate(post.created_at) }}</p>
-    </div>
-
-    <!-- loading -->
-    <p v-if="loading" class="text-center text-gray-500">Loading more posts...</p>
-
-    <!-- Infinite scroll trigger -->
-    <div ref="loadTrigger" class="h-2"></div>
   </div>
 </template>
 
@@ -89,18 +74,6 @@ const postContent = ref("");
 const isPosting = ref(false);
 const errorMessage = ref("");
 
-  loading.value = true
-  try {
-    const res = await api.get(`/posts?page=${page.value}`)
-    posts.value.push(...res.data.data)
-    lastPage.value = res.data.last_page
-    page.value++
-  } catch (err) {
-    console.error(err)
-  }
-  loading.value = false
-
-// Submit new post
 const submitPost = async () => {
   errorMessage.value = "";
 
