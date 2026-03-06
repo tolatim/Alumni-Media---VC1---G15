@@ -22,7 +22,7 @@ class Post extends Model
 
     public function media()
     {
-        return $this->hasMany(PostMedia::class);
+        return $this->hasMany(Media::class);
     }
 
     public function comments()

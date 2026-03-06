@@ -348,6 +348,9 @@ class UserController extends Controller
             $query->with([
                 'posts' => function ($postQuery) {
                     $postQuery->latest();
+                    if (Schema::hasTable('post_media')) {
+                        $postQuery->with('media');
+                    }
 
                     $countableRelations = [];
                     if (Schema::hasTable('likes')) {

@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
+use App\Models\Role;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
+    // Register
     public function register(Request $request)
     {
         $validated = $request->validate([
@@ -18,13 +22,25 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
+        $alumniRole = Role::firstOrCreate(['name' => 'alumni']);
+
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
+            'role_id' => $alumniRole->id,
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);
 
+        // Cache user data for 5 minutes
+        Cache::put('user:' . $user->id, [
+            'id' => $user->id,
+            'fist_name' => $user->fist_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email
+        ], 300);
+
+        // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -34,16 +50,14 @@ class AuthController extends Controller
         ], 201);
     }
 
+    // Login
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
+        $credentials = $request->only('email', 'password');
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
-                'message' => 'Invalid credentials',
+                'message' => 'Invalid credentials'
             ], 401);
         }
 

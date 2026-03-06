@@ -40,6 +40,15 @@
       <p class="mt-2 whitespace-pre-line break-words text-gray-700 leading-relaxed">
         {{ post.content }}
       </p>
+      <div v-if="post.media?.length" class="mt-3 grid grid-cols-2 gap-2">
+        <img
+          v-for="media in post.media"
+          :key="media.id"
+          :src="media.media_url || media.file_path"
+          alt="Post image"
+          class="w-full max-h-72 rounded-lg object-cover border border-gray-200"
+        >
+      </div>
 
       <div class="mt-5 flex items-center justify-end gap-2">
         <button

@@ -42,6 +42,46 @@
                 <span>{{ content.trim().length }}/2000</span>
               </div>
             </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">Images</label>
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                @change="onImagesChange"
+                class="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p class="text-xs text-gray-400 mt-1">You can upload up to 10 images.</p>
+
+              <div v-if="imagePreviews.length" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div
+                  v-for="(preview, index) in imagePreviews"
+                  :key="preview.url"
+                  class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                >
+                  <img
+  v-if="preview.type.startsWith('image')"
+  :src="preview.url"
+  class="w-full h-24 object-cover"
+/>
+
+<video
+  v-else
+  :src="preview.url"
+  class="w-full h-24 object-cover"
+  controls
+></video>
+                  <button
+                    type="button"
+                    @click="removeImage(index)"
+                    class="absolute top-1 right-1 text-xs bg-black/70 text-white px-2 py-0.5 rounded"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="mt-6 flex justify-end gap-3">
@@ -70,6 +110,9 @@
           <p class="text-gray-600 mt-2 whitespace-pre-line">
             {{ content.trim() || 'Your post content will appear here.' }}
           </p>
+          <p class="text-xs text-gray-500 mt-2">
+            {{ images.length }} image(s) selected
+          </p>
         </div>
       </section>
     </div>
@@ -79,6 +122,8 @@
 <script>
 import axios from 'axios';
 import Navbar from '@/components/ui/nav.vue';
+import { getPosts } from '@/services/authService';
+import { createPost } from '@/services/authService';
 
 export default {
   components: {
@@ -90,6 +135,8 @@ export default {
       posts: [],
       title: '',
       content: '',
+      images: [],
+      imagePreviews: [],
       isPosting: false,
       token: localStorage.getItem('token')
     };
@@ -97,14 +144,14 @@ export default {
 
   computed: {
     canPost() {
-      return this.title.trim() !== '' || this.content.trim() !== '';
+      return this.title.trim() !== '' || this.content.trim() !== '' || this.images.length > 0;
     }
   },
 
   methods: {
     async fetchPosts() {
       try {
-        const res = await axios.get('http://127.0.0.1:8000/api/posts');
+        const res = await getPosts();
         this.posts = res.data;
       } catch (error) {
         console.error(error);
@@ -115,24 +162,32 @@ export default {
       this.isPosting = true;
 
       try {
-        const res = await axios.post(
-          'http://127.0.0.1:8000/api/posts',
-          {
-            title: this.title,
-            content: this.content
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${this.token}`
-            }
-          }
-        );
+        const formData = new FormData();
+        formData.append('title', this.title);
+        formData.append('content', this.content);
+        this.images.forEach((file) => {
+          if (file.type.startsWith('image/')) {
+    formData.append('images[]', file)
+
+  } else if (file.type.startsWith('video/')) {
+    formData.append('videos[]', file)
+
+  }
+        });
+
+        const res = await createPost(formData, {
+  headers: {
+    Authorization: `Bearer ${this.token}`,
+    Accept: 'application/json'
+  }
+});
 
         console.log('Post create:', res.data);
         this.$emit('post-created', res.data);
 
         this.title = '';
         this.content = '';
+        this.clearImages();
 
         this.fetchPosts();
       } catch (error) {
@@ -142,6 +197,46 @@ export default {
       }
     },
 
+    onImagesChange(event) {
+      const selectedFiles = Array.from(event.target.files || []);
+      if (!selectedFiles.length) {
+        return;
+      }
+
+      const remainingSlots = Math.max(0, 10 - this.images.length);
+      const filesToAdd = selectedFiles.slice(0, remainingSlots);
+
+      filesToAdd.forEach((file) => {
+        this.images.push(file);
+        this.imagePreviews.push({
+  name: file.name,
+  url: URL.createObjectURL(file),
+  type: file.type
+});
+      });
+
+      event.target.value = '';
+    },
+
+    removeImage(index) {
+      const preview = this.imagePreviews[index];
+      if (preview?.url) {
+        URL.revokeObjectURL(preview.url);
+      }
+      this.images.splice(index, 1);
+      this.imagePreviews.splice(index, 1);
+    },
+
+    clearImages() {
+      this.imagePreviews.forEach((preview) => {
+        if (preview?.url) {
+          URL.revokeObjectURL(preview.url);
+        }
+      });
+      this.images = [];
+      this.imagePreviews = [];
+    },
+
     async deletePost(id) {
 
       if (!confirm("Are you sure you want to delete this post?")) {
@@ -149,7 +244,7 @@ export default {
       }
 
       try {
-        const response = await axios.delete(`http://127.0.0.1:8000/api/posts/${id}`,
+        const response = await axios.delete(`http://127.0.00.1:8000/api/posts/${id}`,
         {
           headers: {
             Authorization: `Bearer ${this.token}`
@@ -165,6 +260,7 @@ export default {
       this.$emit('close');
       this.title = '';
       this.content = '';
+      this.clearImages();
       this.$router.push('/');
     }
   }

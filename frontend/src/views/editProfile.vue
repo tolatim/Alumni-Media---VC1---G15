@@ -52,7 +52,16 @@
             <label class="block text-sm text-gray-600 mb-1">Graduate Year</label>
             <input v-model.number="form.graduate_year" type="number" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
           </div>
+          
         </div>
+        <!-- Main content – spacious -->
+        <div class="pt-20 lg:pt-24 px-7 sm:px-10 lg:px-14 pb-16 lg:pb-20">
+          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Edit profile
+          </h2>
+          <p class="text-sm text-gray-600 mb-10">
+            Update your professional details
+          </p>
 
         <div class="mt-6">
           <label class="block text-sm text-gray-600 mb-1">Location</label>
@@ -98,6 +107,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup>
@@ -119,12 +129,10 @@ const avatarFilePreview = ref('')
 const coverFilePreview = ref('')
 
 const form = reactive({
-  first_name: '',
-  last_name: '',
-  headline: '',
-  current_job: '',
-  company: '',
-  phone: '',
+  headline: "",
+  current_job: "",
+  company: "",
+  phone: "",
   graduate_year: null,
   location: '',
   bio: '',
@@ -172,13 +180,12 @@ const loadCurrentProfile = async () => {
   } catch {
     errorMessage.value = 'Failed to load your profile.'
   }
-}
+};
 
 const saveProfile = async () => {
-  loading.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
+  loading.value = true;
+  errorMessage.value = "";
+  successMessage.value = "";
   try {
     const formData = new FormData()
     formData.append('_method', 'PUT')
@@ -214,17 +221,11 @@ const saveProfile = async () => {
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to save profile.'
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
-const goBack = () => {
-  if (currentUserId.value) {
-    router.push(`/profile/${currentUserId.value}`)
-  } else {
-    router.push('/')
-  }
-}
+const goBack = () => router.back();
 
-onMounted(loadCurrentProfile)
+onMounted(loadProfile);
 </script>
