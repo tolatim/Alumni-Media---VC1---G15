@@ -9,32 +9,28 @@
         to="/"
         class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        <i class="fa-solid fa-house"></i>
-        <span class="font-sm">Home</span>
+        Home
       </RouterLink>
 
       <RouterLink
         to="/connection"
-        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        <i class="fa-solid fa-people-arrows"></i>
-        <span class="font-sm">Connection</span>
+        Connection
       </RouterLink>
 
       <RouterLink
         to="/message"
-        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        <i class="fa-solid fa-message"></i>
-        <span class="font-sm">Message</span>
+        Message
       </RouterLink>
-
+      
       <RouterLink
         to="/notification"
-        class="flex flex-col items-center px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
+        class="px-4 py-2 rounded-lg text-gray-600 hover:bg-teal-50 hover:text-teal-600 font-medium transition"
       >
-        <i class="fa-solid fa-bell"></i>
-        <span class="font-sm">Notification</span>
+        Notification
       </RouterLink>
 
       <RouterLink
@@ -55,8 +51,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import api from '@/services/api'
+import { useRouter } from "vue-router"
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
+const router = useRouter()
 const user = ref(null)
 
 const fetchMe = async () => {
@@ -68,7 +66,6 @@ const fetchMe = async () => {
     user.value = null
   }
 }
-
 
 
 onMounted(fetchMe)

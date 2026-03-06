@@ -19,7 +19,9 @@
       />
     </div>
 
-    <p v-if="errorMessage" class="text-center text-red-500 mt-4">{{ errorMessage }}</p>
+    <p v-if="errorMessage" class="text-center text-red-500 mt-4">
+      {{ errorMessage }}
+    </p>
   </main>
 </template>
 
@@ -38,7 +40,7 @@ const pendingRequests = ref([])
 const errorMessage = ref('')
 
 const loadHomeData = async () => {
-  errorMessage.value = ''
+  errorMessage.value = "";
 
   const [meRes, feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
     api.get('/me'),
@@ -63,11 +65,11 @@ const loadHomeData = async () => {
   if (feedRes.status === 'rejected' || suggestionRes.status === 'rejected' || pendingRes.status === 'rejected') {
     errorMessage.value = 'Some home sections failed to load.'
   }
-}
+};
 
 const prependPost = (newPost) => {
-  posts.value = [newPost, ...posts.value]
-}
+  posts.value = [newPost, ...posts.value];
+};
 
 const sendConnectionRequest = async (userId) => {
   try {

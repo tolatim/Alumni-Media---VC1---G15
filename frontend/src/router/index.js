@@ -21,9 +21,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/connection',
-    name: 'Connection',
-    component: Connect,
+    path: '/profile/:id',
+    component: Profile,
+    name: 'Profile',
     meta: { requiresAuth: true },
   },
   {
@@ -50,6 +50,14 @@ const routes = [
     name: 'Profile',
     meta: { requiresAuth: true },
   },
+  {
+    path: '/connection',
+    component: Connect,
+    name: "connection",
+    meta: {
+      requiresAuth: true
+    }
+  }
 ]
 
 const router = createRouter({
@@ -59,7 +67,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
-
+  const user = JSON.parse(localStorage.getItem('user'))
   if (to.meta.requiresAuth && !token) {
     next('/login')
     return
@@ -68,6 +76,18 @@ router.beforeEach((to, from, next) => {
   if ((to.path === '/login' || to.path === '/register') && token) {
     next('/')
     return
+  }
+
+  if (to.meta.requiresAdmin) {
+    if (!token) {
+      next('/login')
+      return
+    }else if (user.role) {
+      if (user.role !== 'admin') {
+        next('/')
+        return
+      }
+    }
   }
 
   next()

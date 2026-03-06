@@ -2,86 +2,115 @@
   <div class="page">
     <!-- REGISTER CARD -->
     <div class="card">
-      <h1>Create Account</h1>
+      <h1>Create Your Account</h1>
       <p class="subtitle">
-        Join the Alumini community today and reconnect with your network.
+        Join the PNC Alumni community — reconnect, network, and unlock new opportunities.
       </p>
 
       <form @submit.prevent="register">
         <div class="row">
-
-          <div>
-            <label>First Name</label>
-            <input v-model="first_name" placeholder="e.g. John" required />
+          <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input
+              id="first_name"
+              v-model="first_name"
+              placeholder="e.g. Tola"
+              required
+              :disabled="loading"
+            />
           </div>
 
-          <div>
-            <label>Last Name</label>
-            <input v-model="last_name" placeholder="e.g. Doe" required />
+          <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input
+              id="last_name"
+              v-model="last_name"
+              placeholder="e.g. Kim"
+              required
+              :disabled="loading"
+            />
           </div>
         </div>
 
-        <label>Email Address</label>
-        <input type="email" v-model="email" placeholder="name@email.com" required />
-
-        <label>Password</label>
-        <div class="password-field">
+        <div class="form-group">
+          <label for="email">Email Address</label>
           <input
-            :type="showPassword ? 'text' : 'password'"
-            v-model="password"
-            placeholder="Min. 8 characters"
+            id="email"
+            type="email"
+            v-model="email"
+            placeholder="yourname@alumni.pnc"
             required
-          />
-          <span @click="togglePassword"><i style="font-size: small;" :class="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i></span>
-        </div>
-        <small class="hint">
-          Must include at least 8 characters, a number and a symbol.
-        </small>
-
-        <label>Confirm Password</label>
-        <div class="password-field">
-          <input
-            :type="showConfirm ? 'text' : 'password'"
-            v-model="confirmPassword"
-            placeholder="Repeat password"
-            required
-          />
-          <span @click="toggleConfirm"><i style="font-size:smaller;" :class="showConfirm ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i></span>
-        </div>
-        <p style="color: red;">{{ error }}</p>
-        <!-- <label class="checkbox">
-          <input type="checkbox" v-model="agree" />
-          I agree to the <a href="#">Terms of Service</a> and
-          <a href="#">Privacy Policy</a>.
-        </label> -->
-
-         <button
-            class="primary-btn"
-            type="submit"
-            :class="{ loading: loading }"
             :disabled="loading"
-          >
-            <span class="spinner"></span>
-            <span>{{ loading ? "Create Account..." : "Create Account" }}</span>
-          </button>
-        <!-- <button class="primary-btn">Create Account</button> -->
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-field">
+            <input
+              id="password"
+              :type="showPassword ? 'text' : 'password'"
+              v-model="password"
+              placeholder="Min. 8 characters"
+              required
+              :disabled="loading"
+            />
+            <span @click="togglePassword" class="toggle-icon">
+              <i :class="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+            </span>
+          </div>
+          <small class="hint">
+            Must include at least 8 characters, a number, and a symbol.
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <div class="password-field">
+            <input
+              id="confirmPassword"
+              :type="showConfirm ? 'text' : 'password'"
+              v-model="confirmPassword"
+              placeholder="Repeat password"
+              required
+              :disabled="loading"
+            />
+            <span @click="toggleConfirm" class="toggle-icon">
+              <i :class="showConfirm ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+            </span>
+          </div>
+        </div>
+
+        <p class="error-text">{{ error }}</p>
+
+        <button
+          class="primary-btn"
+          type="submit"
+          :class="{ loading: loading }"
+          :disabled="loading"
+        >
+          <span class="spinner"></span>
+          <span>{{ loading ? "Creating Account..." : "Create Account →" }}</span>
+        </button>
       </form>
 
       <div class="divider">Or sign up with</div>
 
       <p class="login-link">
         Already have an account?
-        <a href="/login">Log in here</a>
+        <RouterLink to="/login" class="link">Log in here</RouterLink>
       </p>
     </div>
 
     <footer class="footer">
       Need help? Contact Support
       <br />
-      © 2024 Alumini Platform. All rights reserved.
+      © {{ new Date().getFullYear() }} PNC Alumni Platform. All rights reserved.
     </footer>
   </div>
 </template>
+
+
 
 <script setup>
 import { ref } from "vue"
@@ -138,179 +167,251 @@ async function register() {
 
 <style scoped>
 .page {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* NAVBAR */
-.navbar {
+  min-height: 100vh;
   display: flex;
-  justify-content: space-between;
-  padding: 18px 40px;
-  background: white;
-  border-bottom: 1px solid #eee;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 18px;
-  display: flex;
-  gap: 8px;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: url('https://www.passerellesnumeriques.org/wp-content/uploads/2025/05/488904386_1067237218774477_7287190704021364614_n-1.jpg')
+              center/cover no-repeat fixed;
+  position: relative;
+  padding: 2rem 1rem;
 }
 
-nav {
-  display: flex;
-  gap: 25px;
-  align-items: center;
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.96) 100%);
+  z-index: 1;
 }
 
-nav a {
-  text-decoration: none;
-  color: #444;
-  font-size: 14px;
+.header {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 2rem;
+  text-align: center;
 }
 
-.signin-btn {
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 8px 18px;
-  border-radius: 6px;
-  cursor: pointer;
+.logo-img {
+  height: 56px;
+  width: auto;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
 }
 
-/* CARD */
 .card {
-  width: 420px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 460px;
   background: white;
-  margin: 60px auto;
-  padding: 35px;
-  border-radius: 14px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  padding: 3rem 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.14);
 }
 
 h1 {
-  margin-bottom: 8px;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.75rem;
+  text-align: center;
 }
 
 .subtitle {
   color: #6b7280;
-  font-size: 14px;
-  margin-bottom: 25px;
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  line-height: 1.5;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
 }
 
 label {
-  font-size: 13px;
+  font-size: 0.875rem;
   font-weight: 600;
+  color: #374151;
   display: block;
-  margin-top: 15px;
+  margin-bottom: 0.5rem;
 }
 
 input {
   width: 100%;
-  padding: 12px;
-  margin-top: 6px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  padding: 0.9rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* ROW */
+input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+}
+
+input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
 .row {
   display: flex;
-  gap: 10px;
+  gap: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.row .form-group {
+  flex: 1;
 }
 
 .password-field {
   position: relative;
 }
 
-.password-field span {
+.toggle-icon {
   position: absolute;
-  right: 12px;
-  top: 12px;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   cursor: pointer;
+  color: #6b7280;
+  font-size: 1.125rem;
+  transition: color 0.2s ease;
+}
+
+.toggle-icon:hover {
+  color: #2563eb;
 }
 
 .hint {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #6b7280;
+  margin-top: 0.375rem;
+  display: block;
 }
 
-/* .checkbox {
-  display: flex;
-  gap: 8px;
-  font-size: 13px;
-  margin-top: 15px;
-} */
-
-.checkbox a {
-  color: #2563eb;
-  text-decoration: none;
+.error-text {
+  color: #ef4444;
+  font-size: 0.875rem;
+  text-align: center;
+  min-height: 1.25rem;
+  margin: 0.5rem 0 1.25rem;
 }
 
 .primary-btn {
   width: 100%;
-  margin-top: 20px;
-  padding: 14px;
-  background: #3563d6;
+  padding: 1rem;
+  background: #2563eb;
   color: white;
+  font-weight: 600;
+  font-size: 1.05rem;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.25s ease;
 }
 
-.divider {
-  text-align: center;
-  margin: 25px 0;
-  color: #aaa;
-  font-size: 13px;
+.primary-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
 }
 
-.login-link {
-  text-align: center;
-  font-size: 14px;
-}
-
-.login-link a {
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.footer {
-  text-align: center;
-  font-size: 12px;
-  color: #888;
-  padding-bottom: 30px;
-}
-button.loading .spinner {
-  display: inline-block;
-}
-
-button.loading {
-  opacity: 0.8;
+.primary-btn:disabled {
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top: 2px solid white;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: spin 0.8s linear infinite;
   display: none;
-  margin-right: 8px;
 }
 
-button.loading .spinner {
+.primary-btn.loading .spinner {
   display: inline-block;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
+  to { transform: rotate(360deg); }
+}
+
+.divider {
+  text-align: center;
+  margin: 2rem 0;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 42%;
+  height: 1px;
+  background: #d1d5db;
+  transform: translateY(-50%);
+}
+
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.login-link {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-top: 1.5rem;
+}
+
+.link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  position: relative;
+  z-index: 2;
+  margin-top: 3rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .card {
+    padding: 2rem 1.5rem;
+  }
+  .row {
+    flex-direction: column;
+    gap: 1.25rem;
   }
 }
 </style>
