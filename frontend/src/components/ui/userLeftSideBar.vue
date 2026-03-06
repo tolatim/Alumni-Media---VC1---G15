@@ -40,7 +40,10 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+
+const router = useRouter()
 
 defineProps({
   user: {
@@ -50,8 +53,9 @@ defineProps({
 })
 
 const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  router.push("/login"); // redirect to login page
-};
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('user_id')
+  router.replace('/login')
+}
 </script>
