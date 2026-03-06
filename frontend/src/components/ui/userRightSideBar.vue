@@ -53,5 +53,9 @@ defineProps({
     type: Array,
     default: () => [],
   },
+  pendingRequests: {
+    type: Array,
+    default: () => [],
+  },
 })
 </script>
