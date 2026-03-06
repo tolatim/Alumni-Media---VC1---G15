@@ -21,6 +21,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/connection',
+    name: 'Connection',
+    component: Connect,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile/:id',
     component: Profile,
     name: 'Profile',
