@@ -200,6 +200,16 @@ const skillsList = computed(() => {
     .filter(Boolean)
 })
 
+const quickInfo = computed(() => [
+  { label: "First Name", value: user.value?.first_name },
+  { label: "Last Name", value: user.value?.last_name },
+  { label: "Email", value: user.value?.email },
+  { label: "Phone", value: user.value?.phone },
+  { label: "Current Job", value: user.value?.current_job },
+  { label: "Company", value: user.value?.company },
+  { label: "Graduate Year", value: user.value?.graduate_year },
+]);
+
 const loadLoggedInUser = async () => {
   try {
     const response = await api.get('/me')

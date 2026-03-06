@@ -10,7 +10,7 @@
           class="border rounded-lg p-3"
         >
           <RouterLink :to="{ name: 'Profile', params: { id: request.requester?.id } }" class="flex items-center gap-2 min-w-0">
-            <img :src="request.requester?.profile?.avatar || 'https://i.pravatar.cc/60'" class="w-8 h-8 rounded-full object-cover">
+            <img :src="request.requester?.profile?.avatar || fallbackAvatar" class="w-8 h-8 rounded-full object-cover">
             <div class="min-w-0">
               <p class="text-sm font-medium truncate">{{ request.requester?.name || 'Unknown user' }}</p>
               <p class="text-xs text-gray-500 truncate">Sent you a friend request</p>
@@ -64,7 +64,7 @@
         >
           <RouterLink :to="{ name: 'Profile', params: { id: person.id } }" class="flex items-center gap-3 min-w-0 hover:bg-gray-50 rounded-lg transition px-2 py-1">
             <img
-              :src="person.profile?.avatar || 'https://i.pravatar.cc/60'"
+              :src="person.profile?.avatar || fallbackAvatar"
               class="w-10 h-10 rounded-full object-cover ring-1 ring-gray-200 shadow-sm"
             >
             <div class="min-w-0">
@@ -89,6 +89,7 @@
 </template>
 
 <script setup>
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 defineProps({
   suggestions: {
     type: Array,

@@ -226,5 +226,5 @@ const goBack = () => {
   }
 }
 
-onMounted(loadCurrentProfile)
+onMounted(loadCurrentProfile);
 </script>
