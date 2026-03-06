@@ -32,6 +32,8 @@
         <RouterLink to="/connection" class="block hover:text-blue-600 transition">Connections</RouterLink>
         <p class="hover:text-blue-600 cursor-pointer transition">Groups</p>
         <p class="hover:text-blue-600 cursor-pointer transition">Events</p>
+        <p @click="logout" 
+        class="cursor-pointer text-red-600 font-semibold">Logout</p>
       </div>
     </div>
   </div>
@@ -46,4 +48,10 @@ defineProps({
     default: null,
   },
 })
+
+const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  router.push("/login"); // redirect to login page
+};
 </script>
