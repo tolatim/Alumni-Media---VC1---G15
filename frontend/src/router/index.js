@@ -50,6 +50,14 @@ const routes = [
     name: 'Profile',
     meta: { requiresAuth: true },
   },
+  {
+    path: '/connection',
+    component: Connect,
+    name: "connection",
+    meta: {
+      requiresAuth: true
+    }
+  }
 ]
 
 const router = createRouter({

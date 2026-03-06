@@ -9,12 +9,15 @@
 
       <div v-if="user" class="bg-white rounded-xl shadow overflow-hidden">
         <div class="h-60 w-full relative">
-          <img :src="coverImage" class="w-full h-full object-cover">
+          <img :src="coverImage" class="w-full h-full object-cover" />
         </div>
 
         <div class="px-6 pb-6 relative">
           <div class="absolute -top-16 left-6">
-            <img :src="user.profile?.avatar || fallbackAvatar" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
+            <img
+              :src="user.profile?.avatar || fallbackAvatar"
+              class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md"
+            />
           </div>
 
           <div class="pt-20">
@@ -186,7 +189,6 @@ const passwordError = ref('')
 const passwordMessage = ref('')
 
 const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
-
 const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
 
 const skillsList = computed(() => {
