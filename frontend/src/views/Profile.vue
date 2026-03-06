@@ -39,7 +39,7 @@
             <div class="flex gap-4 mt-4" v-else>
               <RouterLink
                 v-if="connectionStatus === 'accepted'"
-                to="/message"
+                :to="`/message/${user.id}`"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition"
               >
                 Message
