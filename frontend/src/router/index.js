@@ -6,6 +6,7 @@ import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
 import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
+import Message from '@/views/Message.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -24,6 +25,18 @@ const routes = [
     path: '/connection',
     name: 'Connection',
     component: Connect,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/message',
+    name: 'Message',
+    component: Message,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/message/:userId',
+    name: 'MessageWithUser',
+    component: Message,
     meta: { requiresAuth: true },
   },
   {
