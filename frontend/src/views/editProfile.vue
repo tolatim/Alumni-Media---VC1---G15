@@ -1,39 +1,29 @@
 <template>
-  <div
-    class="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 py-10 px-4"
-  >
-    <div class="max-w-4xl mx-auto">
-      <!-- Header -->
-      <!-- <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800 tracking-tight">
-          Edit Profile
-        </h2>
-      </div> -->
-     <!-- Header -->
-<div class="mb-8">
-  <h2 class="text-3xl font-semibold text-gray-900 tracking-tight">
-    Edit Profile
-  </h2>
-  <div class="mt-3 h-px w-24 bg-gray-300"></div>
-</div>
-
-      <!-- Card -->
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-        <!-- Cover + Avatar Upload -->
+  <div class="min-h-screen bg-slate-50/70">
+    <!-- Cool modern navbar -->
+    <Navbar />
+    <div class="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-12 lg:py-16">
+      <div
+        class="bg-white rounded-3xl shadow-xl border border-gray-100/80 overflow-hidden"
+      >
+        <!-- Cover + avatar area -->
         <div class="relative">
-          <div class="relative h-60 w-full group">
-            <!-- Cover Image -->
+          <div class="h-56 sm:h-64 lg:h-72 relative group">
             <img
-              :src="previewCover || profile_photo.cover_url || defaultBackground"
-              class="w-full h-full object-cover"
+              :src="
+                previewCover || profile_photo.cover_url || defaultBackground
+              "
+              class="absolute inset-0 w-full h-full object-cover"
+              alt="Cover"
             />
-
-            <!-- Overlay -->
             <label
-              class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer"
+              class="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
             >
-              <span class="text-white font-medium">Change Cover</span>
-
+              <span
+                class="text-white text-base sm:text-lg font-medium px-6 py-3 bg-black/40 rounded-full"
+              >
+                Change cover photo
+              </span>
               <input
                 type="file"
                 accept="image/*"
@@ -42,129 +32,167 @@
               />
             </label>
           </div>
-          <div class="absolute left-1/2 -bottom-12 transform -translate-x-1/2">
-            <label class="cursor-pointer group relative block">
+
+          <div class="absolute left-6 sm:left-10 -bottom-14 sm:-bottom-16 z-10">
+            <label class="cursor-pointer group block">
               <img
-                :src="
-                  previewImage || avatar.avatar_url || defaultAvatar
-                "
-                class="w-28 h-28 rounded-full border-4 border-white shadow-md object-cover transition group-hover:opacity-80"
+                :src="previewImage || avatar.avatar_url || defaultAvatar"
+                class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-lg object-cover transition group-hover:ring-4 group-hover:ring-indigo-400/40"
+                alt="Avatar"
               />
-
-              <!-- Overlay -->
               <div
-                class="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                class="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
               >
-                <span class="text-white text-sm font-medium">Change</span>
+                <span class="text-white text-xs sm:text-sm font-medium"
+                  >Edit</span
+                >
               </div>
-
-              <!-- Hidden File Input -->
               <input
                 type="file"
                 accept="image/*"
                 class="hidden"
                 @change="handleImageUpload"
               />
+              
             </label>
+           
           </div>
+          
         </div>
+        <!-- Main content – spacious -->
+        <div class="pt-20 lg:pt-24 px-7 sm:px-10 lg:px-14 pb-16 lg:pb-20">
+          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Edit profile
+          </h2>
+          <p class="text-sm text-gray-600 mb-10">
+            Update your professional details
+          </p>
 
-        <div class="pt-16 px-8 pb-8">
           <!-- Messages -->
-          <p
+          <div
             v-if="errorMessage"
-            class="text-sm bg-red-50 text-red-600 px-4 py-2 rounded-lg mb-4"
+            class="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700"
           >
             {{ errorMessage }}
-          </p>
-
-          <p
+          </div>
+          <div
             v-if="successMessage"
-            class="text-sm bg-green-50 text-green-600 px-4 py-2 rounded-lg mb-4"
+            class="mb-8 p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700"
           >
             {{ successMessage }}
-          </p>
+          </div>
 
-          <!-- Grid Section -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-8 text-sm">
             <div>
-              <label class="input-label">Headline / Job Title</label>
-              <input v-model="form.headline" type="text" class="input-style" />
-            </div>
-
-            <div>
-              <label class="input-label">Current Job</label>
+              <label class="block text-gray-700 font-medium mb-2"
+                >Headline</label
+              >
               <input
-                v-model="form.current_job"
+                v-model="form.headline"
                 type="text"
-                class="input-style"
+                class="input-modern"
+                placeholder="Software Engineer | Vue.js & Laravel"
               />
             </div>
 
-            <div>
-              <label class="input-label">Company</label>
-              <input v-model="form.company" type="text" class="input-style" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-gray-700 font-medium mb-2"
+                  >Current position</label
+                >
+                <input
+                  v-model="form.current_job"
+                  type="text"
+                  placeholder="Your position"
+                  class="input-modern"
+                />
+              </div>
+              <div>
+                <label class="block text-gray-700 font-medium mb-2"
+                  >Company</label
+                >
+                <input
+                  v-model="form.company"
+                  type="text"
+                  placeholder="Your company"
+                  class="input-modern"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-gray-700 font-medium mb-2"
+                  >Phone</label
+                >
+                <input
+                  v-model="form.phone"
+                  type="tel"
+                  class="input-modern"
+                  placeholder="+855 ..."
+                />
+              </div>
+              <div>
+                <label class="block text-gray-700 font-medium mb-2"
+                  >Graduate year</label
+                >
+                <input
+                  v-model.number="form.graduate_year"
+                  type="number"
+                  placeholder="2026"
+                  class="input-modern"
+                />
+              </div>
             </div>
 
             <div>
-              <label class="input-label">Phone</label>
-              <input v-model="form.phone" type="text" class="input-style" />
-            </div>
-
-            <div>
-              <label class="input-label">Graduate Year</label>
+              <label class="block text-gray-700 font-medium mb-2"
+                >Location</label
+              >
               <input
-                v-model.number="form.graduate_year"
-                type="number"
-                class="input-style"
+                v-model="form.location"
+                type="text"
+                class="input-modern"
+                placeholder="Phnom Penh, Cambodia"
               />
             </div>
 
             <div>
-              <label class="input-label">Location</label>
-              <input v-model="form.location" type="text" class="input-style" />
+              <label class="block text-gray-700 font-medium mb-2">About</label>
+              <textarea
+                v-model="form.bio"
+                rows="5"
+                class="input-modern min-h-[130px]"
+                placeholder="Tell your professional story..."
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-gray-700 font-medium mb-2">Skills</label>
+              <input
+                v-model="form.skills"
+                type="text"
+                class="input-modern"
+                placeholder="Vue, Laravel, Tailwind, JavaScript, Git, MySQL..."
+              />
+              <p class="mt-2 text-xs text-gray-500">Separate with commas</p>
             </div>
           </div>
 
-          <!-- Bio -->
-          <div class="mt-8">
-            <label class="input-label">About / Bio</label>
-            <textarea
-              v-model="form.bio"
-              rows="4"
-              class="input-style resize-none"
-            ></textarea>
-          </div>
-
-          <!-- Skills -->
-          <div class="mt-6">
-            <label class="input-label">Skills</label>
-            <input
-              v-model="form.skills"
-              type="text"
-              placeholder="Example: Vue, Laravel, MySQL"
-              class="input-style"
-            />
-            <p class="text-xs text-gray-500 mt-1">
-              Use comma to separate skills.
-            </p>
-          </div>
-
-          <!-- Buttons -->
-          <div class="flex justify-end mt-8 space-x-3">
+          <!-- Buttons – bottom spaced -->
+          <div class="mt-16 flex flex-col sm:flex-row gap-4 sm:justify-end">
             <button
               @click="goBack"
-              class="px-6 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              class="px-8 py-3 rounded-2xl border border-gray-300 text-gray-700 font-medium text-sm hover:bg-gray-50 transition"
             >
               Cancel
             </button>
-
             <button
               @click="saveProfile"
               :disabled="loading"
-              class="px-6 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-medium shadow-md hover:shadow-lg hover:scale-[1.02] transition disabled:opacity-60"
+              class="px-10 py-3 rounded-2xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 transition disabled:opacity-60 shadow-md"
             >
-              {{ loading ? "Saving..." : "Save Changes" }}
+              {{ loading ? "Saving…" : "Save" }}
             </button>
           </div>
         </div>
@@ -177,6 +205,7 @@
 import { reactive, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "@/services/api";
+import Navbar from "@/components/ui/nav.vue";
 import { updateProfile } from "@/services/authService";
 import { getProfile } from "@/services/authService";
 import defaultBackground from "@/assets/images/3840x2160-white-solid-color-background.jpg";
@@ -187,18 +216,14 @@ const loading = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
 
-// profile
 const previewImage = ref(null);
 const selectedImage = ref(null);
-
-// cover
 const previewCover = ref(null);
 const selectedCover = ref(null);
 
 const handleImageUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
   selectedImage.value = file;
   previewImage.value = URL.createObjectURL(file);
 };
@@ -206,7 +231,6 @@ const handleImageUpload = (event) => {
 const handleCoverUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
   selectedCover.value = file;
   previewCover.value = URL.createObjectURL(file);
 };
@@ -221,30 +245,27 @@ const form = reactive({
   bio: "",
   skills: "",
 });
-const avatar = reactive({
-  avatar_url: "",
-});
-const profile_photo = reactive({
-  cover_url: "",
-});
+
+const avatar = reactive({ avatar_url: "" });
+const profile_photo = reactive({ cover_url: "" });
+
 const loadProfile = async () => {
   errorMessage.value = "";
   try {
     const userString = JSON.parse(localStorage.getItem("user"));
     if (!userString) throw new Error("No user in localStorage");
-
     const response = await getProfile(userString.id);
     const user = response.data.user;
-    form.headline = user.headline || "Not provided";
-    form.current_job = user.current_job || "Not provided";
-    form.company = user.company || "Not provided";
-    form.phone = user.phone || "Not provided";
-    form.graduate_year = user.graduate_year || 2000;
-    form.location = user.location || "Not provided";
-    form.bio = user.bio || "Not provided";
-    form.skills = user.skills || "Not provided";
-    avatar.avatar_url = user.avatar_url || defaultAvatar;
-    profile_photo.cover_url = user.cover_url || defaultBackground;
+    form.headline = user.headline || "";
+    form.current_job = user.current_job || "";
+    form.company = user.company || "";
+    form.phone = user.phone || "";
+    form.graduate_year = user.graduate_year || "";
+    form.location = user.location || "";
+    form.bio = user.bio || "";
+    form.skills = user.skills || "";
+    avatar.avatar_url = user.avatar_url || "";
+    profile_photo.cover_url = user.cover_url || "";
   } catch (err) {
     errorMessage.value = "Failed to load your profile.";
   }
@@ -256,13 +277,13 @@ const saveProfile = async () => {
   successMessage.value = "";
   try {
     const formData = new FormData();
-    formData.append("_method", "PATCH"); // simulate PATCH like Postman
-    if (selectedImage.value) {
+    formData.append("_method", "PATCH");
+    if (selectedImage.value){
       formData.append("avatar", selectedImage.value);
     }
-    if (selectedCover.value) {
+    if (selectedCover.value){
       formData.append("profile_photo", selectedCover.value);
-    }
+    } 
     formData.append("current_job", form.current_job);
     formData.append("headline", form.headline);
     formData.append("company", form.company);
@@ -272,11 +293,10 @@ const saveProfile = async () => {
     formData.append("bio", form.bio);
     formData.append("skills", form.skills);
     const token = localStorage.getItem("token");
-
     const response = await updateProfile(formData, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
+        "Content-Type": "multipart/form-data",
       },
     });
     console.log(response.data.user);
@@ -294,13 +314,9 @@ onMounted(loadProfile);
 </script>
 
 <style scoped>
-.input-label {
-  @apply block text-sm font-medium text-gray-600 mb-2;
-}
-
-.input-style {
-  @apply w-full border border-gray-300 rounded-xl px-4 py-2.5 
-  focus:ring-2 focus:ring-teal-500 focus:border-teal-500 
-  outline-none transition shadow-sm;
+.input-modern {
+  @apply w-full px-4 py-3 text-sm rounded-xl border border-gray-200
+         focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
+         hover:border-gray-300 transition outline-none;
 }
 </style>

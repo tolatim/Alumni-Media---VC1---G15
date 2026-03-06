@@ -20,6 +20,7 @@ class User extends Authenticatable
     protected $fillable = [
         'first_name',
         'last_name',
+        'role_id',
         'email',
         'password',
         'headline',
@@ -68,5 +69,9 @@ class User extends Authenticatable
         return $this->avatar
             ? env('APP_URL') . asset('storage/' . $this->profile_photo)
             : null;
+    }
+
+    public function role(){
+        return $this -> belongsTo(Role::class);
     }
 }
