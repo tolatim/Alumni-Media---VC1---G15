@@ -1,211 +1,202 @@
 <template>
   <Navbar />
 
-  <main class="bg-[#F3F2EF] min-h-screen pb-16">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-
-      <!-- Error -->
-      <div
-        v-if="errorMessage"
-        class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6 shadow-sm"
-      >
+  <main class="bg-gray-100 min-h-screen py-6">
+    <div class="max-w-6xl mx-auto px-4">
+      <div v-if="errorMessage" class="bg-red-50 text-red-600 rounded-lg p-4 mb-4">
         {{ errorMessage }}
       </div>
 
-      <!-- Main Profile Card – LinkedIn style -->
-      <div
-        v-if="user"
-        class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden"
-      >
-        <!-- Cover -->
-        <div class="relative h-40 sm:h-52 lg:h-64">
-          <img
-            :src="coverImage"
-            class="absolute inset-0 w-full h-full object-cover"
-            alt="Cover photo"
-          />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent pointer-events-none"></div>
+      <div v-if="user" class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="h-60 w-full relative">
+          <img :src="coverImage" class="w-full h-full object-cover">
         </div>
 
-        <!-- Content -->
-        <div class="relative px-5 sm:px-8 lg:px-10 pb-10 pt-16 sm:pt-20">
-          <!-- Avatar -->
-          <div class="absolute -top-16 sm:-top-20 left-5 sm:left-8">
-            <img
-              :src="user.avatar_url || defaultAvatar"
-              class="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-lg object-cover"
-              alt="Profile picture"
-            />
+        <div class="px-6 pb-6 relative">
+          <div class="absolute -top-16 left-6">
+            <img :src="user.profile?.avatar || fallbackAvatar" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
           </div>
 
-          <div class="pt-4">
-            <h1 class="text-2xl sm:text-3xl font-bold text-[#000000] tracking-tight">
-              {{ user.first_name }} {{ user.last_name }}
-            </h1>
+          <div class="pt-20">
+            <h1 class="text-2xl font-bold text-gray-800">{{ user.name }}</h1>
 
-            <p class="text-base sm:text-lg text-[#000000] font-medium mt-1">
-              {{ user.headline || user.current_job || "Add your headline" }}
+            <p class="text-gray-500 mt-1">
+              {{ user.profile?.headline || user.profile?.current_job || 'Add your headline' }}
             </p>
 
-            <div class="mt-1 flex items-center gap-1.5 text-sm text-[#585858]">
-              <span>{{ user.location || "Location not added" }}</span>
-              <span class="text-gray-400">•</span>
-              <span class="text-gray-500">Contact info</span>
-            </div>
+            <p class="text-sm text-gray-400 mt-1">
+              {{ user.profile?.location || 'No location added' }}
+            </p>
 
-            <div v-if="isOwnProfile" class="mt-5">
+            <div class="flex gap-4 mt-4" v-if="isOwnProfile">
               <RouterLink
                 to="/profile/edit"
-                class="inline-flex items-center px-5 py-2 bg-[#0A66C2] hover:bg-[#004182] 
-                     text-white text-sm font-medium rounded-full transition-colors"
+                class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
               >
                 Edit profile
               </RouterLink>
             </div>
+            <div class="flex gap-4 mt-4" v-else>
+              <RouterLink
+                v-if="connectionStatus === 'accepted'"
+                :to="`/message/${user.id}`"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition"
+              >
+                Message
+              </RouterLink>
+              <button
+                v-else-if="connectionStatus === 'none'"
+                @click="sendConnectionRequest"
+                class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
+              >
+                Connect
+              </button>
+              <span
+                v-else-if="connectionStatus === 'pending'"
+                class="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-600"
+              >
+                Pending Request
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- About + Info + Skills – card style like LinkedIn sections -->
-      <div
-        v-if="user"
-        class="mt-6 bg-white rounded-xl shadow border border-gray-200 p-6 sm:p-8"
-      >
-        <h2 class="text-xl font-semibold text-[#000000] mb-5">About</h2>
-        <p class="text-sm sm:text-base text-[#191919] leading-relaxed whitespace-pre-line">
-          {{ user.bio || "No about information added yet." }}
-        </p>
+      <div v-if="user" class="bg-white rounded-xl shadow mt-6 p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">User Information</h2>
 
-        <!-- Skills -->
-        <div class="mt-10">
-          <h3 class="text-lg font-semibold text-[#000000] mb-4">Skills</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Name</p>
+            <p class="text-gray-800 font-medium">{{ user.name || 'Not provided' }}</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Email</p>
+            <p class="text-gray-800 font-medium">{{ user.email || 'Not provided' }}</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Phone</p>
+            <p class="text-gray-800 font-medium">{{ user.profile?.phone || 'Not provided' }}</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Current Job</p>
+            <p class="text-gray-800 font-medium">{{ user.profile?.current_job || 'Not provided' }}</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Company</p>
+            <p class="text-gray-800 font-medium">{{ user.profile?.company || 'Not provided' }}</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-gray-500">Graduate Year</p>
+            <p class="text-gray-800 font-medium">{{ user.profile?.graduate_year || 'Not provided' }}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 bg-gray-50 rounded-lg p-3">
+          <p class="text-gray-500 mb-2">Skills</p>
           <div v-if="skillsList.length" class="flex flex-wrap gap-2">
             <span
               v-for="skill in skillsList"
               :key="skill"
-              class="inline-flex items-center px-3.5 py-1.5 bg-[#E9EEF6] text-[#0A66C2] text-sm font-medium rounded-full"
+              class="text-xs bg-teal-100 text-teal-800 px-2 py-1 rounded-full"
             >
               {{ skill }}
             </span>
           </div>
-          <p v-else class="text-sm text-gray-500 italic">No skills added</p>
-        </div>
-
-        <!-- Quick info grid -->
-        <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="item in quickInfo" :key="item.label" class="bg-[#F9FAFB] rounded-lg p-4">
-            <p class="text-xs uppercase tracking-wide text-gray-500 font-medium mb-1">
-              {{ item.label }}
-            </p>
-            <p class="text-sm font-medium text-[#191919]">
-              {{ item.value || "—" }}
-            </p>
-          </div>
+          <p v-else class="text-gray-800 font-medium text-sm">Not provided</p>
         </div>
       </div>
 
-      <!-- Change Password – discreet LinkedIn-like security section -->
-      <div
-        v-if="user && isOwnProfile"
-        class="mt-6 bg-white rounded-xl shadow border border-gray-200 p-6 sm:p-8"
-      >
-        <h2 class="text-xl font-semibold text-[#000000] mb-6">Change Password</h2>
+      <div v-if="user && isOwnProfile" class="bg-white rounded-xl shadow mt-6 p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Change Password</h2>
 
-        <p v-if="passwordError" class="text-sm text-red-600 bg-red-50 p-4 rounded-lg mb-6">
-          {{ passwordError }}
-        </p>
-        <p v-if="passwordMessage" class="text-sm text-green-600 bg-green-50 p-4 rounded-lg mb-6">
-          {{ passwordMessage }}
-        </p>
+        <p v-if="passwordError" class="text-sm text-red-500 mb-3">{{ passwordError }}</p>
+        <p v-if="passwordMessage" class="text-sm text-green-600 mb-3">{{ passwordMessage }}</p>
 
-        <form @submit.prevent="changePassword" class="space-y-5 max-w-md">
+        <form @submit.prevent="changePassword" class="space-y-4">
           <div>
-            <label class="block text-sm text-gray-600 mb-1.5">Current password</label>
+            <label class="block text-sm text-gray-600 mb-1">Old Password</label>
             <input
               v-model="oldPassword"
               type="password"
               required
-              class="w-full border border-gray-300 rounded-md px-4 py-2.5 focus:border-[#0A66C2] focus:ring-2 focus:ring-blue-100 outline-none transition"
+              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
             />
           </div>
 
           <div>
-            <label class="block text-sm text-gray-600 mb-1.5">New password</label>
+            <label class="block text-sm text-gray-600 mb-1">New Password</label>
             <input
               v-model="newPassword"
               type="password"
               required
               minlength="6"
-              class="w-full border border-gray-300 rounded-md px-4 py-2.5 focus:border-[#0A66C2] focus:ring-2 focus:ring-blue-100 outline-none transition"
+              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
             />
           </div>
 
           <div>
-            <label class="block text-sm text-gray-600 mb-1.5">Confirm new password</label>
+            <label class="block text-sm text-gray-600 mb-1">Confirm New Password</label>
             <input
               v-model="newPasswordConfirmation"
               type="password"
               required
               minlength="6"
-              class="w-full border border-gray-300 rounded-md px-4 py-2.5 focus:border-[#0A66C2] focus:ring-2 focus:ring-blue-100 outline-none transition"
+              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
             />
           </div>
 
           <button
             type="submit"
             :disabled="passwordLoading"
-            class="mt-4 px-6 py-2.5 bg-[#0A66C2] hover:bg-[#004182] text-white font-medium rounded-full transition disabled:opacity-60"
+            class="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-md disabled:opacity-60"
           >
-            {{ passwordLoading ? "Updating..." : "Update password" }}
+            {{ passwordLoading ? 'Updating...' : 'Change Password' }}
           </button>
         </form>
       </div>
-
     </div>
   </main>
 </template>
 
 <script setup>
-// ────────────────────────────────────────────────
-// Your original script remains 100% unchanged
-// ────────────────────────────────────────────────
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import Navbar from '@/components/ui/nav.vue'
+import api from '@/services/api'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
 
-import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
-import Navbar from "@/components/ui/nav.vue";
-import api from "@/services/api";
-import { getUser } from "@/services/authService";
-import defaultBackground from "@/assets/images/3840x2160-white-solid-color-background.jpg";
-import defaultAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
+const route = useRoute()
+const user = ref(null)
+const errorMessage = ref('')
+const loggedInUser = ref(null)
+const connectionStatus = ref('none')
 
-const route = useRoute();
-const user = ref(null);
-const errorMessage = ref("");
-const loggedInUser = ref(null);
+const oldPassword = ref('')
+const newPassword = ref('')
+const newPasswordConfirmation = ref('')
+const passwordLoading = ref(false)
+const passwordError = ref('')
+const passwordMessage = ref('')
 
-const oldPassword = ref("");
-const newPassword = ref("");
-const newPasswordConfirmation = ref("");
-const passwordLoading = ref(false);
-const passwordError = ref("");
-const passwordMessage = ref("");
+const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
 
-const coverImage = computed(() => {
-  return user.value?.cover_url || defaultBackground;
-});
-
-const isOwnProfile = computed(() => {
-  return loggedInUser.value?.id === user.value?.id;
-});
+const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
 
 const skillsList = computed(() => {
-  const skills = user.value?.skills;
-  if (!skills) return [];
+  const skills = user.value?.profile?.skills
+  if (!skills) return []
   return skills
-    .split(",")
+    .split(',')
     .map((item) => item.trim())
-    .filter(Boolean);
-});
+    .filter(Boolean)
+})
 
 const quickInfo = computed(() => [
   { label: "First Name", value: user.value?.first_name },
@@ -218,67 +209,101 @@ const quickInfo = computed(() => [
 ]);
 
 const loadLoggedInUser = async () => {
-  const user_id = JSON.parse(localStorage.getItem("user")).id;
   try {
-    const response = await getUser(user_id);
-    loggedInUser.value = response.data.user;
+    const response = await api.get('/me')
+    loggedInUser.value = response.data
   } catch {
-    loggedInUser.value = null;
+    loggedInUser.value = null
   }
-};
+}
 
 const loadProfile = async (id) => {
-  errorMessage.value = "";
+  errorMessage.value = ''
 
   try {
-    const response = await getUser(id);
-    user.value = response.data.user;
-  } catch {
-    user.value = null;
-    errorMessage.value = "Profile not found or failed to load.";
+    const response = await api.get(`/profiles/${id}`)
+    user.value = response.data.data
+  } catch (error) {
+    const own = loggedInUser.value?.id && String(loggedInUser.value.id) === String(id)
+
+    if (own) {
+      user.value = loggedInUser.value
+      return
+    }
+
+    user.value = null
+    errorMessage.value = error?.response?.data?.message || 'Profile not found or failed to load.'
   }
-};
+}
+
+const loadConnectionStatus = async (id) => {
+  if (!loggedInUser.value?.id || String(loggedInUser.value.id) === String(id)) {
+    connectionStatus.value = 'self'
+    return
+  }
+
+  try {
+    const response = await api.get(`/connections/status/${id}`)
+    connectionStatus.value = response.data?.data?.status || 'none'
+  } catch {
+    connectionStatus.value = 'none'
+  }
+}
+
+const sendConnectionRequest = async () => {
+  if (!user.value?.id) return
+
+  try {
+    await api.post('/connections/request', { user_id: user.value.id })
+    connectionStatus.value = 'pending'
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to send connection request.'
+  }
+}
 
 const changePassword = async () => {
-  passwordError.value = "";
-  passwordMessage.value = "";
+  passwordError.value = ''
+  passwordMessage.value = ''
 
   if (newPassword.value !== newPasswordConfirmation.value) {
-    passwordError.value = "New password confirmation does not match.";
-    return;
+    passwordError.value = 'New password confirmation does not match.'
+    return
   }
 
-  passwordLoading.value = true;
+  passwordLoading.value = true
   try {
-    await api.post("/profile/change-password", {
+    await api.post('/profile/change-password', {
       old_password: oldPassword.value,
       new_password: newPassword.value,
       new_password_confirmation: newPasswordConfirmation.value,
-    });
+    })
 
-    oldPassword.value = "";
-    newPassword.value = "";
-    newPasswordConfirmation.value = "";
-    passwordMessage.value = "Password changed successfully.";
+    oldPassword.value = ''
+    newPassword.value = ''
+    newPasswordConfirmation.value = ''
+    passwordMessage.value = 'Password changed successfully.'
   } catch (error) {
-    passwordError.value =
-      error.response?.data?.message || "Failed to change password.";
+    passwordError.value = error.response?.data?.message || 'Failed to change password.'
   } finally {
-    passwordLoading.value = false;
+    passwordLoading.value = false
   }
-};
+}
 
 watch(
   () => route.params.id,
   (id) => {
-    if (id) loadProfile(id);
+    if (id) {
+      loadProfile(id)
+      loadConnectionStatus(id)
+    }
   }
-);
+)
 
 onMounted(async () => {
-  await loadLoggedInUser();
+  await loadLoggedInUser()
   if (route.params.id) {
-    await loadProfile(route.params.id);
+    await loadProfile(route.params.id)
+    await loadConnectionStatus(route.params.id)
   }
-});
+})
 </script>

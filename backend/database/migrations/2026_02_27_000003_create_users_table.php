@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
@@ -24,8 +21,7 @@ return new class extends Migration
             $table->text('bio')->nullable();
             $table->text('skills')->nullable();
             $table->string('avatar')->nullable();
-            $table->string('avatar_url')->nullable();
-            $table->string('cover_url')->nullable();
+            $table->string('cover')->nullable();
             $table->string('location')->nullable();
             $table->unsignedSmallInteger('graduate_year')->nullable();
             $table->string('current_job')->nullable();
@@ -35,9 +31,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');
