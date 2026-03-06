@@ -10,7 +10,11 @@ class PostController extends Controller
 {
     public function index()
     {
-        return Post::with('user')->latest()->get();
+        $posts = Post::with('user')
+            ->latest()
+            ->paginate(5);
+
+        return response()->json($posts);
     }
 
     // store post
@@ -22,7 +26,7 @@ class PostController extends Controller
         ]);
 
         $post = Post::create([
-            'user_id' => auth() -> id(), // safer
+            'user_id' => auth()->id(), // safer
             'title' => $request->title,
             'content' => $request->content,
         ]);

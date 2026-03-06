@@ -1,3 +1,4 @@
+import { data } from "autoprefixer";
 import api from "./api";
 
 // Register
@@ -33,3 +34,11 @@ export const getProfile = (data) => {
 export const getUser = (data) => {
     return api.get("/users/" + data)
 }
+// posts
+export const createPosts = (data, config) => {
+    return api.post("/posts", data, config)
+}
+// getpost
+export const getPosts = (page = 1) => {
+  return api.get(`/posts?page=${page}`);
+};

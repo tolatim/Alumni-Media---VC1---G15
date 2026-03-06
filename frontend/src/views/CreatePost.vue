@@ -47,7 +47,7 @@
 
 <script>
 import axios from 'axios'
-
+import { createPosts } from '@/services/authService';
 export default {
 
   data() {
@@ -55,7 +55,8 @@ export default {
       posts: [],
       title: '',
       content: '',
-      isPosting: false
+      isPosting: false,
+      token: localStorage.getItem('token')
     };
   },
 
@@ -67,24 +68,20 @@ export default {
 
  mounted() {
   const token = localStorage.getItem('token');
-  if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 },
   methods: {
-    async fetchPosts(){
-      try {
-        const res = await axios.get('http://127.0.0.1:8000/api/posts');
-        this.posts = res.data;
-      } catch (error) {
-        console.error(error);
-        errorMessage.value = 'Failed to load posts'
-      }
-    },
     async submitPost() {
+      this.isPosting = true;
+      console.log(this.token)
       try {
-      const res = axios.post('http://127.0.0.1:8000/api/posts',{
+      const res = await createPosts({
         title: this.title,
         content:this.content
-      }, 
+      },{
+      headers: {
+        Authorization: `Bearer ${this.token}`
+      },
+    },
     );
       
       console.log ('Post create:', res.data);
@@ -100,15 +97,6 @@ export default {
     } finally {
       this.isPosting = false;
     }
-    },
-
-    async deletePost(id) {
-      try {
-        await axios.delete(`http://127.0.0.1:8000/api/posts/${id}`);
-        this.fetchPosts();
-      } catch (error) {
-        console.error(error);
-      }
     },
     closeModal(){
       this.$emit('close');
