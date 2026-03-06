@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Notification extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public const UPDATED_AT = null;
 
@@ -35,11 +36,5 @@ class Notification extends Model
     public function notifiable()
     {
         return $this->morphTo();
-    }
-
-
-    public function notifications()
-    {
-        return $this->hasMany(Notification::class);
     }
 }
