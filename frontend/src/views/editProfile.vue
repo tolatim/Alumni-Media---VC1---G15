@@ -227,5 +227,5 @@ const saveProfile = async () => {
 
 const goBack = () => router.back();
 
-onMounted(loadProfile);
+onMounted(loadCurrentProfile);
 </script>

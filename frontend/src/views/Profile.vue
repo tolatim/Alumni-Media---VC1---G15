@@ -160,7 +160,6 @@
           </button>
         </form>
       </div>
-
     </div>
   </main>
 </template>
@@ -173,29 +172,31 @@ import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
 
-const oldPassword = ref("");
-const newPassword = ref("");
-const newPasswordConfirmation = ref("");
-const passwordLoading = ref(false);
-const passwordError = ref("");
-const passwordMessage = ref("");
+const route = useRoute()
+const user = ref(null)
+const errorMessage = ref('')
+const loggedInUser = ref(null)
+const connectionStatus = ref('none')
 
-const coverImage = computed(() => {
-  return user.value?.cover_url || defaultBackground;
-});
+const oldPassword = ref('')
+const newPassword = ref('')
+const newPasswordConfirmation = ref('')
+const passwordLoading = ref(false)
+const passwordError = ref('')
+const passwordMessage = ref('')
 
-const isOwnProfile = computed(() => {
-  return loggedInUser.value?.id === user.value?.id;
-});
+const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
+
+const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
 
 const skillsList = computed(() => {
-  const skills = user.value?.skills;
-  if (!skills) return [];
+  const skills = user.value?.profile?.skills
+  if (!skills) return []
   return skills
-    .split(",")
+    .split(',')
     .map((item) => item.trim())
-    .filter(Boolean);
-});
+    .filter(Boolean)
+})
 
 const quickInfo = computed(() => [
   { label: "First Name", value: user.value?.first_name },
@@ -208,67 +209,101 @@ const quickInfo = computed(() => [
 ]);
 
 const loadLoggedInUser = async () => {
-  const user_id = JSON.parse(localStorage.getItem("user")).id;
   try {
-    const response = await getUser(user_id);
-    loggedInUser.value = response.data.user;
+    const response = await api.get('/me')
+    loggedInUser.value = response.data
   } catch {
-    loggedInUser.value = null;
+    loggedInUser.value = null
   }
-};
+}
 
 const loadProfile = async (id) => {
-  errorMessage.value = "";
+  errorMessage.value = ''
 
   try {
-    const response = await getUser(id);
-    user.value = response.data.user;
-  } catch {
-    user.value = null;
-    errorMessage.value = "Profile not found or failed to load.";
+    const response = await api.get(`/profiles/${id}`)
+    user.value = response.data.data
+  } catch (error) {
+    const own = loggedInUser.value?.id && String(loggedInUser.value.id) === String(id)
+
+    if (own) {
+      user.value = loggedInUser.value
+      return
+    }
+
+    user.value = null
+    errorMessage.value = error?.response?.data?.message || 'Profile not found or failed to load.'
   }
-};
+}
+
+const loadConnectionStatus = async (id) => {
+  if (!loggedInUser.value?.id || String(loggedInUser.value.id) === String(id)) {
+    connectionStatus.value = 'self'
+    return
+  }
+
+  try {
+    const response = await api.get(`/connections/status/${id}`)
+    connectionStatus.value = response.data?.data?.status || 'none'
+  } catch {
+    connectionStatus.value = 'none'
+  }
+}
+
+const sendConnectionRequest = async () => {
+  if (!user.value?.id) return
+
+  try {
+    await api.post('/connections/request', { user_id: user.value.id })
+    connectionStatus.value = 'pending'
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to send connection request.'
+  }
+}
 
 const changePassword = async () => {
-  passwordError.value = "";
-  passwordMessage.value = "";
+  passwordError.value = ''
+  passwordMessage.value = ''
 
   if (newPassword.value !== newPasswordConfirmation.value) {
-    passwordError.value = "New password confirmation does not match.";
-    return;
+    passwordError.value = 'New password confirmation does not match.'
+    return
   }
 
-  passwordLoading.value = true;
+  passwordLoading.value = true
   try {
-    await api.post("/profile/change-password", {
+    await api.post('/profile/change-password', {
       old_password: oldPassword.value,
       new_password: newPassword.value,
       new_password_confirmation: newPasswordConfirmation.value,
-    });
+    })
 
-    oldPassword.value = "";
-    newPassword.value = "";
-    newPasswordConfirmation.value = "";
-    passwordMessage.value = "Password changed successfully.";
+    oldPassword.value = ''
+    newPassword.value = ''
+    newPasswordConfirmation.value = ''
+    passwordMessage.value = 'Password changed successfully.'
   } catch (error) {
-    passwordError.value =
-      error.response?.data?.message || "Failed to change password.";
+    passwordError.value = error.response?.data?.message || 'Failed to change password.'
   } finally {
-    passwordLoading.value = false;
+    passwordLoading.value = false
   }
-};
+}
 
 watch(
   () => route.params.id,
   (id) => {
-    if (id) loadProfile(id);
+    if (id) {
+      loadProfile(id)
+      loadConnectionStatus(id)
+    }
   }
-);
+)
 
 onMounted(async () => {
-  await loadLoggedInUser();
+  await loadLoggedInUser()
   if (route.params.id) {
-    await loadProfile(route.params.id);
+    await loadProfile(route.params.id)
+    await loadConnectionStatus(route.params.id)
   }
 })
 </script>

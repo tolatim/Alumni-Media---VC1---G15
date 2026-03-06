@@ -33,7 +33,7 @@
             >
               <div class="flex items-center justify-between gap-4">
                 <RouterLink :to="{ name: 'Profile', params: { id: request.requester?.id } }" class="flex items-center gap-3 min-w-0">
-                  <img :src="request.requester?.profile?.avatar" class="w-11 h-11 rounded-full object-cover">
+                  <img :src="request.requester?.profile?.avatar || fallbackAvatar" class="w-11 h-11 rounded-full object-cover">
                   <div class="min-w-0">
                     <p class="font-medium text-gray-800 truncate">{{ request.requester?.name || 'Unknown user' }}</p>
                     <p class="text-xs text-gray-500 truncate">sent you a friend request</p>
@@ -68,7 +68,7 @@
               class="flex items-center justify-between gap-4 border rounded-lg p-3"
             >
               <RouterLink :to="{ name: 'Profile', params: { id: person.id } }" class="flex items-center gap-3 min-w-0">
-                <img :src="person.profile?.avatar" class="w-10 h-10 rounded-full object-cover">
+                <img :src="person.profile?.avatar || fallbackAvatar" class="w-10 h-10 rounded-full object-cover">
                 <div class="min-w-0">
                   <p class="font-medium text-gray-800 truncate">{{ person.name }}</p>
                   <p class="text-xs text-gray-500 truncate">{{ person.profile?.headline || 'Alumni member' }}</p>
@@ -99,7 +99,7 @@
                 :to="{ name: 'Profile', params: { id: friend.id } }"
                 class="flex items-center gap-3 "
               >
-                <img :src="friend.profile?.avatar" class="w-9 h-9 rounded-full object-cover">
+                <img :src="friend.profile?.avatar || fallbackAvatar" class="w-9 h-9 rounded-full object-cover">
                 <div class="min-w-0">
                   <p class="text-sm font-medium text-gray-800 truncate">{{ friend.name }}</p>
                   <p class="text-xs text-gray-500 truncate">{{ friend.profile?.headline || 'Connected' }}</p>
@@ -140,7 +140,7 @@
 import { computed, onMounted, ref } from 'vue'
 import Navbar from '@/components/ui/nav.vue'
 import api from '@/services/api'
-
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 const errorMessage = ref('')
 const pendingRequests = ref([])
 const suggestions = ref([])
