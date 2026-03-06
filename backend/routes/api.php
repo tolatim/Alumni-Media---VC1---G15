@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connections/{id}/reject', [UserController::class, 'rejectConnection']);
     Route::post('/connections/user/{userId}/unfriend', [UserController::class, 'unfriend']);
     Route::post('/connections/user/{userId}/block', [UserController::class, 'blockUser']);
+
+    Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::get('/messages/{userId}', [MessageController::class, 'index']);
+    Route::post('/messages/{userId}', [MessageController::class, 'store']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/suggestions', [UserController::class, 'suggestions']);

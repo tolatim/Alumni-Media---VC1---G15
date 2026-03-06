@@ -2,81 +2,131 @@
   <div class="col-span-3 space-y-6 sticky top-6 h-[calc(100vh-1.5rem)] overflow-y-auto pr-2">
 
     <!-- Profile Card -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition hover:shadow-lg">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-xl transition duration-300">
 
       <!-- Cover -->
-      <div class="relative h-24 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600">
+      <div class="relative h-28 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600">
         <img
-          v-if="user?.cover_url"
-          :src="user.cover_url"
-          class="absolute inset-0 w-full h-full object-cover opacity-40"
-        />
+          :src="user?.profile?.avatar || fallbackAvatar"
+          class="w-20 h-20 rounded-full border-4 border-white absolute -bottom-10 left-1/2 -translate-x-1/2 object-cover shadow-md"
+        >
       </div>
 
-      <!-- Avatar -->
-      <div class="flex justify-center relative">
-        <div class="-mt-12">
-          <img
-            :src="user?.avatar_url || defaultAvatar"
-            class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover bg-white ring-1 ring-gray-200"
-          />
-        </div>
-      </div>
+      <!-- User Info -->
+      <div class="pt-12 pb-6 px-6 text-center">
+        <h3 class="font-semibold text-lg text-gray-800">
+          {{ user?.first_name || 'Guest User' }}
+        </h3>
 
-      <!-- Info -->
-      <div class="px-6 pb-6 text-center">
-        <h3 class="mt-4 text-lg font-semibold text-gray-900">{{ fullName }}</h3>
-        <p class="text-sm text-gray-600 mt-1">{{ user?.headline || user?.current_job || 'Alumni Member' }}</p>
-        <p class="text-xs text-gray-400 mt-1">{{ user?.location || 'Phnom Penh, Cambodia' }}</p>
+        <p class="text-sm text-gray-500 mt-1">
+          {{ user?.profile?.headline || user?.profile?.current_job || 'Welcome to Alumni Media' }}
+        </p>
 
         <RouterLink
           v-if="user"
           :to="{ name: 'Profile', params: { id: user.id } }"
-          class="inline-block mt-4 text-sm font-medium text-blue-600 hover:text-blue-700 transition"
+          class="inline-block mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700 transition"
         >
-          View profile
+          View Profile →
         </RouterLink>
       </div>
 
       <!-- Divider -->
       <div class="border-t border-gray-100"></div>
 
-      <!-- Stats -->
-      <div class="px-6 py-4 text-sm space-y-2">
-        <div class="flex justify-between items-center py-2 hover:bg-gray-50 px-2 rounded-lg transition cursor-pointer">
-          <span class="text-gray-600">Connections</span>
-          <span class="font-semibold text-blue-600">{{ user?.connections_count ?? 0 }}</span>
-        </div>
-        <div class="flex justify-between items-center py-2 hover:bg-gray-50 px-2 rounded-lg transition cursor-pointer">
-          <span class="text-gray-600">Profile Views</span>
-          <span class="font-semibold text-blue-600">{{ user?.profile_views ?? 0 }}</span>
-        </div>
+      <!-- Menu -->
+      <div class="py-4 px-6 space-y-3 text-sm">
+
+        <RouterLink
+          to="/connection"
+          class="flex items-center justify-between text-gray-600 hover:text-blue-600 transition"
+        >
+          <span>Connections</span>
+          <span class="text-gray-400">→</span>
+        </RouterLink>
+
+        <p class="flex items-center justify-between text-gray-600 hover:text-blue-600 cursor-pointer transition">
+          <span>Groups</span>
+          <span class="text-gray-400">→</span>
+        </p>
+
+        <p class="flex items-center justify-between text-gray-600 hover:text-blue-600 cursor-pointer transition">
+          <span>Events</span>
+          <span class="text-gray-400">→</span>
+        </p>
+
       </div>
+
+      <!-- Divider -->
+      <div class="border-t border-gray-100"></div>
+
+      <!-- Logout -->
+      <div class="px-6 py-4">
+        <p
+          @click="logout"
+          class="text-sm text-red-600 font-semibold cursor-pointer hover:text-red-700 transition"
+        >
+          Logout
+        </p>
+      </div>
+
     </div>
 
+
     <!-- Quick Links -->
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 transition hover:shadow-lg">
-      <h4 class="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-4">Quick Links</h4>
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-xl transition duration-300">
+
+      <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+        Quick Links
+      </h4>
+
       <div class="space-y-3 text-sm">
-        <RouterLink to="/groups" class="block text-gray-600 hover:text-blue-600 transition">Groups</RouterLink>
-        <RouterLink to="/events" class="block text-gray-600 hover:text-blue-600 transition">Events</RouterLink>
-        <RouterLink to="/connections" class="block text-gray-600 hover:text-blue-600 transition">Connections</RouterLink>
+
+        <RouterLink
+          to="/groups"
+          class="flex justify-between items-center text-gray-600 hover:text-blue-600 transition"
+        >
+          Groups
+          <span class="text-gray-400">→</span>
+        </RouterLink>
+
+        <RouterLink
+          to="/events"
+          class="flex justify-between items-center text-gray-600 hover:text-blue-600 transition"
+        >
+          Events
+          <span class="text-gray-400">→</span>
+        </RouterLink>
+
+        <RouterLink
+          to="/connections"
+          class="flex justify-between items-center text-gray-600 hover:text-blue-600 transition"
+        >
+          Connections
+          <span class="text-gray-400">→</span>
+        </RouterLink>
+
       </div>
+
     </div>
 
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import defaultAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { useRouter } from "vue-router"
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
-const props = defineProps({
-  user: { type: Object, default: null },
+defineProps({
+  user: {
+    type: Object,
+    default: null,
+  },
 })
-
-const fullName = computed(() => {
-  if (!props.user) return 'Guest User'
-  return `${props.user.first_name || ''} ${props.user.last_name || ''}`.trim()
-})
+const router = useRouter()
+const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  router.push("/login"); // redirect to login page
+};
 </script>

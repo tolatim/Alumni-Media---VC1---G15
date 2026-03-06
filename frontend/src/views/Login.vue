@@ -294,7 +294,7 @@ async function login() {
     localStorage.setItem("token", res.data.token);
     localStorage.setItem("user", JSON.stringify(res.data.user));
     const user_role = JSON.parse(localStorage.getItem('user')).role
-    if(user_role === 'alumni'){
+    if(user_role.name === 'alumni'){
       router.push("/");
     }else{
       router.push("/admin")

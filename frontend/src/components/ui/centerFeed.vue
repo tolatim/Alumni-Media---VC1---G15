@@ -6,7 +6,7 @@
       <form @submit.prevent="submitPost">
         <div class="flex items-center gap-3">
           <img
-            :src="currentUser?.avatar_url || defaultAvatar"
+            :src="currentUser?.profile?.avatar || fallbackAvatar"
             class="w-10 h-10 rounded-full object-cover"
           />
           <input
@@ -16,16 +16,40 @@
             class="flex-1 bg-gray-100 rounded-full px-4 py-2 focus:outline-none"
           />
         </div>
-        <p v-if="errorMessage" class="text-red-500 text-sm mt-2">{{ errorMessage }}</p>
-        <div class="flex justify-end mt-4">
+      </form>
+
+      <!-- Create Post -->
+      <div
+        class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col gap-3 hover:shadow-md transition"
+      >
+        <div class="flex items-center gap-3">
+          <img
+            :src="posts.user?.profile?.avatar || fallbackAvatar"
+            class="w-10 h-10 rounded-full object-cover"
+          />
+          <div>
+            <h4 class="font-semibold">
+              {{ posts.user?.name || "Unknown user" }}
+            </h4>
+            <p class="text-xs text-gray-500">
+              {{ formatDate(posts.created_at) }} � Public
+            </p>
+          </div>
+        </div>
+
+        <p v-if="errorMessage" class="text-red-500 text-xs">
+          {{ errorMessage }}
+        </p>
+
+        <div class="flex justify-end">
           <button
-            type="submit"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            @click="post"
+            class="bg-blue-600 text-white px-4 py-1.5 rounded-full hover:bg-blue-700 transition text-sm font-medium"
           >
             Post
           </button>
         </div>
-      </form>
+      </div>
     </div>
 
     <!-- Posts -->
@@ -44,31 +68,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from "vue"
-import api from "@/services/api"
-import defaultAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp"
-
-const posts = ref([])
-const page = ref(1)
-const lastPage = ref(null)
-const loading = ref(false)
-
-const postContent = ref("")
-const errorMessage = ref("")
-const loadTrigger = ref(null)
+import { ref } from "vue";
+import api from "@/services/api";
+import fallbackAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
 
 const props = defineProps({
-  currentUser: Object
-})
+  posts: {
+    type: Array,
+    default: () => [],
+  },
+  currentUser: {
+    type: Object,
+    default: null,
+  },
+});
 
-function formatDate(date){
-  return new Date(date).toLocaleString()
-}
+const emit = defineEmits(["post-created"]);
 
-// Load posts
-const loadPosts = async () => {
-  if(loading.value) return
-  if(lastPage.value && page.value > lastPage.value) return
+const postContent = ref("");
+const isPosting = ref(false);
+const errorMessage = ref("");
 
   loading.value = true
   try {
@@ -80,42 +99,33 @@ const loadPosts = async () => {
     console.error(err)
   }
   loading.value = false
-}
 
 // Submit new post
 const submitPost = async () => {
-  if(!postContent.value.trim()){
-    errorMessage.value = "Post cannot be empty"
-    return
+  errorMessage.value = "";
+
+  if (!postContent.value.trim()) {
+    errorMessage.value = "Post content is required.";
+    return;
   }
 
+  isPosting.value = true;
   try {
-    const res = await api.post("/posts", {
-      title: postContent.value,
-      content: postContent.value
-    })
-    posts.value.unshift(res.data.post)
-    postContent.value = ""
-  } catch (err) {
-    console.error(err)
-    errorMessage.value = "Failed to post"
+    const response = await api.post("/posts", {
+      post_content: postContent.value.trim(),
+    });
+
+    emit("post-created", response.data.data);
+    postContent.value = "";
+  } catch {
+    errorMessage.value = "Failed to create post. Please try again.";
+  } finally {
+    isPosting.value = false;
   }
-}
+};
 
-// Infinite scroll
-onMounted(async () => {
-  await loadPosts()
-
-  nextTick(() => {
-    const observer = new IntersectionObserver((entries) => {
-      if(entries[0].isIntersecting){
-        loadPosts()
-      }
-    }, { rootMargin: "200px" })
-
-    if(loadTrigger.value){
-      observer.observe(loadTrigger.value)
-    }
-  })
-})
+const formatDate = (value) => {
+  if (!value) return "Unknown time";
+  return new Date(value).toLocaleString();
+};
 </script>
