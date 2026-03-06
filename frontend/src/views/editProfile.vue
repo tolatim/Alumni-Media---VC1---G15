@@ -6,7 +6,7 @@
 
     <div class="bg-white rounded-xl shadow-md overflow-hidden max-w-4xl mx-auto">
       <div class="h-48 relative">
-        <img :src="coverPreview || defaultCover" class="w-full h-full object-cover">
+        <img :src="coverPreview || defaultCover" class="w-full h-full object-cover" />
 
         <div class="absolute -bottom-12 left-8">
           <img :src="avatarPreview || fallbackAvatar" class="w-24 h-24 rounded-full border-4 border-white object-cover" />
@@ -52,16 +52,7 @@
             <label class="block text-sm text-gray-600 mb-1">Graduate Year</label>
             <input v-model.number="form.graduate_year" type="number" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none" />
           </div>
-          
         </div>
-        <!-- Main content – spacious -->
-        <div class="pt-20 lg:pt-24 px-7 sm:px-10 lg:px-14 pb-16 lg:pb-20">
-          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Edit profile
-          </h2>
-          <p class="text-sm text-gray-600 mb-10">
-            Update your professional details
-          </p>
 
         <div class="mt-6">
           <label class="block text-sm text-gray-600 mb-1">Location</label>
@@ -107,7 +98,6 @@
       </div>
     </div>
   </div>
-  </div>
 </template>
 
 <script setup>
@@ -129,10 +119,12 @@ const avatarFilePreview = ref('')
 const coverFilePreview = ref('')
 
 const form = reactive({
-  headline: "",
-  current_job: "",
-  company: "",
-  phone: "",
+  first_name: '',
+  last_name: '',
+  headline: '',
+  current_job: '',
+  company: '',
+  phone: '',
   graduate_year: null,
   location: '',
   bio: '',
@@ -180,12 +172,13 @@ const loadCurrentProfile = async () => {
   } catch {
     errorMessage.value = 'Failed to load your profile.'
   }
-};
+}
 
 const saveProfile = async () => {
-  loading.value = true;
-  errorMessage.value = "";
-  successMessage.value = "";
+  loading.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
   try {
     const formData = new FormData()
     formData.append('_method', 'PUT')
@@ -221,11 +214,17 @@ const saveProfile = async () => {
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to save profile.'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const goBack = () => router.back();
+const goBack = () => {
+  if (currentUserId.value) {
+    router.push(`/profile/${currentUserId.value}`)
+  } else {
+    router.push('/')
+  }
+}
 
-onMounted(loadProfile);
+onMounted(loadCurrentProfile)
 </script>
