@@ -58,7 +58,9 @@ const loadHomeData = async () => {
     return
   }
 
-    // Update localStorage with fresh user data
+  posts.value = feedRes.status === 'fulfilled' ? (feedRes.value.data?.data || []) : []
+  suggestions.value = suggestionRes.status === 'fulfilled' ? (suggestionRes.value.data?.data || []) : []
+  pendingRequests.value = pendingRes.status === 'fulfilled' ? (pendingRes.value.data?.data || []) : []
 
   if (feedRes.status === 'rejected' || suggestionRes.status === 'rejected' || pendingRes.status === 'rejected') {
     errorMessage.value = 'Some home sections failed to load.'
