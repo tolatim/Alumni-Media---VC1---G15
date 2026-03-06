@@ -1,117 +1,141 @@
 <template>
   <Navbar />
 
-  <main class="bg-gray-100 min-h-screen py-6 px-4 sm:px-6">
-    <div class="max-w-7xl mx-auto grid grid-cols-12 gap-6">
-      <section class="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 space-y-4">
-        <div class="bg-white rounded-xl shadow p-5 sm:p-6">
-          <div class="flex items-center justify-between mb-5">
-            <h1 class="text-2xl font-semibold text-gray-800 tracking-tight">Create Post</h1>
-            <button
-              @click="closeModal"
-              class="text-sm text-gray-500 hover:text-gray-700 transition"
-            >
-              Close
-            </button>
+  <main class="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white py-8 px-4 sm:px-6">
+    <div class="mx-auto max-w-7xl grid grid-cols-12 gap-6">
+      <section class="col-span-12 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3 space-y-5">
+        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_40px_rgba(15,23,42,0.08)]">
+          <div class="border-b border-slate-100 bg-gradient-to-r from-cyan-50 via-white to-blue-50 px-5 py-5 sm:px-7">
+            <div class="flex items-center justify-between">
+              <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Create Post</h1>
+              <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Draft
+              </span>
+            </div>
+            <p class="mt-2 text-sm text-slate-500">Share an update with text, images, or video.</p>
           </div>
 
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">Title</label>
-              <input
-                v-model="title"
-                type="text"
-                maxlength="140"
-                placeholder="Enter title..."
-                class="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <p class="text-xs text-gray-400 mt-1 text-right">{{ title.trim().length }}/140</p>
+          <div class="p-5 sm:p-7">
+            <div class="mb-5 flex items-center justify-end">
+              <button
+                @click="closeModal"
+                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">Content</label>
-              <textarea
-                v-model="content"
-                rows="6"
-                maxlength="2000"
-                placeholder="What's on your mind?"
-                class="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              ></textarea>
-              <div class="text-xs text-gray-400 mt-1 flex items-center justify-between">
-                <span>{{ canPost ? 'Ready to post' : 'Add title or content' }}</span>
-                <span>{{ content.trim().length }}/2000</span>
+            <div class="space-y-5">
+              <div>
+                <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Title</label>
+                <input
+                  v-model="title"
+                  type="text"
+                  maxlength="140"
+                  placeholder="Write a strong title..."
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                />
+                <p class="mt-1 text-right text-xs text-slate-400">{{ title.trim().length }}/140</p>
               </div>
-            </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">Images</label>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                @change="onImagesChange"
-                class="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <p class="text-xs text-gray-400 mt-1">You can upload up to 10 images.</p>
+              <div>
+                <div class="mb-2 flex items-center justify-between">
+                  <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Content</label>
+                  <span class="text-xs text-slate-400">{{ content.trim().length }}/2000</span>
+                </div>
+                <textarea
+                  v-model="content"
+                  rows="7"
+                  maxlength="2000"
+                  placeholder="What are you building, learning, or sharing today?"
+                  class="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                ></textarea>
+                <div class="mt-2 flex items-center justify-between text-xs">
+                  <span class="font-medium text-slate-500">{{ canPost ? 'Ready to publish' : 'Add title, content, or media' }}</span>
+                </div>
+              </div>
 
-              <div v-if="imagePreviews.length" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4">
+                <div class="mb-2 flex items-center justify-between">
+                  <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Media</label>
+                  <span class="text-xs font-medium text-slate-500">{{ images.length }}/10 selected</span>
+                </div>
+                <label
+                  for="post-media-input"
+                  class="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-cyan-300 hover:bg-cyan-50/40"
+                >
+                  <span>Add images or videos</span>
+                  <span class="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">Browse</span>
+                </label>
+                <input
+                  id="post-media-input"
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  @change="onImagesChange"
+                  class="hidden"
+                />
+                <p class="mt-2 text-xs text-slate-400">You can upload up to 10 files.</p>
+              </div>
+
+              <div v-if="imagePreviews.length" class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div
                   v-for="(preview, index) in imagePreviews"
                   :key="preview.url"
-                  class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                  class="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
                 >
                   <img
-  v-if="preview.type.startsWith('image')"
-  :src="preview.url"
-  class="w-full h-24 object-cover"
-/>
+                    v-if="preview.type.startsWith('image')"
+                    :src="preview.url"
+                    class="h-28 w-full object-cover sm:h-32"
+                  />
 
-<video
-  v-else
-  :src="preview.url"
-  class="w-full h-24 object-cover"
-  controls
-></video>
+                  <video
+                    v-else
+                    :src="preview.url"
+                    class="h-28 w-full object-cover sm:h-32"
+                    controls
+                  ></video>
                   <button
                     type="button"
                     @click="removeImage(index)"
-                    class="absolute top-1 right-1 text-xs bg-black/70 text-white px-2 py-0.5 rounded"
+                    class="absolute right-2 top-2 rounded-md bg-black/75 px-2 py-1 text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100"
                   >
                     Remove
                   </button>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="mt-6 flex justify-end gap-3">
-            <button
-              @click="closeModal"
-              class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
-            >
-              Cancel
-            </button>
+            <div class="mt-7 flex justify-end gap-3">
+              <button
+                @click="closeModal"
+                class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              >
+                Cancel
+              </button>
 
-            <button
-              @click="submitPost"
-              :disabled="!canPost || isPosting"
-              class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
-            >
-              {{ isPosting ? 'Posting...' : 'Post' }}
-            </button>
+              <button
+                @click="submitPost"
+                :disabled="!canPost || isPosting"
+                class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-cyan-700 hover:to-blue-700 disabled:opacity-60"
+              >
+                {{ isPosting ? 'Posting...' : 'Post Now' }}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow p-5">
-          <p class="text-xs uppercase tracking-wide text-gray-400">Preview</p>
-          <h2 class="font-semibold text-gray-800 mt-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Preview</p>
+            <span class="text-xs font-medium text-slate-500">{{ images.length }} media</span>
+          </div>
+          <h2 class="mt-2 text-lg font-semibold text-slate-800">
             {{ title.trim() || 'Your title will appear here' }}
           </h2>
-          <p class="text-gray-600 mt-2 whitespace-pre-line">
+          <p class="mt-2 whitespace-pre-line text-slate-600">
             {{ content.trim() || 'Your post content will appear here.' }}
-          </p>
-          <p class="text-xs text-gray-500 mt-2">
-            {{ images.length }} image(s) selected
           </p>
         </div>
       </section>
@@ -266,4 +290,3 @@ export default {
   }
 };
 </script>
-

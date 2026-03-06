@@ -129,6 +129,8 @@ const avatarFilePreview = ref('')
 const coverFilePreview = ref('')
 
 const form = reactive({
+  first_name: '',
+  last_name: '',
   headline: "",
   current_job: "",
   company: "",
@@ -227,5 +229,5 @@ const saveProfile = async () => {
 
 const goBack = () => router.back();
 
-onMounted(loadProfile);
+onMounted(loadCurrentProfile);
 </script>

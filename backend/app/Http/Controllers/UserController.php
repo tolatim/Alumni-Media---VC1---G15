@@ -34,7 +34,7 @@ class UserController extends Controller
 
         $query = Post::query()->latest()->with(['user.role']);
 
-        if (Schema::hasTable('post_media')) {
+        if (Schema::hasTable('media')) {
             $query->with(['media']);
         }
 
@@ -348,7 +348,7 @@ class UserController extends Controller
             $query->with([
                 'posts' => function ($postQuery) {
                     $postQuery->latest();
-                    if (Schema::hasTable('post_media')) {
+                    if (Schema::hasTable('media')) {
                         $postQuery->with('media');
                     }
 

@@ -16,6 +16,7 @@ Route::apiResource('/posts', PostController::class)->except(['store', 'update', 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
+    Route::post('/posts/{id}', [PostController::class, 'update']);
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::patch('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);

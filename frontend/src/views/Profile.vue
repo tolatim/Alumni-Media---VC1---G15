@@ -1,59 +1,60 @@
 <template>
   <Navbar />
 
-  <main class="bg-gray-100 min-h-screen py-6">
-    <div class="max-w-6xl mx-auto px-4">
-      <div v-if="errorMessage" class="bg-red-50 text-red-600 rounded-lg p-4 mb-4">
+  <main class="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white py-8">
+    <div class="mx-auto max-w-6xl px-4">
+      <div v-if="errorMessage" class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
         {{ errorMessage }}
       </div>
 
-      <div v-if="user" class="bg-white rounded-xl shadow overflow-hidden">
+      <div v-if="user" class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)]">
         <div class="h-60 w-full relative">
           <img :src="coverImage" class="w-full h-full object-cover">
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-900/35 via-slate-800/5 to-transparent"></div>
         </div>
 
-        <div class="px-6 pb-6 relative">
+        <div class="relative px-6 pb-6">
           <div class="absolute -top-16 left-6">
-            <img :src="user.profile?.avatar || fallbackAvatar" class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md">
+            <img :src="user.profile?.avatar || fallbackAvatar" class="h-32 w-32 rounded-full border-4 border-white object-cover shadow-xl">
           </div>
 
           <div class="pt-20">
-            <h1 class="text-2xl font-bold text-gray-800">{{ user.name }}</h1>
+            <h1 class="text-2xl font-bold text-slate-900">{{ user.name }}</h1>
 
-            <p class="text-gray-500 mt-1">
+            <p class="mt-1 text-slate-600">
               {{ user.profile?.headline || user.profile?.current_job || 'Add your headline' }}
             </p>
 
-            <p class="text-sm text-gray-400 mt-1">
+            <p class="mt-1 text-sm text-slate-500">
               {{ user.profile?.location || 'No location added' }}
             </p>
 
-            <div class="flex gap-4 mt-4" v-if="isOwnProfile">
+            <div class="mt-4 flex gap-3" v-if="isOwnProfile">
               <RouterLink
                 to="/profile/edit"
-                class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
+                class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-cyan-700 hover:to-blue-700"
               >
                 Edit Profile
               </RouterLink>
             </div>
-            <div class="flex gap-4 mt-4" v-else>
+            <div class="mt-4 flex gap-3" v-else>
               <RouterLink
                 v-if="connectionStatus === 'accepted'"
                 :to="`/message/${user.id}`"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition"
+                class="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-indigo-700"
               >
                 Message
               </RouterLink>
               <button
                 v-else-if="connectionStatus === 'none'"
                 @click="sendConnectionRequest"
-                class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition"
+                class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-cyan-700 hover:to-blue-700"
               >
                 Connect
               </button>
               <span
                 v-else-if="connectionStatus === 'pending'"
-                class="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-600"
+                class="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600"
               >
                 Pending Request
               </span>
@@ -62,60 +63,60 @@
         </div>
       </div>
 
-      <div v-if="user" class="bg-white rounded-xl shadow mt-6 p-6">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">User Information</h2>
+      <div v-if="user" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-4 text-lg font-semibold text-slate-900">User Information</h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div class="bg-gray-50 rounded-lg p-3">
-            <p class="text-gray-500">Name</p>
-            <p class="text-gray-800 font-medium">{{ user.name || 'Not provided' }}</p>
+        <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p class="text-slate-500">Name</p>
+            <p class="font-medium text-slate-800">{{ user.name || 'Not provided' }}</p>
           </div>
 
-          <div class="bg-gray-50 rounded-lg p-3">
-            <p class="text-gray-500">Email</p>
-            <p class="text-gray-800 font-medium">{{ user.email || 'Not provided' }}</p>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p class="text-slate-500">Email</p>
+            <p class="font-medium text-slate-800">{{ user.email || 'Not provided' }}</p>
           </div>
 
-          <div class="bg-gray-50 rounded-lg p-3">
-            <p class="text-gray-500">Phone</p>
-            <p class="text-gray-800 font-medium">{{ user.profile?.phone || 'Not provided' }}</p>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p class="text-slate-500">Phone</p>
+            <p class="font-medium text-slate-800">{{ user.profile?.phone || 'Not provided' }}</p>
           </div>
 
-          <div class="bg-gray-50 rounded-lg p-3">
-            <p class="text-gray-500">Current Job</p>
-            <p class="text-gray-800 font-medium">{{ user.profile?.current_job || 'Not provided' }}</p>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p class="text-slate-500">Current Job</p>
+            <p class="font-medium text-slate-800">{{ user.profile?.current_job || 'Not provided' }}</p>
           </div>
 
-          <div class="bg-gray-50 rounded-lg p-3">
-            <p class="text-gray-500">Company</p>
-            <p class="text-gray-800 font-medium">{{ user.profile?.company || 'Not provided' }}</p>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p class="text-slate-500">Company</p>
+            <p class="font-medium text-slate-800">{{ user.profile?.company || 'Not provided' }}</p>
           </div>
 
-          <div class="bg-gray-50 rounded-lg p-3">
-            <p class="text-gray-500">Graduate Year</p>
-            <p class="text-gray-800 font-medium">{{ user.profile?.graduate_year || 'Not provided' }}</p>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p class="text-slate-500">Graduate Year</p>
+            <p class="font-medium text-slate-800">{{ user.profile?.graduate_year || 'Not provided' }}</p>
           </div>
         </div>
 
-        <div class="mt-4 bg-gray-50 rounded-lg p-3">
-          <p class="text-gray-500 mb-2">Skills</p>
+        <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p class="mb-2 text-slate-500">Skills</p>
           <div v-if="skillsList.length" class="flex flex-wrap gap-2">
             <span
               v-for="skill in skillsList"
               :key="skill"
-              class="text-xs bg-teal-100 text-teal-800 px-2 py-1 rounded-full"
+              class="rounded-full bg-cyan-100 px-2 py-1 text-xs font-semibold text-cyan-800"
             >
               {{ skill }}
             </span>
           </div>
-          <p v-else class="text-gray-800 font-medium text-sm">Not provided</p>
+          <p v-else class="text-sm font-medium text-slate-800">Not provided</p>
         </div>
       </div>
 
 
 
-      <div v-if="user" class="bg-white rounded-xl shadow mt-6 p-6">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">
+      <div v-if="user" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-4 text-lg font-semibold text-slate-900">
           {{ isOwnProfile ? 'My Posts' : `${user.name}'s Posts` }}
         </h2>
 
@@ -123,36 +124,76 @@
           <article
             v-for="post in sortedPosts"
             :key="post.id"
-            class="rounded-lg border border-gray-200 p-4"
+            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
           >
-            <h3 v-if="editingPostId !== post.id && post.title" class="text-base font-semibold text-gray-800">
+            <h3 v-if="editingPostId !== post.id && post.title" class="px-4 pt-4 text-base font-semibold text-slate-900">
               {{ post.title }}
             </h3>
-            <div v-if="editingPostId === post.id" class="space-y-2">
+            <div v-if="editingPostId === post.id" class="space-y-3 p-4">
               <input
                 v-model="editTitle"
                 type="text"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                 placeholder="Post title"
               />
               <textarea
                 v-model="editContent"
                 rows="4"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                 placeholder="Post content"
               />
+              <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Replace media (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  @change="onEditMediaChange"
+                  class="block w-full text-xs text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-700"
+                />
+                <p class="mt-1 text-[11px] text-slate-500">
+                  First selected file replaces first old media. More selected files are added.
+                </p>
+                <button
+                  v-if="editMediaFiles.length"
+                  type="button"
+                  @click="clearEditMediaSelection"
+                  class="mt-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Clear selected files
+                </button>
+              </div>
+              <div v-if="editMediaPreviews.length" class="grid grid-cols-2 gap-2">
+                <template v-for="preview in editMediaPreviews" :key="preview.url">
+                  <img
+                    v-if="preview.type.startsWith('image/')"
+                    :src="preview.url"
+                    alt="Selected image"
+                    class="w-full max-h-40 rounded-lg border border-slate-200 object-cover"
+                  >
+                  <video
+                    v-else
+                    :src="preview.url"
+                    class="w-full max-h-40 rounded-lg border border-slate-200 bg-black object-cover"
+                    controls
+                    preload="metadata"
+                  ></video>
+                </template>
+              </div>
               <div class="flex gap-2">
                 <button
                   @click="savePostEdit(post.id)"
                   :disabled="postActionLoading"
-                  class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  class="rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:from-cyan-700 hover:to-blue-700 disabled:opacity-60"
                 >
                   Save
                 </button>
                 <button
                   @click="cancelPostEdit"
                   :disabled="postActionLoading"
-                  class="rounded-md bg-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-300 disabled:opacity-60"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -160,21 +201,41 @@
             </div>
 
 
-            <p v-else class="mt-2 whitespace-pre-line text-sm text-gray-700">{{ post.content }}</p>
-            <div class="mt-2 flex items-center justify-between">
-              <p class="text-xs text-gray-500">{{ formatPostDate(post.created_at) }}</p>
+            <p v-else class="mt-2 whitespace-pre-line px-4 text-sm text-slate-700">{{ post.content }}</p>
+            <div v-if="post.media?.length" class="mt-3 grid grid-cols-2 gap-2 px-4">
+              <template
+                v-for="media in post.media"
+                :key="media.id ?? media.file_path ?? media.media_url"
+              >
+                <img
+                  v-if="isImageMedia(media)"
+                  :src="getMediaSrc(media)"
+                  alt="Post image"
+                  class="w-full max-h-72 rounded-lg border border-slate-200 object-cover"
+                >
+                <video
+                  v-else-if="isVideoMedia(media)"
+                  :src="getMediaSrc(media)"
+                  class="w-full max-h-72 rounded-lg border border-slate-200 bg-black object-cover"
+                  controls
+                  preload="metadata"
+                ></video>
+              </template>
+            </div>
+            <div class="mt-3 flex items-center justify-between border-t border-slate-100 px-4 py-3">
+              <p class="text-xs text-slate-500">{{ formatPostDate(post.created_at) }}</p>
               <div v-if="isOwnProfile" class="flex gap-2">
                 <button
                   @click="startPostEdit(post)"
                   :disabled="postActionLoading"
-                  class="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                  class="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 disabled:opacity-60"
                 >
                   Edit
                 </button>
                 <button
                   @click="deletePost(post.id)"
                   :disabled="postActionLoading"
-                  class="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                 >
                   Delete
                 </button>
@@ -185,53 +246,53 @@
           </article>
         </div>
         
-        <p v-else class="text-sm text-gray-500">No posts yet.</p>
+        <p v-else class="text-sm text-slate-500">No posts yet.</p>
       </div>
 
       
-      <div v-if="user && isOwnProfile" class="bg-white rounded-xl shadow mt-6 p-6">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">Change Password</h2>
+      <div v-if="user && isOwnProfile" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-4 text-lg font-semibold text-slate-900">Change Password</h2>
 
-        <p v-if="passwordError" class="text-sm text-red-500 mb-3">{{ passwordError }}</p>
-        <p v-if="passwordMessage" class="text-sm text-green-600 mb-3">{{ passwordMessage }}</p>
+        <p v-if="passwordError" class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ passwordError }}</p>
+        <p v-if="passwordMessage" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ passwordMessage }}</p>
 
         <form @submit.prevent="changePassword" class="space-y-4">
           <div>
-            <label class="block text-sm text-gray-600 mb-1">Old Password</label>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Old Password</label>
             <input
               v-model="oldPassword"
               type="password"
               required
-              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
             />
           </div>
 
           <div>
-            <label class="block text-sm text-gray-600 mb-1">New Password</label>
+            <label class="mb-1 block text-sm font-medium text-slate-600">New Password</label>
             <input
               v-model="newPassword"
               type="password"
               required
               minlength="6"
-              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
             />
           </div>
 
           <div>
-            <label class="block text-sm text-gray-600 mb-1">Confirm New Password</label>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Confirm New Password</label>
             <input
               v-model="newPasswordConfirmation"
               type="password"
               required
               minlength="6"
-              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-teal-500 outline-none"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
             />
           </div>
 
           <button
             type="submit"
             :disabled="passwordLoading"
-            class="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-md disabled:opacity-60"
+            class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:from-cyan-700 hover:to-blue-700 disabled:opacity-60"
           >
             {{ passwordLoading ? 'Updating...' : 'Change Password' }}
           </button>
@@ -264,6 +325,8 @@ const passwordMessage = ref('')
 const editingPostId = ref(null)
 const editTitle = ref('')
 const editContent = ref('')
+const editMediaFiles = ref([])
+const editMediaPreviews = ref([])
 const postActionLoading = ref(false)
 
 const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
@@ -289,35 +352,104 @@ const formatPostDate = (value) => {
   return new Date(value).toLocaleString()
 }
 
+const getMediaSrc = (media) => media?.media_url || media?.file_path || ''
+
+const getMediaType = (media) => {
+  const explicitType = String(media?.type || '').toLowerCase()
+  if (explicitType === 'image' || explicitType === 'video') return explicitType
+
+  const src = getMediaSrc(media).toLowerCase()
+  if (/\.(mp4|mov|avi|webm|mkv)(\?|#|$)/.test(src)) return 'video'
+  if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|#|$)/.test(src)) return 'image'
+  return ''
+}
+
+const isImageMedia = (media) => getMediaType(media) === 'image'
+const isVideoMedia = (media) => getMediaType(media) === 'video'
+
 const startPostEdit = (post) => {
   editingPostId.value = post.id
   editTitle.value = post.title || ''
   editContent.value = post.content || ''
+  clearEditMediaSelection()
 }
 
 const cancelPostEdit = () => {
   editingPostId.value = null
   editTitle.value = ''
   editContent.value = ''
+  clearEditMediaSelection()
+}
+
+const clearEditMediaSelection = () => {
+  editMediaPreviews.value.forEach((preview) => {
+    if (preview?.url) {
+      URL.revokeObjectURL(preview.url)
+    }
+  })
+  editMediaFiles.value = []
+  editMediaPreviews.value = []
+}
+
+const onEditMediaChange = (event) => {
+  const files = Array.from(event.target.files || [])
+  if (!files.length) return
+
+  files.forEach((file) => {
+    editMediaFiles.value.push(file)
+    editMediaPreviews.value.push({
+      url: URL.createObjectURL(file),
+      type: file.type || '',
+    })
+  })
+
+  event.target.value = ''
 }
 
 const savePostEdit = async (postId) => {
-  if (!editContent.value.trim()) {
-    errorMessage.value = 'Post content is required.'
+  const hasTitle = !!editTitle.value.trim()
+  const hasContent = !!editContent.value.trim()
+  const hasNewMedia = editMediaFiles.value.length > 0
+  const currentPost = user.value?.posts?.find((item) => item.id === postId)
+  const hasExistingMedia = (currentPost?.media?.length || 0) > 0
+
+  if (!hasTitle && !hasContent && !hasNewMedia && !hasExistingMedia) {
+    errorMessage.value = 'Please add title, content, or at least one image/video.'
     return
   }
 
   postActionLoading.value = true
   try {
-    await api.put(`/posts/${postId}`, {
-      title: editTitle.value.trim(),
-      content: editContent.value.trim(),
-    })
+    if (editMediaFiles.value.length) {
+      const formData = new FormData()
+      formData.append('title', editTitle.value.trim())
+      formData.append('content', editContent.value.trim())
 
+      editMediaFiles.value.forEach((file) => {
+        if (file.type.startsWith('image/')) {
+          formData.append('images[]', file)
+        } else if (file.type.startsWith('video/')) {
+          formData.append('videos[]', file)
+        }
+      })
+
+      await api.post(`/posts/${postId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+    } else {
+      await api.put(`/posts/${postId}`, {
+        title: editTitle.value.trim(),
+        content: editContent.value.trim(),
+      })
+    }
+
+    await loadProfile(route.params.id)
     const post = user.value?.posts?.find((item) => item.id === postId)
-    if (post) {
-      post.title = editTitle.value.trim()
-      post.content = editContent.value.trim()
+    if (!post) {
+      cancelPostEdit()
+      return
     }
 
     cancelPostEdit()

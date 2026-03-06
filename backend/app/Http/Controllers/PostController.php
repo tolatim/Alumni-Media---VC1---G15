@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Media;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use Illuminate\Support\Facades\Storage;
@@ -88,7 +87,7 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $post = Post::find($id);
+        $post = Post::with('media')->find($id);
 
         if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
@@ -98,19 +97,88 @@ class PostController extends Controller
             return response()->json(['message' => 'You can edit only your own posts.'], 403);
         }
 
-        $request->validate([
-            'title' => 'nullable|string',
-            'content' => 'required|string',
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'content' => 'nullable|string',
+            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:10240',
+            'videos.*' => 'nullable|file|mimetypes:video/mp4,video/avi,video/mov,video/quicktime,video/webm|max:20480',
         ]);
 
+        $titleValue = trim((string) ($validated['title'] ?? ''));
+        $contentValue = trim((string) ($validated['content'] ?? ''));
+        $hasUploadedMedia = $request->hasFile('images') || $request->hasFile('videos');
+        $hasExistingMedia = $post->media()->exists();
+
+        if ($titleValue === '' && $contentValue === '' && !$hasUploadedMedia && !$hasExistingMedia) {
+            return response()->json([
+                'message' => 'Please add title, content, or at least one image/video.',
+            ], 422);
+        }
+
         $post->update([
-            'title' => $request->title,
-            'content' => $request->content,
+            'title' => $titleValue !== '' ? $titleValue : null,
+            'content' => $contentValue !== '' ? $contentValue : null,
         ]);
+
+        $uploadedMedia = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $imageFile) {
+                $uploadedMedia[] = [
+                    'file' => $imageFile,
+                    'type' => 'image',
+                    'dir' => 'posts/images',
+                ];
+            }
+        }
+        if ($request->hasFile('videos')) {
+            foreach ($request->file('videos') as $videoFile) {
+                $uploadedMedia[] = [
+                    'file' => $videoFile,
+                    'type' => 'video',
+                    'dir' => 'posts/videos',
+                ];
+            }
+        }
+
+        if (!empty($uploadedMedia)) {
+            $existingMedia = $post->media()->orderBy('id')->get();
+            $firstExisting = $existingMedia->first();
+            $firstUploaded = array_shift($uploadedMedia);
+
+            if ($firstUploaded) {
+                $newPath = $firstUploaded['file']->store($firstUploaded['dir'], 'public');
+
+                // Replace only the first old media item, keep others untouched.
+                if ($firstExisting) {
+                    if ($firstExisting->file_path && Storage::disk('public')->exists($firstExisting->file_path)) {
+                        Storage::disk('public')->delete($firstExisting->file_path);
+                    }
+
+                    $firstExisting->update([
+                        'file_path' => $newPath,
+                        'type' => $firstUploaded['type'],
+                    ]);
+                } else {
+                    $post->media()->create([
+                        'file_path' => $newPath,
+                        'type' => $firstUploaded['type'],
+                    ]);
+                }
+            }
+
+            // Any extra selected files are added as new media.
+            foreach ($uploadedMedia as $item) {
+                $path = $item['file']->store($item['dir'], 'public');
+                $post->media()->create([
+                    'file_path' => $path,
+                    'type' => $item['type'],
+                ]);
+            }
+        }
 
         return response()->json([
             'message' => 'Post updated successfully',
-            'post' => $post
+            'post' => $post->fresh()->load('media', 'user'),
         ]);
     }
 
