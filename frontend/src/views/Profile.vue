@@ -112,6 +112,83 @@
         </div>
       </div>
 
+
+
+      <div v-if="user" class="bg-white rounded-xl shadow mt-6 p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">
+          {{ isOwnProfile ? 'My Posts' : `${user.name}'s Posts` }}
+        </h2>
+
+        <div v-if="sortedPosts.length" class="space-y-4">
+          <article
+            v-for="post in sortedPosts"
+            :key="post.id"
+            class="rounded-lg border border-gray-200 p-4"
+          >
+            <h3 v-if="editingPostId !== post.id && post.title" class="text-base font-semibold text-gray-800">
+              {{ post.title }}
+            </h3>
+            <div v-if="editingPostId === post.id" class="space-y-2">
+              <input
+                v-model="editTitle"
+                type="text"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Post title"
+              />
+              <textarea
+                v-model="editContent"
+                rows="4"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Post content"
+              />
+              <div class="flex gap-2">
+                <button
+                  @click="savePostEdit(post.id)"
+                  :disabled="postActionLoading"
+                  class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  Save
+                </button>
+                <button
+                  @click="cancelPostEdit"
+                  :disabled="postActionLoading"
+                  class="rounded-md bg-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+
+            <p v-else class="mt-2 whitespace-pre-line text-sm text-gray-700">{{ post.content }}</p>
+            <div class="mt-2 flex items-center justify-between">
+              <p class="text-xs text-gray-500">{{ formatPostDate(post.created_at) }}</p>
+              <div v-if="isOwnProfile" class="flex gap-2">
+                <button
+                  @click="startPostEdit(post)"
+                  :disabled="postActionLoading"
+                  class="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                >
+                  Edit
+                </button>
+                <button
+                  @click="deletePost(post.id)"
+                  :disabled="postActionLoading"
+                  class="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+                >
+                  Delete
+                </button>
+              </div>
+
+              
+            </div>
+          </article>
+        </div>
+        
+        <p v-else class="text-sm text-gray-500">No posts yet.</p>
+      </div>
+
+      
       <div v-if="user && isOwnProfile" class="bg-white rounded-xl shadow mt-6 p-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">Change Password</h2>
 
@@ -184,6 +261,10 @@ const newPasswordConfirmation = ref('')
 const passwordLoading = ref(false)
 const passwordError = ref('')
 const passwordMessage = ref('')
+const editingPostId = ref(null)
+const editTitle = ref('')
+const editContent = ref('')
+const postActionLoading = ref(false)
 
 const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
 
@@ -197,6 +278,71 @@ const skillsList = computed(() => {
     .map((item) => item.trim())
     .filter(Boolean)
 })
+
+const sortedPosts = computed(() => {
+  const posts = user.value?.posts || []
+  return [...posts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+})
+
+const formatPostDate = (value) => {
+  if (!value) return 'Unknown time'
+  return new Date(value).toLocaleString()
+}
+
+const startPostEdit = (post) => {
+  editingPostId.value = post.id
+  editTitle.value = post.title || ''
+  editContent.value = post.content || ''
+}
+
+const cancelPostEdit = () => {
+  editingPostId.value = null
+  editTitle.value = ''
+  editContent.value = ''
+}
+
+const savePostEdit = async (postId) => {
+  if (!editContent.value.trim()) {
+    errorMessage.value = 'Post content is required.'
+    return
+  }
+
+  postActionLoading.value = true
+  try {
+    await api.put(`/posts/${postId}`, {
+      title: editTitle.value.trim(),
+      content: editContent.value.trim(),
+    })
+
+    const post = user.value?.posts?.find((item) => item.id === postId)
+    if (post) {
+      post.title = editTitle.value.trim()
+      post.content = editContent.value.trim()
+    }
+
+    cancelPostEdit()
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to update post.'
+  } finally {
+    postActionLoading.value = false
+  }
+}
+
+const deletePost = async (postId) => {
+  if (!confirm('Are you sure you want to delete this post?')) return
+
+  postActionLoading.value = true
+  try {
+    await api.delete(`/posts/${postId}`)
+    if (user.value?.posts) {
+      user.value.posts = user.value.posts.filter((item) => item.id !== postId)
+    }
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'Failed to delete post.'
+  } finally {
+    postActionLoading.value = false
+  }
+}
 
 const loadLoggedInUser = async () => {
   try {

@@ -44,17 +44,28 @@ class PostController extends Controller
     // update post
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
         $post = Post::find($id);
 
         if (!$post) {
-            return response()->json(['message' => 'Post not found', 404]);
+            return response()->json(['message' => 'Post not found'], 404);
+        }
+
+        if ((int) $post->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'You can edit only your own posts.'], 403);
         }
 
         $request->validate([
-            'content' => 'required|string'
+            'title' => 'nullable|string',
+            'content' => 'required|string',
         ]);
 
         $post->update([
+            'title' => $request->title,
             'content' => $request->content,
         ]);
 

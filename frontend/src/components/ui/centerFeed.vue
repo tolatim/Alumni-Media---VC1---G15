@@ -43,12 +43,15 @@
 
       <div class="mt-5 flex items-center justify-end gap-2">
         <button
+          v-if="canDelete(post)"
           type="button"
           class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold tracking-wide text-blue-700 transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1"
         >
           <span aria-hidden="true">Edit</span>
         </button>
         <button
+          v-if="canDelete(post)"
+          @click="deletePost(post.id)"
           type="button"
           class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-semibold tracking-wide text-red-700 transition hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-1"
         >
@@ -68,6 +71,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
 const props = defineProps({
@@ -81,17 +85,40 @@ const props = defineProps({
   },
 })
 
+
+const emit = defineEmits(['refreshPosts'])
 const searchQuery = ref('')
+const deletedPostIds = ref([])
 const filteredPosts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return props.posts
+  const visiblePosts = props.posts.filter((post) => !deletedPostIds.value.includes(post.id))
+  if (!query) return visiblePosts
 
-  return props.posts.filter((post) => {
+  return visiblePosts.filter((post) => {
     const title = (post?.title || '').toLowerCase()
     const content = (post?.content || '').toLowerCase()
     return title.includes(query) || content.includes(query)
   })
 })
+
+const deletePost = async (id) => {
+  if (!confirm('Are you sure you want to delete this post?')) return
+
+  try {
+    await api.delete(`/posts/${id}`)
+    deletedPostIds.value = [...deletedPostIds.value, id]
+    emit('refreshPosts')
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(error.response?.data?.message || 'Failed to delete post.')
+  }
+}
+
+const canDelete = (post) => {
+  const currentUserId = Number(props.currentUser?.id)
+  const ownerId = Number(post?.user_id ?? post?.user?.id)
+  return Number.isFinite(currentUserId) && Number.isFinite(ownerId) && currentUserId === ownerId
+}
 
 const formatDate = (value) => {
   if (!value) return 'Unknown time'

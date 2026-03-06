@@ -52,6 +52,6 @@ defineProps({
 const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  router.push("/login"); // redirect to login page
+  router.push("/login"); 
 };
 </script>

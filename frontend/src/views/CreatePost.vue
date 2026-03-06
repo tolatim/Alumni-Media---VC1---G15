@@ -143,8 +143,18 @@ export default {
     },
 
     async deletePost(id) {
+
+      if (!confirm("Are you sure you want to delete this post?")) {
+        return;
+      }
+
       try {
-        await axios.delete(`http://127.0.0.1:8000/api/posts/${id}`);
+        const response = await axios.delete(`http://127.0.0.1:8000/api/posts/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.token}`
+          }
+        });
         this.fetchPosts();
       } catch (error) {
         console.error(error);

@@ -18,3 +18,5 @@ export const getUser = (id) => api.get(`/users/${id}`)
 export const createPost = (data) => api.post('/posts', data)
 
 export const getPosts = () => api.get('/posts')
+
+export const deletePost = (id) => api.delete(`/posts/${id}`)
