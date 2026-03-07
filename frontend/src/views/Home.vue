@@ -8,6 +8,7 @@
         :posts="posts"
         :current-user="currentUser"
         @post-created="prependPost"
+        @refresh-posts="refreshPosts"
       />
 
       <userRightSideBar
@@ -73,6 +74,15 @@ const loadHomeData = async () => {
 
 const prependPost = (newPost) => {
   posts.value = [newPost, ...posts.value]
+}
+
+const refreshPosts = async () => {
+  try {
+    const response = await api.get('/feed')
+    posts.value = response.data?.data || []
+  } catch (error) {
+    console.error(error.response?.data || error)
+  }
 }
 
 const sendConnectionRequest = async (userId) => {

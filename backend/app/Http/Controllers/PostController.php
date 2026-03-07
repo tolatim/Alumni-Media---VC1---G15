@@ -11,7 +11,10 @@ class PostController extends Controller
 {
     public function index()
     {
-        return Post::with(['user', 'media'])->latest()->get();
+        return Post::with(['user', 'media'])
+            ->withCount(['likes', 'comments'])
+            ->latest()
+            ->get();
     }
 
     // store post
@@ -67,14 +70,16 @@ class PostController extends Controller
         // Return post with media
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post->load('media', 'user')
+            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments'])
         ], 201);
     }
 
     // show post
     public function show($id)
     {
-        $post = Post::with(['user', 'media'])->findOrFail($id);
+        $post = Post::with(['user', 'media'])
+            ->withCount(['likes', 'comments'])
+            ->findOrFail($id);
 
         return response()->json($post);
     }
@@ -178,7 +183,7 @@ class PostController extends Controller
 
         return response()->json([
             'message' => 'Post updated successfully',
-            'post' => $post->fresh()->load('media', 'user'),
+            'post' => $post->fresh()->load('media', 'user')->loadCount(['likes', 'comments']),
         ]);
     }
 
