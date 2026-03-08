@@ -7,7 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Models\Message;
 use App\Models\Notification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Route; 
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -26,12 +26,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connections/user/{userId}/unfriend', [UserController::class, 'unfriend']);
     Route::post('/connections/user/{userId}/block', [UserController::class, 'blockUser']);
 
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
-    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
-    Route::post('/notifications/{id}/undo', [NotificationController::class, 'undo']);
-
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
     Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::post('/messages/{userId}/read', [MessageController::class, 'markRead']);
     Route::get('/messages/{userId}', [MessageController::class, 'index']);
     Route::post('/messages/{userId}', [MessageController::class, 'store']);
     Route::get('/messages/unread-count', function (Request $request) {
@@ -77,4 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile/change-password', [UserController::class, 'changePassword']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+    Route::post('/notifications/{id}/undo', [NotificationController::class, 'undo']);
 });

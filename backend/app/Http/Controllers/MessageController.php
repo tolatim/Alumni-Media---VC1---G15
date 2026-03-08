@@ -10,6 +10,23 @@ use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
+    public function unreadCount(Request $request)
+    {
+        $me = $request->user();
+
+        $count = Message::query()
+            ->where('receiver_id', $me->id)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json([
+            'message' => 'Unread count fetched successfully',
+            'data' => [
+                'count' => $count,
+            ],
+        ]);
+    }
+
     public function contacts(Request $request)
     {
         $me = $request->user();
@@ -27,6 +44,18 @@ class MessageController extends Controller
         $contacts = $connections->map(function ($row) use ($me) {
             return $row->requester_id === $me->id ? $row->addressee : $row->requester;
         })->filter()->values();
+
+        $unreadMap = Message::query()
+            ->selectRaw('sender_id, COUNT(*) as unread_count')
+            ->where('receiver_id', $me->id)
+            ->whereNull('read_at')
+            ->groupBy('sender_id')
+            ->pluck('unread_count', 'sender_id');
+
+        $contacts = $contacts->map(function ($contact) use ($unreadMap) {
+            $contact->unread_count = (int) ($unreadMap[$contact->id] ?? 0);
+            return $contact;
+        });
 
         return response()->json([
             'message' => 'Contacts fetched successfully',
@@ -115,6 +144,27 @@ class MessageController extends Controller
             'message' => 'Message sent successfully',
             'data' => $message,
         ], 201);
+    }
+
+    public function markRead(Request $request, $userId)
+    {
+        $me = $request->user();
+        $targetId = (int) $userId;
+
+        $this->assertCanMessage($me->id, $targetId);
+
+        Message::query()
+            ->where('sender_id', $targetId)
+            ->where('receiver_id', $me->id)
+            ->whereNull('read_at')
+            ->update([
+                'read_at' => now(),
+                'status' => 'read',
+            ]);
+
+        return response()->json([
+            'message' => 'Messages marked as read successfully',
+        ]);
     }
 
     private function assertCanMessage(int $meId, int $targetId): void

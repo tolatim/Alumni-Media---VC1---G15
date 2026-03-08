@@ -10,14 +10,22 @@
             v-for="contact in contacts"
             :key="contact.id"
             @click="selectContact(contact)"
-            class="w-full text-left flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100"
+            class="w-full text-left flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-gray-100"
             :class="selectedUser?.id === contact.id ? 'bg-gray-100' : ''"
           >
-            <img :src="contact.profile?.avatar || fallbackAvatar" class="w-10 h-10 rounded-full object-cover" />
-            <div class="min-w-0">
-              <p class="text-sm font-medium truncate">{{ contact.name }}</p>
-              <p class="text-xs text-gray-500 truncate">{{ contact.profile?.headline || 'Friend' }}</p>
+            <div class="flex items-center gap-3 min-w-0">
+              <img :src="contact.profile?.avatar || fallbackAvatar" class="w-10 h-10 rounded-full object-cover" />
+              <div class="min-w-0">
+                <p class="text-sm font-medium truncate">{{ contact.name }}</p>
+                <p class="text-xs text-gray-500 truncate">{{ contact.profile?.headline || 'Friend' }}</p>
+              </div>
             </div>
+            <span
+              v-if="contact.unread_count > 0"
+              class="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-[18px] text-center"
+            >
+              {{ contact.unread_count > 99 ? '99+' : contact.unread_count }}
+            </span>
           </button>
 
           <p v-if="!contacts.length" class="text-sm text-gray-500">No friends available for messaging.</p>
@@ -125,6 +133,9 @@ const loadMessages = async (userId) => {
   try {
     const response = await api.get(`/messages/${userId}`)
     messages.value = response.data?.data || []
+    await api.post(`/messages/${userId}/read`)
+    await loadContacts()
+    window.dispatchEvent(new Event('messages:updated'))
   } catch (error) {
     messages.value = []
     errorMessage.value = error.response?.data?.message || 'Failed to load messages.'
@@ -161,6 +172,7 @@ const sendMessage = async () => {
 
     const response = await api.post(`/messages/${selectedUser.value.id}`, formData)
     messages.value = [...messages.value, response.data.data]
+    await loadContacts()
 
     form.value.content = ''
     form.value.mediaFile = null
