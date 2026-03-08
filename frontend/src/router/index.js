@@ -7,6 +7,7 @@ import EditProfile from '@/views/editProfile.vue'
 import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
+import Notification from '@/views/Notification.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -40,6 +41,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/notification',
+    name: 'Notification',
+    component: Notification,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile/edit',
     name: 'EditProfile',
     component: EditProfile,
@@ -63,6 +70,10 @@ const routes = [
     name: 'Profile',
     meta: { requiresAuth: true },
   },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/',
+  },
 ]
 
 const router = createRouter({
@@ -70,20 +81,18 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
 
   if (to.meta.requiresAuth && !token) {
-    next('/login')
-    return
+    return '/login'
   }
 
   if ((to.path === '/login' || to.path === '/register') && token) {
-    next('/')
-    return
+    return '/'
   }
 
-  next()
+  return true
 })
  
 

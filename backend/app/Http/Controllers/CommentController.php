@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Post;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
@@ -46,6 +47,9 @@ class CommentController extends Controller
             'user_id' => $user->id,
             'content' => trim($validated['content']),
         ]);
+
+        // Trigger notification
+        NotificationService::notifyPostCommented($post, $user);
 
         return response()->json([
             'message' => 'Comment added successfully',
