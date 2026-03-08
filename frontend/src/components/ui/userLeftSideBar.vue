@@ -114,8 +114,10 @@
 </template>
 
 <script setup>
-import { useRouter } from "vue-router"
+import { useRouter } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+
+const router = useRouter()
 
 defineProps({
   user: {
@@ -123,10 +125,11 @@ defineProps({
     default: null,
   },
 })
-const router = useRouter()
+
 const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  router.push("/login"); 
-};
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('user_id')
+  router.replace('/login')
+}
 </script>

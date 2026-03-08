@@ -47,7 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connections/user/{userId}/unfriend', [UserController::class, 'unfriend']);
     Route::post('/connections/user/{userId}/block', [UserController::class, 'blockUser']);
 
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
     Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::post('/messages/{userId}/read', [MessageController::class, 'markRead']);
     Route::get('/messages/{userId}', [MessageController::class, 'index']);
     Route::post('/messages/{userId}', [MessageController::class, 'store']);
 
