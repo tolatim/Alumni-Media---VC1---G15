@@ -14,7 +14,8 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::apiResource('/users', UserController::class);
 Route::get('/users', [UserController::class, 'index']);
 Route::middleware('auth:sanctum')->patch('/user/profile', [UserController::class, 'update']);
-Route::apiResource('/posts', PostController::class)->except(['store', 'update', 'destroy']);
+
+// Post Route
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
@@ -25,9 +26,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
     Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
     Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
+    Route::put('/comments/{comment}', [CommentController::class, 'update']);
+    Route::patch('/comments/{comment}', [CommentController::class, 'update']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 });
    
+
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
