@@ -6,6 +6,7 @@ import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
+import Notification from '@/views/Notification.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -57,6 +58,16 @@ const routes = [
     meta: {
       requiresAuth: true
     }
+  },
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: Notification,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ]
 
@@ -65,32 +76,29 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user'))
+  
   if (to.meta.requiresAuth && !token) {
-    next('/login')
-    return
+    return '/login'
   }
 
   if ((to.path === '/login' || to.path === '/register') && token) {
-    next('/')
-    return
+    return '/'
   }
 
   if (to.meta.requiresAdmin) {
     if (!token) {
-      next('/login')
-      return
-    }else if (user.role) {
+      return '/login'
+    } else if (user.role) {
       if (user.role !== 'admin') {
-        next('/')
-        return
+        return '/'
       }
     }
   }
 
-  next()
+  return true
 })
 
 export default router
