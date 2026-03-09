@@ -5,7 +5,11 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
+use App\Models\Message;
+use App\Models\Notification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -95,4 +99,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile/change-password', [UserController::class, 'changePassword']);
+
+    // Notification Routes
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
 });

@@ -74,22 +74,6 @@ const routes = [
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
-    name: "connection",
-    meta: {
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/notification',
-    name: 'Notification',
-    component: Notification,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/'
-  }
->>>>>>> 9eb295f1b2b0f25d84cd2398ff970217a8515370
 ]
 
 const router = createRouter({
