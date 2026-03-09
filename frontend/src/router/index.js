@@ -99,12 +99,9 @@ const router = createRouter({
 
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
-<<<<<<< HEAD
   const user = JSON.parse(localStorage.getItem('user'))
   
-=======
 
->>>>>>> feature/Auth_Post
   if (to.meta.requiresAuth && !token) {
     return '/login'
   }
@@ -113,7 +110,6 @@ router.beforeEach((to, from) => {
     return '/'
   }
 
-<<<<<<< HEAD
   if (to.meta.requiresAdmin) {
     if (!token) {
       return '/login'
@@ -124,8 +120,6 @@ router.beforeEach((to, from) => {
     }
   }
 
-=======
->>>>>>> feature/Auth_Post
   return true
 })
  
