@@ -25,6 +25,14 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+Create environment file:
+
+```sh
+cp .env.example .env
+```
+
+Set `VITE_API_URL` in `.env` to your backend API base URL (example: `http://127.0.0.1:8000/api`).
+
 ### Compile and Hot-Reload for Development
 
 ```sh

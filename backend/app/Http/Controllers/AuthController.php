@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -21,10 +20,12 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
+        $userRole = Role::firstOrCreate(['name' => 'user']);
+
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
-            'role_id' => 2,
+            'role_id' => $userRole->id,
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);
@@ -32,7 +33,7 @@ class AuthController extends Controller
         // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
             'id' => $user->id,
-            'fist_name' => $user->fist_name,
+            'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email' => $user->email
         ], 300);

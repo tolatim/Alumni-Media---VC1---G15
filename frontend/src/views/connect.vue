@@ -57,6 +57,25 @@
             </div>
             <p v-if="!pendingRequests.length" class="text-sm text-gray-500">No request yet.</p>
           </div>
+          <div v-if="pendingPagination.last_page > 1" class="mt-4 flex items-center justify-between">
+            <button
+              class="text-xs px-3 py-1 rounded border disabled:opacity-50"
+              :disabled="pendingPagination.current_page <= 1"
+              @click="loadPendingRequests(pendingPagination.current_page - 1)"
+            >
+              Prev
+            </button>
+            <p class="text-xs text-gray-500">
+              Page {{ pendingPagination.current_page }} / {{ pendingPagination.last_page }}
+            </p>
+            <button
+              class="text-xs px-3 py-1 rounded border disabled:opacity-50"
+              :disabled="pendingPagination.current_page >= pendingPagination.last_page"
+              @click="loadPendingRequests(pendingPagination.current_page + 1)"
+            >
+              Next
+            </button>
+          </div>
         </div>
 
         <div class="bg-white rounded-xl shadow p-5">
@@ -82,6 +101,25 @@
               </button>
             </div>
             <p v-if="!suggestions.length" class="text-sm text-gray-500">No suggestion right now.</p>
+          </div>
+          <div v-if="suggestionsPagination.last_page > 1" class="mt-4 flex items-center justify-between">
+            <button
+              class="text-xs px-3 py-1 rounded border disabled:opacity-50"
+              :disabled="suggestionsPagination.current_page <= 1"
+              @click="loadSuggestions(suggestionsPagination.current_page - 1)"
+            >
+              Prev
+            </button>
+            <p class="text-xs text-gray-500">
+              Page {{ suggestionsPagination.current_page }} / {{ suggestionsPagination.last_page }}
+            </p>
+            <button
+              class="text-xs px-3 py-1 rounded border disabled:opacity-50"
+              :disabled="suggestionsPagination.current_page >= suggestionsPagination.last_page"
+              @click="loadSuggestions(suggestionsPagination.current_page + 1)"
+            >
+              Next
+            </button>
           </div>
         </div>
       </section>
@@ -128,6 +166,25 @@
             </div>
             <p v-if="!friends.length" class="text-sm text-gray-500">No friends yet.</p>
           </div>
+          <div v-if="friendsPagination.last_page > 1" class="mt-4 flex items-center justify-between">
+            <button
+              class="text-xs px-3 py-1 rounded border disabled:opacity-50"
+              :disabled="friendsPagination.current_page <= 1"
+              @click="loadMyConnections(friendsPagination.current_page - 1)"
+            >
+              Prev
+            </button>
+            <p class="text-xs text-gray-500">
+              Page {{ friendsPagination.current_page }} / {{ friendsPagination.last_page }}
+            </p>
+            <button
+              class="text-xs px-3 py-1 rounded border disabled:opacity-50"
+              :disabled="friendsPagination.current_page >= friendsPagination.last_page"
+              @click="loadMyConnections(friendsPagination.current_page + 1)"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </aside>
     </div>
@@ -146,6 +203,33 @@ const pendingRequests = ref([])
 const suggestions = ref([])
 const connectionRows = ref([])
 const openFriendMenuId = ref(null)
+const CONNECTIONS_PER_PAGE = 8
+const PENDING_PER_PAGE = 6
+const SUGGESTIONS_PER_PAGE = 6
+
+const defaultPagination = (perPage) => ({
+  current_page: 1,
+  last_page: 1,
+  per_page: perPage,
+  total: 0,
+})
+
+const pendingPagination = ref(defaultPagination(PENDING_PER_PAGE))
+const suggestionsPagination = ref(defaultPagination(SUGGESTIONS_PER_PAGE))
+const friendsPagination = ref(defaultPagination(CONNECTIONS_PER_PAGE))
+
+const normalizePagination = (payload, fallbackPerPage) => {
+  const pagination = payload?.pagination
+  if (pagination) return pagination
+
+  const list = Array.isArray(payload?.data) ? payload.data : []
+  return {
+    current_page: 1,
+    last_page: 1,
+    per_page: fallbackPerPage,
+    total: list.length,
+  }
+}
 
 const friends = computed(() => {
   const meRaw = localStorage.getItem('user')
@@ -160,16 +244,40 @@ const friends = computed(() => {
     .filter(Boolean)
 })
 
-const connectionsCount = computed(() => friends.value.length)
+const connectionsCount = computed(() => friendsPagination.value.total || friends.value.length)
+
+const loadMyConnections = async (page = 1) => {
+  const response = await api.get('/connections/my', {
+    params: { page, per_page: CONNECTIONS_PER_PAGE },
+  })
+  connectionRows.value = response.data?.data || []
+  friendsPagination.value = normalizePagination(response.data, CONNECTIONS_PER_PAGE)
+}
+
+const loadPendingRequests = async (page = 1) => {
+  const response = await api.get('/connections/pending', {
+    params: { page, per_page: PENDING_PER_PAGE },
+  })
+  pendingRequests.value = response.data?.data || []
+  pendingPagination.value = normalizePagination(response.data, PENDING_PER_PAGE)
+}
+
+const loadSuggestions = async (page = 1) => {
+  const response = await api.get('/users/suggestions', {
+    params: { page, per_page: SUGGESTIONS_PER_PAGE },
+  })
+  suggestions.value = response.data?.data || []
+  suggestionsPagination.value = normalizePagination(response.data, SUGGESTIONS_PER_PAGE)
+}
 
 const loadData = async () => {
   errorMessage.value = ''
 
   const [meRes, myRes, pendingRes, suggestionRes] = await Promise.allSettled([
     api.get('/me'),
-    api.get('/connections/my'),
-    api.get('/connections/pending'),
-    api.get('/users/suggestions'),
+    loadMyConnections(1),
+    loadPendingRequests(1),
+    loadSuggestions(1),
   ])
 
   if (meRes.status === 'fulfilled') {
@@ -179,10 +287,6 @@ const loadData = async () => {
     return
   }
 
-  connectionRows.value = myRes.status === 'fulfilled' ? (myRes.value.data?.data || []) : []
-  pendingRequests.value = pendingRes.status === 'fulfilled' ? (pendingRes.value.data?.data || []) : []
-  suggestions.value = suggestionRes.status === 'fulfilled' ? (suggestionRes.value.data?.data || []) : []
-
   if (myRes.status === 'rejected' || pendingRes.status === 'rejected' || suggestionRes.status === 'rejected') {
     errorMessage.value = 'Some connection sections failed to load.'
   }
@@ -191,7 +295,7 @@ const loadData = async () => {
 const sendRequest = async (userId) => {
   try {
     await api.post('/connections/request', { user_id: userId })
-    suggestions.value = suggestions.value.filter((person) => person.id !== userId)
+    await loadSuggestions(suggestionsPagination.value.current_page)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to send request.'
   }
@@ -202,10 +306,10 @@ const acceptRequest = async (connectionId) => {
     const response = await api.post(`/connections/${connectionId}/accept`)
     const row = response.data?.data
     if (row) {
-      connectionRows.value = [row, ...connectionRows.value]
+      await loadMyConnections(friendsPagination.value.current_page)
     }
-    pendingRequests.value = pendingRequests.value.filter((item) => item.id !== connectionId)
-    await refreshSuggestions()
+    await loadPendingRequests(pendingPagination.value.current_page)
+    await loadSuggestions(suggestionsPagination.value.current_page)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to accept request.'
   }
@@ -214,8 +318,8 @@ const acceptRequest = async (connectionId) => {
 const rejectRequest = async (connectionId) => {
   try {
     await api.post(`/connections/${connectionId}/reject`)
-    pendingRequests.value = pendingRequests.value.filter((item) => item.id !== connectionId)
-    await refreshSuggestions()
+    await loadPendingRequests(pendingPagination.value.current_page)
+    await loadSuggestions(suggestionsPagination.value.current_page)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to reject request.'
   }
@@ -223,8 +327,7 @@ const rejectRequest = async (connectionId) => {
 
 const refreshSuggestions = async () => {
   try {
-    const response = await api.get('/users/suggestions')
-    suggestions.value = response.data?.data || []
+    await loadSuggestions(suggestionsPagination.value.current_page)
   } catch {
     suggestions.value = []
   }
@@ -237,12 +340,7 @@ const toggleFriendMenu = (friendId) => {
 const unfriend = async (userId) => {
   try {
     await api.post(`/connections/user/${userId}/unfriend`)
-    connectionRows.value = connectionRows.value.filter((row) => {
-      return !(
-        (row.requester_id === userId || row.addressee_id === userId) &&
-        row.status === 'accepted'
-      )
-    })
+    await loadMyConnections(friendsPagination.value.current_page)
     await refreshSuggestions()
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to unfriend user.'
@@ -252,11 +350,9 @@ const unfriend = async (userId) => {
 const blockUser = async (userId) => {
   try {
     await api.post(`/connections/user/${userId}/block`)
-    connectionRows.value = connectionRows.value.filter((row) => {
-      return !(row.requester_id === userId || row.addressee_id === userId)
-    })
-    pendingRequests.value = pendingRequests.value.filter((row) => row.requester_id !== userId)
-    suggestions.value = suggestions.value.filter((person) => person.id !== userId)
+    await loadMyConnections(friendsPagination.value.current_page)
+    await loadPendingRequests(pendingPagination.value.current_page)
+    await loadSuggestions(suggestionsPagination.value.current_page)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to block user.'
   }
