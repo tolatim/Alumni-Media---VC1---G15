@@ -77,4 +77,29 @@ class CommentController extends Controller
             'comments_count' => $post ? $post->comments()->count() : 0,
         ]);
     }
+
+    public function update(Request $request, $commentId)
+    {
+        $comment = Comment::find($commentId);
+        if (!$comment) {
+            return response()->json(['message' => 'Comment not found'], 404);
+        }
+
+        if ((int) $comment->user_id !== (int) $request->user()->id) {
+            return response()->json(['message' => 'You can edit only your own comments.'], 403);
+        }
+
+        $validated = $request->validate([
+            'content' => 'required|string|max:5000',
+        ]);
+
+        $comment->update([
+            'content' => trim($validated['content']),
+        ]);
+
+        return response()->json([
+            'message' => 'Comment updated successfully',
+            'comment' => $comment->fresh()->load('user'),
+        ]);
+    }
 }

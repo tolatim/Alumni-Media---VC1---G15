@@ -9,13 +9,24 @@
 
       <div v-if="user" class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)]">
         <div class="h-60 w-full relative">
+<<<<<<< HEAD
           <img :src="coverImage" class="w-full h-full object-cover">
           <div class="absolute inset-0 bg-gradient-to-t from-slate-900/35 via-slate-800/5 to-transparent"></div>
+=======
+          <img :src="coverImage" class="w-full h-full object-cover" />
+>>>>>>> 0faa795c2a5d859b2d8484b188891e5d97b605f2
         </div>
 
         <div class="relative px-6 pb-6">
           <div class="absolute -top-16 left-6">
+<<<<<<< HEAD
             <img :src="user.profile?.avatar || fallbackAvatar" class="h-32 w-32 rounded-full border-4 border-white object-cover shadow-xl">
+=======
+            <img
+              :src="user.profile?.avatar || fallbackAvatar"
+              class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md"
+            />
+>>>>>>> 0faa795c2a5d859b2d8484b188891e5d97b605f2
           </div>
 
           <div class="pt-20">
@@ -322,15 +333,8 @@ const newPasswordConfirmation = ref('')
 const passwordLoading = ref(false)
 const passwordError = ref('')
 const passwordMessage = ref('')
-const editingPostId = ref(null)
-const editTitle = ref('')
-const editContent = ref('')
-const editMediaFiles = ref([])
-const editMediaPreviews = ref([])
-const postActionLoading = ref(false)
 
 const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
-
 const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
 
 const skillsList = computed(() => {

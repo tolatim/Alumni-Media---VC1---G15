@@ -1,6 +1,6 @@
 <template>
-  <div class="col-span-12 space-y-5 lg:col-span-6">
-    <div class="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur sm:p-4">
+  <div class="col-span-6 space-y-5">
+    <div class="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
       <div class="flex items-center gap-3">
         <img :src="currentUser?.profile?.avatar || fallbackAvatar" class="h-11 w-11 rounded-full border border-slate-200 object-cover shadow-sm">
         <input
@@ -14,7 +14,7 @@
       <div class="mt-4 flex items-center justify-end">
         <RouterLink
           to="/post"
-          class="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:from-cyan-700 hover:to-blue-700 sm:w-auto"
+          class="inline-flex items-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:from-cyan-700 hover:to-blue-700"
         >
           Create Post
         </RouterLink>
@@ -26,17 +26,71 @@
       :key="post.id"
       class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div class="border-b border-slate-100 px-4 pb-4 pt-5 sm:px-5">
-        <div class="flex items-center gap-3">
-          <img :src="post.user?.profile?.avatar || fallbackAvatar" class="h-11 w-11 rounded-full border border-slate-200 object-cover">
-          <div>
-            <h4 class="font-semibold text-slate-900">{{ post.user?.name || 'Unknown user' }}</h4>
-            <p class="text-xs text-slate-500">{{ formatDate(post.created_at) }}</p>
+      <div class="border-b border-slate-100 px-5 pt-5 pb-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <img :src="post.user?.profile?.avatar || fallbackAvatar" class="h-11 w-11 rounded-full border border-slate-200 object-cover">
+            <div>
+              <h4 class="font-semibold text-slate-900">{{ post.user?.name || 'Unknown user' }}</h4>
+              <p class="text-xs text-slate-500">{{ formatDate(post.created_at) }}</p>
+            </div>
+          </div>
+
+          <div v-if="canDelete(post)" class="relative">
+            <button
+              type="button"
+              @click.stop="togglePostActionsMenu(post.id)"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1"
+              aria-label="Post actions"
+              title="Post actions"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="h-4 w-4"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+
+            <div
+              v-if="openPostActionsMenuId === post.id"
+              class="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            >
+              <button
+                type="button"
+                @click="handleStartEdit(post)"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                <span>Edit</span>
+              </button>
+              <button
+                type="button"
+                @click="handleDeletePost(post.id)"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+              >
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+                <span>Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="space-y-4 px-4 py-4 sm:px-5">
+      <div class="space-y-4 px-5 py-4">
         <template v-if="editingPostId === post.id">
           <input
             v-model="editTitle"
@@ -50,6 +104,19 @@
             class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
             placeholder="Post content"
           ></textarea>
+          <label class="block">
+            <span class="mb-1 block text-xs font-semibold text-slate-600">Update media (images/videos)</span>
+            <input
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              @change="onEditMediaSelected"
+              class="block w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-cyan-50 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-cyan-700 hover:file:bg-cyan-100"
+            >
+          </label>
+          <p v-if="editMediaFiles.length" class="text-xs text-slate-500">
+            Selected: {{ editImageCount }} image(s), {{ editVideoCount }} video(s)
+          </p>
           <div class="flex justify-end gap-2">
             <button
               type="button"
@@ -85,7 +152,7 @@
           v-if="post.media?.length"
           :class="[
             'grid gap-2 overflow-hidden rounded-xl',
-            post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'
+            post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
           ]"
         >
           <template
@@ -109,7 +176,7 @@
         </div>
       </div>
 
-      <div class="space-y-3 border-t border-slate-100 px-4 py-3 sm:px-5">
+      <div class="space-y-3 border-t border-slate-100 px-5 py-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <button
@@ -156,22 +223,6 @@
             </button>
           </div>
 
-          <div class="flex items-center gap-2" v-if="canDelete(post)">
-            <button
-              @click="startEdit(post)"
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-cyan-700 transition hover:border-cyan-300 hover:bg-cyan-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1"
-            >
-              <span aria-hidden="true">Edit</span>
-            </button>
-            <button
-              @click="deletePost(post.id)"
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-1"
-            >
-              <span aria-hidden="true">Delete</span>
-            </button>
-          </div>
         </div>
 
         <p class="text-xs font-medium text-slate-500">
@@ -179,8 +230,8 @@
         </p>
       </div>
 
-      <div v-if="isCommentsOpen(post)" class="border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-5">
-        <form class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start" @submit.prevent="submitComment(post)">
+      <div v-if="isCommentsOpen(post)" class="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+        <form class="mb-3 flex items-start gap-2" @submit.prevent="submitComment(post)">
           <textarea
             v-model="commentDraftByPostId[post.id]"
             rows="2"
@@ -190,7 +241,7 @@
           <button
             type="submit"
             :disabled="commentSubmittingPostId === post.id"
-            class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60 sm:w-auto"
+            class="inline-flex items-center rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
           >
             {{ commentSubmittingPostId === post.id ? 'Posting...' : 'Post' }}
           </button>
@@ -210,31 +261,84 @@
           >
             <div class="mb-1 flex items-center justify-between gap-2">
               <p class="text-xs font-semibold text-slate-700">{{ comment.user?.name || 'Unknown user' }}</p>
-              <button
-                v-if="canDeleteComment(comment)"
-                type="button"
-                @click="deleteComment(post, comment.id)"
-                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 hover:text-rose-700"
-                aria-label="Delete comment"
-                title="Delete comment"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  class="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
+              <div v-if="canDeleteComment(comment)" class="relative">
+                <button
+                  type="button"
+                  @click.stop="toggleCommentActionsMenu(comment.id)"
+                  class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                  aria-label="Comment actions"
+                  title="Comment actions"
                 >
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4h8v2" />
-                  <path d="M19 6l-1 14H6L5 6" />
-                  <path d="M10 11v6" />
-                  <path d="M14 11v6" />
-                </svg>
-              </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-3.5 w-3.5"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="5" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="19" r="2" />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="openCommentActionsMenuId === comment.id"
+                  class="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                >
+                  <button
+                    type="button"
+                    @click="handleStartCommentEdit(comment)"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    @click="handleDeleteComment(post, comment.id)"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                    </svg>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
             </div>
-            <p class="whitespace-pre-line break-words text-sm text-slate-700">{{ comment.content }}</p>
+            <template v-if="editingCommentId === comment.id">
+              <textarea
+                v-model="editingCommentContent"
+                rows="2"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              ></textarea>
+              <div class="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  @click="cancelCommentEdit"
+                  :disabled="commentUpdateSubmittingId === comment.id"
+                  class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  @click="saveCommentEdit(post, comment)"
+                  :disabled="commentUpdateSubmittingId === comment.id"
+                  class="inline-flex items-center rounded-md border border-cyan-200 bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+                >
+                  {{ commentUpdateSubmittingId === comment.id ? 'Saving...' : 'Save' }}
+                </button>
+              </div>
+            </template>
+            <p v-else class="whitespace-pre-line break-words text-sm text-slate-700">{{ comment.content }}</p>
           </div>
         </div>
       </div>
@@ -242,7 +346,7 @@
 
     <div
       v-if="!filteredPosts.length"
-      class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center sm:p-10"
+      class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"
     >
       <p class="text-sm font-semibold text-slate-700">
         {{ posts.length ? 'No matching posts found.' : 'No posts yet.' }}
@@ -255,7 +359,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
@@ -277,6 +381,9 @@ const deletedPostIds = ref([])
 const editingPostId = ref(null)
 const editTitle = ref('')
 const editContent = ref('')
+const editMediaFiles = ref([])
+const editImageCount = computed(() => editMediaFiles.value.filter((file) => file.type.startsWith('image/')).length)
+const editVideoCount = computed(() => editMediaFiles.value.filter((file) => file.type.startsWith('video/')).length)
 const isSavingEdit = ref(false)
 const likeSubmittingPostId = ref(null)
 const commentSubmittingPostId = ref(null)
@@ -287,6 +394,11 @@ const commentsLoadingByPostId = ref({})
 const likesCountByPostId = ref({})
 const commentsCountByPostId = ref({})
 const likedByPostId = ref({})
+const editingCommentId = ref(null)
+const editingCommentContent = ref('')
+const commentUpdateSubmittingId = ref(null)
+const openPostActionsMenuId = ref(null)
+const openCommentActionsMenuId = ref(null)
 const filteredPosts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   const visiblePosts = props.posts.filter((post) => !deletedPostIds.value.includes(post.id))
@@ -312,6 +424,34 @@ const deletePost = async (id) => {
   }
 }
 
+const togglePostActionsMenu = (postId) => {
+  openPostActionsMenuId.value = openPostActionsMenuId.value === postId ? null : postId
+}
+
+const handleStartEdit = (post) => {
+  openPostActionsMenuId.value = null
+  startEdit(post)
+}
+
+const handleDeletePost = (postId) => {
+  openPostActionsMenuId.value = null
+  deletePost(postId)
+}
+
+const toggleCommentActionsMenu = (commentId) => {
+  openCommentActionsMenuId.value = openCommentActionsMenuId.value === commentId ? null : commentId
+}
+
+const handleStartCommentEdit = (comment) => {
+  openCommentActionsMenuId.value = null
+  startCommentEdit(comment)
+}
+
+const handleDeleteComment = (post, commentId) => {
+  openCommentActionsMenuId.value = null
+  deleteComment(post, commentId)
+}
+
 const canDelete = (post) => {
   const currentUserId = Number(props.currentUser?.id)
   const ownerId = Number(post?.user_id ?? post?.user?.id)
@@ -332,29 +472,57 @@ const startEdit = (post) => {
   editingPostId.value = post.id
   editTitle.value = post?.title || ''
   editContent.value = post?.content || ''
+  editMediaFiles.value = []
 }
 
 const cancelEdit = () => {
   editingPostId.value = null
   editTitle.value = ''
   editContent.value = ''
+  editMediaFiles.value = []
 }
 
 const saveEdit = async (post) => {
-  if (!editContent.value.trim()) {
-    alert('Post content is required.')
+  const titleValue = editTitle.value.trim()
+  const contentValue = editContent.value.trim()
+  const editImageFiles = editMediaFiles.value.filter((file) => file.type.startsWith('image/'))
+  const editVideoFiles = editMediaFiles.value.filter((file) => file.type.startsWith('video/'))
+  const hasSelectedMedia = editMediaFiles.value.length > 0
+  const hasExistingMedia = Array.isArray(post?.media) && post.media.length > 0
+
+  if (!titleValue && !contentValue && !hasSelectedMedia && !hasExistingMedia) {
+    alert('Please add title, content, or at least one image/video.')
     return
   }
 
   isSavingEdit.value = true
   try {
-    await api.put(`/posts/${post.id}`, {
-      title: editTitle.value.trim(),
-      content: editContent.value.trim(),
+    const formData = new FormData()
+    formData.append('title', titleValue)
+    formData.append('content', contentValue)
+
+    editImageFiles.forEach((file) => {
+      formData.append('images[]', file)
+    })
+    editVideoFiles.forEach((file) => {
+      formData.append('videos[]', file)
     })
 
-    post.title = editTitle.value.trim()
-    post.content = editContent.value.trim()
+    const response = await api.post(`/posts/${post.id}`, formData)
+
+    const updatedPost = response.data?.post
+    if (updatedPost) {
+      post.title = updatedPost.title
+      post.content = updatedPost.content
+      post.media = updatedPost.media || post.media
+      post.user = updatedPost.user || post.user
+      post.likes_count = updatedPost.likes_count ?? post.likes_count
+      post.comments_count = updatedPost.comments_count ?? post.comments_count
+    } else {
+      post.title = titleValue
+      post.content = contentValue
+    }
+
     cancelEdit()
     emit('refreshPosts')
   } catch (error) {
@@ -364,6 +532,23 @@ const saveEdit = async (post) => {
     isSavingEdit.value = false
   }
 }
+
+const onEditMediaSelected = (event) => {
+  editMediaFiles.value = Array.from(event?.target?.files || [])
+}
+
+const closePostActionsMenu = () => {
+  openPostActionsMenuId.value = null
+  openCommentActionsMenuId.value = null
+}
+
+onMounted(() => {
+  window.addEventListener('click', closePostActionsMenu)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('click', closePostActionsMenu)
+})
 
 const isPostLiked = (post) => {
   if (Object.prototype.hasOwnProperty.call(likedByPostId.value, post.id)) {
@@ -464,6 +649,43 @@ const deleteComment = async (post, commentId) => {
   } catch (error) {
     console.error(error.response?.data || error)
     alert(error.response?.data?.message || 'Failed to delete comment.')
+  }
+}
+
+const startCommentEdit = (comment) => {
+  editingCommentId.value = comment.id
+  editingCommentContent.value = comment.content || ''
+}
+
+const cancelCommentEdit = () => {
+  editingCommentId.value = null
+  editingCommentContent.value = ''
+}
+
+const saveCommentEdit = async (post, comment) => {
+  const content = editingCommentContent.value.trim()
+  if (!content) {
+    alert('Comment content is required.')
+    return
+  }
+
+  commentUpdateSubmittingId.value = comment.id
+  try {
+    const response = await api.put(`/comments/${comment.id}`, { content })
+    const updatedComment = response.data?.comment
+    const targetComments = commentsByPostId.value[post.id] || []
+    const targetIndex = targetComments.findIndex((item) => item.id === comment.id)
+
+    if (targetIndex !== -1) {
+      targetComments[targetIndex] = updatedComment || { ...targetComments[targetIndex], content }
+    }
+
+    cancelCommentEdit()
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(error.response?.data?.message || 'Failed to update comment.')
+  } finally {
+    commentUpdateSubmittingId.value = null
   }
 }
 

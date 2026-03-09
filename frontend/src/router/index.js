@@ -71,9 +71,19 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+<<<<<<< HEAD
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
+=======
+    path: '/connection',
+    component: Connect,
+    name: "connection",
+    meta: {
+      requiresAuth: true
+    }
+  }
+>>>>>>> 9eb295f1b2b0f25d84cd2398ff970217a8515370
 ]
 
 const router = createRouter({
