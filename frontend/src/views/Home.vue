@@ -8,7 +8,6 @@
         <centerFeed
           :posts="posts"
           :current-user="currentUser"
-          @post-created="prependPost"
           @refresh-posts="refreshPosts"
         />
 
@@ -21,8 +20,12 @@
         />
       </div>
 
-      <div v-if="loadingMore" class="mt-5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Loading more posts...</div>
-      <div v-else-if="!hasMorePosts && posts.length" class="mt-5 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">No more posts</div>
+      <div v-if="loadingMore" class="mt-5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Loading more posts...
+      </div>
+      <div v-else-if="!hasMorePosts && posts.length" class="mt-5 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+        No more posts
+      </div>
 
       <p v-if="errorMessage" class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-center text-sm font-medium text-rose-700">
         {{ errorMessage }}
@@ -39,9 +42,8 @@ import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
 
-const posts = ref([])
-
 const currentUser = ref(null);
+const posts = ref([]);
 const suggestions = ref([]);
 const pendingRequests = ref([]);
 const errorMessage = ref("");
@@ -49,7 +51,6 @@ const loadingMore = ref(false);
 const feedPage = ref(1);
 const feedLastPage = ref(1);
 const FEED_PER_PAGE = 8;
-
 const hasMorePosts = ref(true);
 
 const loadHomeData = async () => {
@@ -67,8 +68,19 @@ const loadHomeData = async () => {
     localStorage.setItem("user", JSON.stringify(meRes.value.data));
   } else {
     currentUser.value = null;
-    errorMessage.value =
-      meRes.reason?.response?.data?.message || "Failed to load your account.";
+    const err = meRes.reason;
+    const status = err?.response?.status;
+    const serverMessage = err?.response?.data?.message;
+
+    if (!err?.response) {
+      errorMessage.value = `Cannot reach API (${api.defaults.baseURL}). Start the Laravel backend and MySQL.`;
+    } else if (status === 401) {
+      errorMessage.value = "Your session expired. Please log in again.";
+    } else if (serverMessage) {
+      errorMessage.value = serverMessage;
+    } else {
+      errorMessage.value = "Failed to load your account.";
+    }
     return;
   }
 
@@ -94,7 +106,7 @@ const loadHomeData = async () => {
 
   if (suggestionRes.status === "rejected") {
     try {
-      const [fallbackUsersRes, myConnectionsRes, pendingRes, blockedRes] = await Promise.allSettled([
+      const [fallbackUsersRes, myConnectionsRes, pendingRes2, blockedRes] = await Promise.allSettled([
         api.get("/users"),
         api.get("/connections/my", { params: { page: 1, per_page: 200 } }),
         api.get("/connections/pending", { params: { page: 1, per_page: 200 } }),
@@ -103,7 +115,7 @@ const loadHomeData = async () => {
 
       const allUsers = fallbackUsersRes.status === "fulfilled" ? (fallbackUsersRes.value.data?.data || []) : [];
       const myRows = myConnectionsRes.status === "fulfilled" ? (myConnectionsRes.value.data?.data || []) : [];
-      const pendingRows = pendingRes.status === "fulfilled" ? (pendingRes.value.data?.data || []) : [];
+      const pendingRows = pendingRes2.status === "fulfilled" ? (pendingRes2.value.data?.data || []) : [];
       const blockedRows = blockedRes.status === "fulfilled" ? (blockedRes.value.data?.data || []) : [];
       const meId = Number(currentUser.value?.id || 0);
       const existingIds = new Set();
@@ -130,6 +142,18 @@ const loadHomeData = async () => {
   }
 };
 
+const loadFeedPage = async (page, append) => {
+  const response = await api.get("/feed", { params: { page, per_page: FEED_PER_PAGE } });
+  const pagination = response.data?.pagination || {};
+
+  const newPosts = response.data?.data || [];
+  posts.value = append ? [...posts.value, ...newPosts] : newPosts;
+
+  feedPage.value = Number(pagination.current_page || page || 1);
+  feedLastPage.value = Number(pagination.last_page || 1);
+  hasMorePosts.value = feedPage.value < feedLastPage.value;
+};
+
 const loadMorePosts = async () => {
   if (loadingMore.value || !hasMorePosts.value) return;
   loadingMore.value = true;
@@ -152,10 +176,6 @@ const onScroll = () => {
   }
 };
 
-const prependPost = (newPost) => {
-  posts.value = [newPost, ...posts.value];
-};
-
 const refreshPosts = async () => {
   try {
     await loadFeedPage(1, false);
@@ -167,38 +187,29 @@ const refreshPosts = async () => {
 const sendConnectionRequest = async (userId) => {
   try {
     await api.post("/connections/request", { user_id: userId });
-    suggestions.value = suggestions.value.filter(
-      (person) => person.id !== userId
-    );
+    suggestions.value = suggestions.value.filter((person) => person.id !== userId);
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to send connection request.";
+    errorMessage.value = error.response?.data?.message || "Failed to send connection request.";
   }
 };
 
 const acceptConnectionRequest = async (requestId) => {
   try {
     await api.post(`/connections/${requestId}/accept`);
-    pendingRequests.value = pendingRequests.value.filter(
-      (request) => request.id !== requestId
-    );
+    pendingRequests.value = pendingRequests.value.filter((request) => request.id !== requestId);
     await refreshSuggestions();
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to accept request.";
+    errorMessage.value = error.response?.data?.message || "Failed to accept request.";
   }
 };
 
 const rejectConnectionRequest = async (requestId) => {
   try {
     await api.post(`/connections/${requestId}/reject`);
-    pendingRequests.value = pendingRequests.value.filter(
-      (request) => request.id !== requestId
-    );
+    pendingRequests.value = pendingRequests.value.filter((request) => request.id !== requestId);
     await refreshSuggestions();
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to reject request.";
+    errorMessage.value = error.response?.data?.message || "Failed to reject request.";
   }
 };
 
@@ -214,7 +225,6 @@ const refreshSuggestions = async () => {
 onMounted(() => {
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
-
 });
 
 onBeforeUnmount(() => {

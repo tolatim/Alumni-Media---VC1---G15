@@ -150,12 +150,14 @@ import { getPosts } from '@/services/authService';
 import { createPost } from '@/services/authService';
 
 export default {
+  
   components: {
     Navbar
   },
 
   data() {
     return {
+      
       posts: [],
       title: '',
       content: '',
@@ -284,6 +286,7 @@ export default {
       this.$emit('close');
       this.title = '';
       this.content = '';
+      this.user='';
       this.clearImages();
       this.$router.push('/');
     }
