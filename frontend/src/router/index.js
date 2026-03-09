@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { startRouteLoading, stopRouteLoading } from '@/services/loadingService'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
@@ -66,8 +67,11 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
+  startRouteLoading()
+
   const token = localStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user'))
+  const savedUser = localStorage.getItem('user')
+  const user = savedUser ? JSON.parse(savedUser) : null
   if (to.meta.requiresAuth && !token) {
     next('/login')
     return
@@ -91,6 +95,14 @@ router.beforeEach((to, from, next) => {
   }
 
   next()
+})
+
+router.afterEach(() => {
+  stopRouteLoading()
+})
+
+router.onError(() => {
+  stopRouteLoading()
 })
 
 export default router

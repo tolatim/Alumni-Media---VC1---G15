@@ -14,6 +14,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/feed', [UserController::class, 'feed']);
     Route::get('/connections/my', [UserController::class, 'myConnections']);
+    Route::get('/connections/blocked', [UserController::class, 'blockedConnections']);
     Route::get('/connections/pending', [UserController::class, 'pendingConnections']);
     Route::get('/connections/status/{userId}', [UserController::class, 'connectionStatus']);
     Route::post('/connections/request', [UserController::class, 'sendConnectionRequest']);
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
     Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::delete('/messages/item/{messageId}', [MessageController::class, 'destroy']);
+    Route::put('/messages/item/{messageId}', [MessageController::class, 'update']);
     Route::post('/messages/{userId}/read', [MessageController::class, 'markRead']);
     Route::get('/messages/{userId}', [MessageController::class, 'index']);
     Route::post('/messages/{userId}', [MessageController::class, 'store']);

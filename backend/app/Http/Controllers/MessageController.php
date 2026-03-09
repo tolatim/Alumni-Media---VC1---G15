@@ -6,6 +6,8 @@ use App\Models\Connection;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -167,6 +169,86 @@ class MessageController extends Controller
 
         return response()->json([
             'message' => 'Messages marked as read successfully',
+        ]);
+    }
+
+    public function destroy(Request $request, $messageId)
+    {
+        $me = $request->user();
+
+        $message = Message::query()->find($messageId);
+
+        if (!$message) {
+            return response()->json([
+                'message' => 'Message not found.',
+            ], 404);
+        }
+
+        if ((int) $message->sender_id !== (int) $me->id) {
+            return response()->json([
+                'message' => 'You can only delete your own messages.',
+            ], 403);
+        }
+
+        if (!empty($message->media_path)) {
+            $path = $message->media_path;
+            if (Str::startsWith($path, '/storage/')) {
+                $path = Str::replaceFirst('/storage/', '', $path);
+            }
+
+            if (!Str::startsWith($path, ['http://', 'https://']) && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $message->delete();
+
+        return response()->json([
+            'message' => 'Message deleted successfully',
+        ]);
+    }
+
+    public function update(Request $request, $messageId)
+    {
+        $me = $request->user();
+
+        $message = Message::query()->find($messageId);
+
+        if (!$message) {
+            return response()->json([
+                'message' => 'Message not found.',
+            ], 404);
+        }
+
+        if ((int) $message->sender_id !== (int) $me->id) {
+            return response()->json([
+                'message' => 'You can only edit your own messages.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'content' => 'nullable|string|max:5000',
+        ]);
+
+        $content = isset($validated['content']) ? trim((string) $validated['content']) : null;
+
+        if ($content === '' || $content === null) {
+            if (!$message->media_path) {
+                return response()->json([
+                    'message' => 'Message content is required.',
+                ], 422);
+            }
+            $content = null;
+        }
+
+        $message->update([
+            'content' => $content,
+            'status' => 'sent',
+        ]);
+
+        return response()->json([
+            'message' => 'Message updated successfully',
+            'data' => $message->fresh()->load(['sender', 'receiver']),
         ]);
     }
 

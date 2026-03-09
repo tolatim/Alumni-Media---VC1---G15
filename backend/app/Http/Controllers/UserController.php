@@ -129,6 +129,39 @@ class UserController extends Controller
         ]);
     }
 
+    public function blockedConnections(Request $request)
+    {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+                'data' => [],
+                'pagination' => null,
+            ], 503);
+        }
+
+        $user = $request->user();
+
+        $blocked = Connection::query()
+            ->with(['requester.role', 'addressee.role'])
+            ->where('status', 'blocked')
+            ->where('requester_id', $user->id)
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'message' => 'Blocked connections fetched successfully',
+            'data' => $blocked->items(),
+            'pagination' => [
+                'current_page' => $blocked->currentPage(),
+                'last_page' => $blocked->lastPage(),
+                'per_page' => $blocked->perPage(),
+                'total' => $blocked->total(),
+            ],
+        ]);
+    }
+
     public function connectionStatus(Request $request, $userId)
     {
         if (!Schema::hasTable('connections')) {
