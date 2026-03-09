@@ -291,16 +291,23 @@ async function login() {
       password: password.value,
     });
 
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-    const userRoleName = res?.data?.user?.role?.name || 'alumni'
-    if (userRoleName === 'alumni') {
-      router.push("/");
-    } else {
-      router.push("/admin");
+    const token = res?.data?.token;
+    const user = res?.data?.user;
+
+    if (!token || !user) {
+      throw new Error("Invalid login response");
     }
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // Role may come as object ({ name: 'alumni' }) or string ('alumni')
+    const roleName = typeof user.role === "string" ? user.role : user.role?.name;
+    const target = roleName === "admin" ? "/admin" : "/";
+    const resolved = router.resolve(target);
+    await router.push(resolved.matched.length ? target : "/");
   } catch (err) {
-    error.value = err.response?.data?.message || "Invalid email or password";
+    error.value = err.response?.data?.message || err.message || "Login failed. Please try again.";
   } finally {
     loading.value = false;
   }

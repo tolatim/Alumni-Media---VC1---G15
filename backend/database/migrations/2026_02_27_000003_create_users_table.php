@@ -11,27 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('role_id')->constrained()->onDelete('cascade');
-            $table->string('first_name');
-            $table->string('last_name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->string('headline')->nullable();
-            $table->string('phone', 30)->nullable();
-            $table->text('bio')->nullable();
-            $table->text('skills')->nullable();
-            $table->string('avatar')->nullable();
-            $table->string('cover')->nullable();
-            $table->string('location')->nullable();
-            $table->unsignedSmallInteger('graduate_year')->nullable();
-            $table->string('current_job')->nullable();
-            $table->string('company')->nullable();
-            $table->rememberToken();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('role_id')->constrained()->onDelete('cascade');
+                $table->string('first_name');
+                $table->string('last_name');
+                $table->string('email')->unique();
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('password');
+                $table->string('headline')->nullable();
+                $table->string('phone', 30)->nullable();
+                $table->text('bio')->nullable();
+                $table->text('skills')->nullable();
+                $table->string('avatar')->nullable();
+                $table->string('cover')->nullable();
+                $table->string('location')->nullable();
+                $table->unsignedSmallInteger('graduate_year')->nullable();
+                $table->string('current_job')->nullable();
+                $table->string('company')->nullable();
+                $table->rememberToken();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

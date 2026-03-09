@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { startRouteLoading, stopRouteLoading } from '@/services/loadingService'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
@@ -62,14 +63,6 @@ const routes = [
     component: Profile,
     name: 'Profile',
     meta: { requiresAuth: true },
-  },
-  {
-    path: '/connection',
-    component: Connect,
-    name: "connection",
-    meta: {
-      requiresAuth: true
-    }
   }
 ]
 
@@ -79,7 +72,17 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
+  startRouteLoading()
+
   const token = localStorage.getItem('token')
+  let user = null
+
+  try {
+    const savedUser = localStorage.getItem('user')
+    user = savedUser ? JSON.parse(savedUser) : null
+  } catch {
+    user = null
+  }
 
   if (to.meta.requiresAuth && !token) {
     next('/login')
@@ -91,6 +94,19 @@ router.beforeEach((to, from, next) => {
     return
   }
 
+  if (to.meta.requiresAdmin) {
+    if (!token) {
+      next('/login')
+      return
+    } else if (user?.role) {
+      const roleName = typeof user.role === 'string' ? user.role : user.role?.name
+      if (roleName !== 'admin') {
+        next('/')
+        return
+      }
+    }
+  }
+
   next()
 })
  
@@ -98,6 +114,14 @@ router.beforeEach((to, from, next) => {
 
 
 
+
+router.afterEach(() => {
+  stopRouteLoading()
+})
+
+router.onError(() => {
+  stopRouteLoading()
+})
 
 export default router
 

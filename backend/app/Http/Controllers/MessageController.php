@@ -6,6 +6,8 @@ use App\Models\Connection;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -29,6 +31,7 @@ class MessageController extends Controller
     public function contacts(Request $request)
     {
         $me = $request->user();
+        $perPage = min(max((int) $request->query('per_page', 12), 1), 50);
 
         $connections = Connection::query()
             ->with(['requester', 'addressee'])
@@ -38,9 +41,9 @@ class MessageController extends Controller
                     ->orWhere('addressee_id', $me->id);
             })
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
-        $contacts = $connections->map(function ($row) use ($me) {
+        $contacts = collect($connections->items())->map(function ($row) use ($me) {
             return $row->requester_id === $me->id ? $row->addressee : $row->requester;
         })->filter()->values();
 
@@ -59,6 +62,12 @@ class MessageController extends Controller
         return response()->json([
             'message' => 'Contacts fetched successfully',
             'data' => $contacts,
+            'pagination' => [
+                'current_page' => $connections->currentPage(),
+                'last_page' => $connections->lastPage(),
+                'per_page' => $connections->perPage(),
+                'total' => $connections->total(),
+            ],
         ]);
     }
 
@@ -66,6 +75,7 @@ class MessageController extends Controller
     {
         $me = $request->user();
         $targetId = (int) $userId;
+        $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
 
         $this->assertCanMessage($me->id, $targetId);
 
@@ -80,14 +90,21 @@ class MessageController extends Controller
             })
             ->with(['sender', 'receiver'])
             ->latest()
-            ->limit(100)
-            ->get()
+            ->paginate($perPage);
+
+        $items = collect($messages->items())
             ->reverse()
             ->values();
 
         return response()->json([
             'message' => 'Messages fetched successfully',
-            'data' => $messages,
+            'data' => $items,
+            'pagination' => [
+                'current_page' => $messages->currentPage(),
+                'last_page' => $messages->lastPage(),
+                'per_page' => $messages->perPage(),
+                'total' => $messages->total(),
+            ],
         ]);
     }
 
@@ -155,6 +172,86 @@ class MessageController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, $messageId)
+    {
+        $me = $request->user();
+
+        $message = Message::query()->find($messageId);
+
+        if (!$message) {
+            return response()->json([
+                'message' => 'Message not found.',
+            ], 404);
+        }
+
+        if ((int) $message->sender_id !== (int) $me->id) {
+            return response()->json([
+                'message' => 'You can only delete your own messages.',
+            ], 403);
+        }
+
+        if (!empty($message->media_path)) {
+            $path = $message->media_path;
+            if (Str::startsWith($path, '/storage/')) {
+                $path = Str::replaceFirst('/storage/', '', $path);
+            }
+
+            if (!Str::startsWith($path, ['http://', 'https://']) && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $message->delete();
+
+        return response()->json([
+            'message' => 'Message deleted successfully',
+        ]);
+    }
+
+    public function update(Request $request, $messageId)
+    {
+        $me = $request->user();
+
+        $message = Message::query()->find($messageId);
+
+        if (!$message) {
+            return response()->json([
+                'message' => 'Message not found.',
+            ], 404);
+        }
+
+        if ((int) $message->sender_id !== (int) $me->id) {
+            return response()->json([
+                'message' => 'You can only edit your own messages.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'content' => 'nullable|string|max:5000',
+        ]);
+
+        $content = isset($validated['content']) ? trim((string) $validated['content']) : null;
+
+        if ($content === '' || $content === null) {
+            if (!$message->media_path) {
+                return response()->json([
+                    'message' => 'Message content is required.',
+                ], 422);
+            }
+            $content = null;
+        }
+
+        $message->update([
+            'content' => $content,
+            'status' => 'sent',
+        ]);
+
+        return response()->json([
+            'message' => 'Message updated successfully',
+            'data' => $message->fresh()->load(['sender', 'receiver']),
+        ]);
+    }
+
     private function assertCanMessage(int $meId, int $targetId): void
     {
         if ($meId === $targetId) {
@@ -170,7 +267,6 @@ class MessageController extends Controller
         }
 
         $connection = Connection::query()
-            ->where('status', 'accepted')
             ->where(function ($query) use ($meId, $targetId) {
                 $query->where(function ($q) use ($meId, $targetId) {
                     $q->where('requester_id', $meId)->where('addressee_id', $targetId);
@@ -181,6 +277,18 @@ class MessageController extends Controller
             ->first();
 
         if (!$connection) {
+            abort(response()->json([
+                'message' => 'You can only message users who are your friends.',
+            ], 403));
+        }
+
+        if ($connection->status === 'blocked' && (int) $connection->addressee_id === $meId) {
+            abort(response()->json([
+                'message' => 'You are blocked and cannot message this user.',
+            ], 403));
+        }
+
+        if ($connection->status !== 'accepted' && $connection->status !== 'blocked') {
             abort(response()->json([
                 'message' => 'You can only message users who are your friends.',
             ], 403));
