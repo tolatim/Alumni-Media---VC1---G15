@@ -2,7 +2,7 @@ import axios from "axios"
 import { startApiLoading, stopApiLoading } from './loadingService'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL // replace with your backend
+  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
 })
 
 // Attach token automatically

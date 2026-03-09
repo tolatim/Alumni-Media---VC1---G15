@@ -50,14 +50,6 @@ const routes = [
     component: Profile,
     name: 'Profile',
     meta: { requiresAuth: true },
-  },
-  {
-    path: '/connection',
-    component: Connect,
-    name: "connection",
-    meta: {
-      requiresAuth: true
-    }
   }
 ]
 
@@ -70,8 +62,15 @@ router.beforeEach((to, from, next) => {
   startRouteLoading()
 
   const token = localStorage.getItem('token')
-  const savedUser = localStorage.getItem('user')
-  const user = savedUser ? JSON.parse(savedUser) : null
+  let user = null
+
+  try {
+    const savedUser = localStorage.getItem('user')
+    user = savedUser ? JSON.parse(savedUser) : null
+  } catch {
+    user = null
+  }
+
   if (to.meta.requiresAuth && !token) {
     next('/login')
     return
@@ -86,8 +85,9 @@ router.beforeEach((to, from, next) => {
     if (!token) {
       next('/login')
       return
-    }else if (user.role) {
-      if (user.role !== 'admin') {
+    } else if (user?.role) {
+      const roleName = typeof user.role === 'string' ? user.role : user.role?.name
+      if (roleName !== 'admin') {
         next('/')
         return
       }
