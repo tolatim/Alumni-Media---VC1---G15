@@ -32,9 +32,10 @@ class UserController extends Controller
             ]);
         }
 
+        $user = auth()->user();
         $query = Post::query()->latest()->with(['user.role']);
 
-        if (Schema::hasTable('post_media')) {
+        if (Schema::hasTable('media')) {
             $query->with(['media']);
         }
 
@@ -48,6 +49,14 @@ class UserController extends Controller
 
         if (!empty($countableRelations)) {
             $query->withCount($countableRelations);
+        }
+
+        if ($user && Schema::hasTable('likes')) {
+            $query->withExists([
+                'likes as liked_by_me' => function ($likeQuery) use ($user) {
+                    $likeQuery->where('user_id', $user->id);
+                },
+            ]);
         }
 
         $posts = $query->get();
@@ -340,14 +349,19 @@ class UserController extends Controller
         ]);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $user = $request->user();
+
         $query = User::query()->with(['role']);
 
         if (Schema::hasTable('posts')) {
             $query->with([
                 'posts' => function ($postQuery) {
                     $postQuery->latest();
+                    if (Schema::hasTable('media')) {
+                        $postQuery->with('media');
+                    }
 
                     $countableRelations = [];
                     if (Schema::hasTable('likes')) {
@@ -359,6 +373,14 @@ class UserController extends Controller
 
                     if (!empty($countableRelations)) {
                         $postQuery->withCount($countableRelations);
+                    }
+
+                    if ($user && Schema::hasTable('likes')) {
+                        $postQuery->withExists([
+                            'likes as liked_by_me' => function ($likeQuery) use ($user) {
+                                $likeQuery->where('user_id', $user->id);
+                            },
+                        ]);
                     }
                 },
             ]);

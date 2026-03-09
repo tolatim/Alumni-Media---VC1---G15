@@ -293,11 +293,11 @@ async function login() {
 
     localStorage.setItem("token", res.data.token);
     localStorage.setItem("user", JSON.stringify(res.data.user));
-    const user_role = JSON.parse(localStorage.getItem('user')).role
-    if(user_role.name === 'alumni'){
+    const userRoleName = res?.data?.user?.role?.name || 'alumni'
+    if (userRoleName === 'alumni') {
       router.push("/");
-    }else{
-      router.push("/admin")
+    } else {
+      router.push("/admin");
     }
   } catch (err) {
     error.value = err.response?.data?.message || "Invalid email or password";

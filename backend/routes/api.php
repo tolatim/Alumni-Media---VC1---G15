@@ -1,16 +1,37 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UserController;
-use App\Models\Message;
-use App\Models\Notification;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route; 
+use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+
+Route::apiResource('/users', UserController::class);
+Route::get('/users', [UserController::class, 'index']);
+Route::middleware('auth:sanctum')->patch('/user/profile', [UserController::class, 'update']);
+
+// Post Route
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/posts', [PostController::class, 'index']);
+    Route::post('/posts', [PostController::class, 'store']);
+    Route::post('/posts/{id}', [PostController::class, 'update']);
+    Route::put('/posts/{id}', [PostController::class, 'update']);
+    Route::patch('/posts/{id}', [PostController::class, 'update']);
+    Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+    Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
+    Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
+    Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
+    Route::put('/comments/{comment}', [CommentController::class, 'update']);
+    Route::patch('/comments/{comment}', [CommentController::class, 'update']);
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+});
+   
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -74,9 +95,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile/change-password', [UserController::class, 'changePassword']);
-
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
-    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
-    Route::post('/notifications/{id}/undo', [NotificationController::class, 'undo']);
 });

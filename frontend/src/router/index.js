@@ -4,6 +4,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
+import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
 import Notification from '@/views/Notification.vue'
@@ -40,9 +41,27 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/notification',
+    name: 'Notification',
+    component: Notification,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile/edit',
     name: 'EditProfile',
     component: EditProfile,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/post',
+    name: 'Create',
+    component: Create,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/post/:id',
+    name: 'EditPost',
+    component: Create,
     meta: { requiresAuth: true },
   },
   {
@@ -52,8 +71,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/connection',
-    component: Connect,
+    path: '/:pathMatch(.*)*',
+    redirect: '/',
+  },
     name: "connection",
     meta: {
       requiresAuth: true
@@ -69,6 +89,7 @@ const routes = [
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }
+>>>>>>> 9eb295f1b2b0f25d84cd2398ff970217a8515370
 ]
 
 const router = createRouter({
@@ -78,8 +99,12 @@ const router = createRouter({
 
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
+<<<<<<< HEAD
   const user = JSON.parse(localStorage.getItem('user'))
   
+=======
+
+>>>>>>> feature/Auth_Post
   if (to.meta.requiresAuth && !token) {
     return '/login'
   }
@@ -88,6 +113,7 @@ router.beforeEach((to, from) => {
     return '/'
   }
 
+<<<<<<< HEAD
   if (to.meta.requiresAdmin) {
     if (!token) {
       return '/login'
@@ -98,7 +124,15 @@ router.beforeEach((to, from) => {
     }
   }
 
+=======
+>>>>>>> feature/Auth_Post
   return true
 })
+ 
+
+
+
+
 
 export default router
+
