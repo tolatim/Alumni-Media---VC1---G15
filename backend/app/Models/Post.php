@@ -11,7 +11,8 @@ class Post extends Model
 
     protected $fillable = [
         'user_id',
-        'post_content',
+        'title',
+        'content',
     ];
 
     public function user()
@@ -21,7 +22,7 @@ class Post extends Model
 
     public function media()
     {
-        return $this->hasMany(PostMedia::class);
+        return $this->hasMany(Media::class);
     }
 
     public function comments()

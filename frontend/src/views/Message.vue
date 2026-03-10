@@ -1,8 +1,8 @@
 <template>
   <Navbar />
-  <main class="min-h-screen bg-slate-100 py-6">
-    <div class="mx-auto grid max-w-7xl grid-cols-12 gap-5 px-5">
-      <aside class="col-span-12 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
+  <main class="min-h-screen py-6 md:py-8">
+    <div class="mx-auto grid max-w-7xl grid-cols-12 gap-5 px-4 sm:px-5">
+      <aside class="col-span-12 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur lg:col-span-3">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-base font-semibold text-slate-800">Conversations</h2>
           <span class="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{{ contactsPagination.total }}</span>
@@ -64,7 +64,7 @@
         </div>
       </aside>
 
-      <section class="col-span-12 flex h-[80vh] flex-col rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-span-6">
+      <section class="col-span-12 flex h-[80vh] flex-col rounded-2xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur lg:col-span-6">
         <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div class="flex items-center gap-3">
             <img v-if="selectedUser" :src="selectedUser.profile?.avatar || fallbackAvatar" class="h-10 w-10 rounded-full object-cover" />
@@ -100,7 +100,7 @@
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto bg-slate-50/60 p-4">
+        <div class="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-4">
           <div v-if="selectedUser && messagesPagination.current_page < messagesPagination.last_page" class="mb-3 flex justify-center">
             <button
               class="rounded-full border bg-white px-3 py-1 text-xs hover:bg-slate-100 disabled:opacity-50"
@@ -127,7 +127,7 @@
               <div class="max-w-[78%]">
                 <div
                   class="rounded-2xl px-3 py-2 shadow-sm"
-                  :class="message.sender_id === me?.id ? 'bg-teal-600 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-200'"
+                  :class="message.sender_id === me?.id ? 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-200'"
                 >
                   <div v-if="editingMessageId === message.id" class="space-y-2">
                     <textarea
@@ -196,7 +196,7 @@
             v-model="form.content"
             rows="2"
             placeholder="Write a message..."
-            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
             :disabled="sending || blockedMe"
           ></textarea>
 
@@ -205,7 +205,7 @@
             <button
               type="submit"
               :disabled="sending || blockedMe"
-              class="rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+              class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:from-cyan-700 hover:to-blue-800 disabled:opacity-60"
             >
               {{ sending ? 'Sending...' : 'Send Message' }}
             </button>
@@ -215,7 +215,7 @@
       </section>
 
       <aside class="col-span-12 space-y-4 lg:col-span-3">
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
           <h3 class="mb-3 text-base font-semibold text-slate-800">Friends</h3>
           <div v-if="loadingSidebar" class="space-y-3">
             <div v-for="n in 4" :key="`side-friend-skeleton-${n}`" class="h-10 animate-pulse rounded bg-slate-200"></div>
@@ -237,7 +237,7 @@
           </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
           <h3 class="mb-3 text-base font-semibold text-slate-800">Blocked Friends</h3>
           <div v-if="loadingSidebar" class="space-y-3">
             <div v-for="n in 3" :key="`side-blocked-skeleton-${n}`" class="h-10 animate-pulse rounded bg-slate-200"></div>

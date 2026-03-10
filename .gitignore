@@ -3,6 +3,7 @@
 Thumbs.db
 .vscode/
 .idea/
+/node_modules/
 
 # Laravel backend
 /backend/.env

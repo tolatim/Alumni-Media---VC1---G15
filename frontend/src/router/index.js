@@ -5,6 +5,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
+import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
 
@@ -43,6 +44,18 @@ const routes = [
     path: '/profile/edit',
     name: 'EditProfile',
     component: EditProfile,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/post',
+    name: 'Create',
+    component: Create,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/post/:id',
+    name: 'EditPost',
+    component: Create,
     meta: { requiresAuth: true },
   },
   {
@@ -96,6 +109,11 @@ router.beforeEach((to, from, next) => {
 
   next()
 })
+ 
+
+
+
+
 
 router.afterEach(() => {
   stopRouteLoading()
@@ -106,3 +124,4 @@ router.onError(() => {
 })
 
 export default router
+
