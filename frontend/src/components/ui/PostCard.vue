@@ -275,7 +275,6 @@
         </div>
 
       </div>
-
       <p class="text-xs font-medium text-slate-500">
         {{ post.media?.length ? `${post.media.length} media` : 'Text post' }}
       </p>
@@ -310,86 +309,224 @@
           :key="comment.id"
           class="rounded-lg border border-slate-200 bg-white p-3"
         >
-          <div class="mb-1 flex items-center justify-between gap-2">
-            <p class="text-xs font-semibold text-slate-700">{{ comment.user?.name || 'Unknown user' }}</p>
-            <div v-if="canDeleteComment(comment)" class="relative">
-              <button
-                type="button"
-                @click.stop="toggleCommentActionsMenu(comment.id)"
-                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
-                aria-label="Comment actions"
-                title="Comment actions"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  class="h-3.5 w-3.5"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="5" r="2" />
-                  <circle cx="12" cy="12" r="2" />
-                  <circle cx="12" cy="19" r="2" />
-                </svg>
-              </button>
+          <div class="flex items-start gap-2.5">
+            <img
+              :src="comment.user?.profile?.avatar || fallbackAvatar"
+              alt="Comment user avatar"
+              class="h-8 w-8 shrink-0 rounded-full border border-slate-200 object-cover"
+            >
+            <div class="min-w-0 flex-1">
+              <div class="mb-1 flex items-center justify-between gap-2">
+                <p class="text-xs font-semibold text-slate-700">{{ comment.user?.name || 'Unknown user' }}</p>
+                <div v-if="canDeleteComment(comment)" class="relative">
+                  <button
+                    type="button"
+                    @click.stop="toggleCommentActionsMenu(comment.id)"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                    aria-label="Comment actions"
+                    title="Comment actions"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="h-3.5 w-3.5"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="5" r="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <circle cx="12" cy="19" r="2" />
+                    </svg>
+                  </button>
 
-              <div
-                v-if="openCommentActionsMenuId === comment.id"
-                class="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                  <div
+                    v-if="openCommentActionsMenuId === comment.id"
+                    class="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                  >
+                    <button
+                      type="button"
+                      @click="startCommentEdit(comment)"
+                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      @click="deleteComment(comment.id)"
+                      class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                    >
+                      <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                      </svg>
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <template v-if="editingCommentId === comment.id">
+                <textarea
+                  v-model="editingCommentContent"
+                  rows="2"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                ></textarea>
+                <div class="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    @click="cancelCommentEdit"
+                    :disabled="commentUpdating"
+                    class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    @click="saveCommentEdit(comment)"
+                    :disabled="commentUpdating"
+                    class="inline-flex items-center rounded-md border border-cyan-200 bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+                  >
+                    {{ commentUpdating ? 'Saving...' : 'Save' }}
+                  </button>
+                </div>
+              </template>
+              <p v-else class="whitespace-pre-line break-words text-sm text-slate-700">{{ comment.content }}</p>
+
+              <div class="mt-2">
+                <button
+                  type="button"
+                  @click="toggleReplyInput(comment.id)"
+                  class="text-[11px] font-semibold text-cyan-700 hover:text-cyan-800"
+                >
+                  Reply
+                </button>
+              </div>
+
+              <form
+                v-if="isReplyInputOpen(comment.id)"
+                class="mt-2 flex items-start gap-2"
+                @submit.prevent="submitReply(comment)"
               >
+                <textarea
+                  v-model="replyDraftByCommentId[comment.id]"
+                  rows="2"
+                  placeholder="Write a reply..."
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                ></textarea>
                 <button
-                  type="button"
-                  @click="startCommentEdit(comment)"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  type="submit"
+                  :disabled="isReplySubmitting(comment.id)"
+                  class="inline-flex items-center rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
                 >
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                  <span>Edit</span>
+                  {{ isReplySubmitting(comment.id) ? 'Replying...' : 'Reply' }}
                 </button>
-                <button
-                  type="button"
-                  @click="deleteComment(comment.id)"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+              </form>
+
+              <div v-if="comment.replies?.length" class="mt-3 space-y-2 border-l border-slate-200 pl-3">
+                <div
+                  v-for="reply in comment.replies"
+                  :key="reply.id"
+                  class="rounded-lg border border-slate-200 bg-slate-50 p-2.5"
                 >
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4h8v2" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6" />
-                    <path d="M14 11v6" />
-                  </svg>
-                  <span>Delete</span>
-                </button>
+                  <div class="flex items-start gap-2.5">
+                    <img
+                      :src="reply.user?.profile?.avatar || fallbackAvatar"
+                      alt="Reply user avatar"
+                      class="mt-0.5 h-7 w-7 shrink-0 rounded-full border border-slate-200 object-cover"
+                    >
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs font-semibold text-slate-700">{{ reply.user?.name || 'Unknown user' }}</p>
+                        <div v-if="canDeleteComment(reply)" class="relative">
+                          <button
+                            type="button"
+                            @click.stop="toggleCommentActionsMenu(reply.id)"
+                            class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                            aria-label="Reply actions"
+                            title="Reply actions"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              class="h-3.5 w-3.5"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              <circle cx="12" cy="5" r="2" />
+                              <circle cx="12" cy="12" r="2" />
+                              <circle cx="12" cy="19" r="2" />
+                            </svg>
+                          </button>
+
+                          <div
+                            v-if="openCommentActionsMenuId === reply.id"
+                            class="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                          >
+                            <button
+                              type="button"
+                              @click="startCommentEdit(reply)"
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M12 20h9" />
+                                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                              </svg>
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              @click="deleteComment(reply.id)"
+                              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                            >
+                              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4h8v2" />
+                                <path d="M19 6l-1 14H6L5 6" />
+                                <path d="M10 11v6" />
+                                <path d="M14 11v6" />
+                              </svg>
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <template v-if="editingCommentId === reply.id">
+                        <textarea
+                          v-model="editingCommentContent"
+                          rows="2"
+                          class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                        ></textarea>
+                        <div class="mt-2 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            @click="cancelCommentEdit"
+                            :disabled="commentUpdating"
+                            class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            @click="saveCommentEdit(reply)"
+                            :disabled="commentUpdating"
+                            class="inline-flex items-center rounded-md border border-cyan-200 bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+                          >
+                            {{ commentUpdating ? 'Saving...' : 'Save' }}
+                          </button>
+                        </div>
+                      </template>
+                      <p v-else class="mt-1 whitespace-pre-line break-words text-sm text-slate-700">{{ reply.content }}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <template v-if="editingCommentId === comment.id">
-            <textarea
-              v-model="editingCommentContent"
-              rows="2"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-            ></textarea>
-            <div class="mt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                @click="cancelCommentEdit"
-                :disabled="commentUpdating"
-                class="inline-flex items-center rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                @click="saveCommentEdit(comment)"
-                :disabled="commentUpdating"
-                class="inline-flex items-center rounded-md border border-cyan-200 bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
-              >
-                {{ commentUpdating ? 'Saving...' : 'Save' }}
-              </button>
-            </div>
-          </template>
-          <p v-else class="whitespace-pre-line break-words text-sm text-slate-700">{{ comment.content }}</p>
         </div>
       </div>
     </div>
@@ -431,6 +568,9 @@ const comments = ref([])
 const commentsCountOverride = ref(null)
 const commentDraft = ref('')
 const commentSubmitting = ref(false)
+const replyDraftByCommentId = ref({})
+const replyOpenByCommentId = ref({})
+const replySubmittingByCommentId = ref({})
 
 const openCommentActionsMenuId = ref(null)
 const editingCommentId = ref(null)
@@ -441,6 +581,10 @@ const isMediaExpanded = ref(false)
 
 const getApiMessage = (error, fallback) => error?.response?.data?.message || fallback
 const toSafeCount = (value) => Number(value) || 0
+const normalizeComment = (comment) => ({
+  ...comment,
+  replies: Array.isArray(comment?.replies) ? comment.replies : [],
+})
 
 const editImageCount = computed(() => editMediaFiles.value.filter((file) => file.type.startsWith('image/')).length)
 const editVideoCount = computed(() => editMediaFiles.value.filter((file) => file.type.startsWith('video/')).length)
@@ -580,7 +724,7 @@ const loadComments = async () => {
   commentsLoading.value = true
   try {
     const response = await api.get(`/posts/${props.post.id}/comments`)
-    comments.value = response.data?.data || []
+    comments.value = (response.data?.data || []).map(normalizeComment)
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
   } catch (error) {
     console.error(error.response?.data || error)
@@ -606,7 +750,7 @@ const submitComment = async () => {
     const response = await api.post(`/posts/${props.post.id}/comments`, { content })
     const createdComment = response.data?.comment
     if (createdComment) {
-      comments.value = [createdComment, ...comments.value]
+      comments.value = [normalizeComment(createdComment), ...comments.value]
     }
     commentDraft.value = ''
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
@@ -619,9 +763,97 @@ const submitComment = async () => {
   }
 }
 
+const isReplyInputOpen = (commentId) => Boolean(replyOpenByCommentId.value[commentId])
+
+const toggleReplyInput = (commentId) => {
+  replyOpenByCommentId.value[commentId] = !replyOpenByCommentId.value[commentId]
+}
+
+const isReplySubmitting = (commentId) => Boolean(replySubmittingByCommentId.value[commentId])
+
+const submitReply = async (comment) => {
+  const commentId = comment.id
+  const content = String(replyDraftByCommentId.value[commentId] || '').trim()
+  if (!content) return
+
+  replySubmittingByCommentId.value[commentId] = true
+  try {
+    const response = await api.post(`/posts/${props.post.id}/comments`, {
+      content,
+      parent_id: commentId,
+    })
+    const createdReply = response.data?.comment
+    if (createdReply) {
+      if (!Array.isArray(comment.replies)) {
+        comment.replies = []
+      }
+      comment.replies = [...comment.replies, normalizeComment(createdReply)]
+    }
+    replyDraftByCommentId.value[commentId] = ''
+    replyOpenByCommentId.value[commentId] = false
+    setCommentsCount(response.data?.comments_count ?? comments.value.length)
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to reply to comment.'))
+  } finally {
+    replySubmittingByCommentId.value[commentId] = false
+  }
+}
+
 const canDeleteComment = (comment) => {
   const currentUserId = Number(props.currentUser?.id)
   return Number.isFinite(currentUserId) && currentUserId === Number(comment?.user_id)
+}
+
+const findCommentLocation = (commentId) => {
+  for (let i = 0; i < comments.value.length; i += 1) {
+    const parent = comments.value[i]
+    if (parent.id === commentId) {
+      return { kind: 'parent', parentIndex: i }
+    }
+
+    const replies = Array.isArray(parent.replies) ? parent.replies : []
+    const replyIndex = replies.findIndex((reply) => reply.id === commentId)
+    if (replyIndex !== -1) {
+      return { kind: 'reply', parentIndex: i, replyIndex }
+    }
+  }
+
+  return null
+}
+
+const removeCommentById = (commentId) => {
+  const location = findCommentLocation(commentId)
+  if (!location) return
+
+  if (location.kind === 'parent') {
+    comments.value = comments.value.filter((item) => item.id !== commentId)
+    return
+  }
+
+  const parent = comments.value[location.parentIndex]
+  if (!parent || !Array.isArray(parent.replies)) return
+  parent.replies = parent.replies.filter((item) => item.id !== commentId)
+}
+
+const replaceCommentById = (commentId, updatedComment) => {
+  const location = findCommentLocation(commentId)
+  if (!location) return
+
+  if (location.kind === 'parent') {
+    comments.value[location.parentIndex] = normalizeComment({
+      ...comments.value[location.parentIndex],
+      ...updatedComment,
+    })
+    return
+  }
+
+  const parent = comments.value[location.parentIndex]
+  if (!parent || !Array.isArray(parent.replies)) return
+  parent.replies[location.replyIndex] = {
+    ...parent.replies[location.replyIndex],
+    ...updatedComment,
+  }
 }
 
 const toggleCommentActionsMenu = (commentId) => {
@@ -632,7 +864,7 @@ const deleteComment = async (commentId) => {
   openCommentActionsMenuId.value = null
   try {
     const response = await api.delete(`/comments/${commentId}`)
-    comments.value = comments.value.filter((comment) => comment.id !== commentId)
+    removeCommentById(commentId)
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
   } catch (error) {
     console.error(error.response?.data || error)
@@ -662,10 +894,7 @@ const saveCommentEdit = async (comment) => {
   try {
     const response = await api.put(`/comments/${comment.id}`, { content })
     const updatedComment = response.data?.comment
-    const targetIndex = comments.value.findIndex((item) => item.id === comment.id)
-    if (targetIndex !== -1) {
-      comments.value[targetIndex] = updatedComment || { ...comments.value[targetIndex], content }
-    }
+    replaceCommentById(comment.id, updatedComment || { content })
     cancelCommentEdit()
   } catch (error) {
     console.error(error.response?.data || error)

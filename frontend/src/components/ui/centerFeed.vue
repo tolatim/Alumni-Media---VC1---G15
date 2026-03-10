@@ -47,7 +47,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
-import PostCard from '@/components/ui/feed/PostCard.vue'
+import PostCard from '@/components/ui/PostCard.vue'
 
 const props = defineProps({
   posts: {
