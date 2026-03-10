@@ -23,18 +23,52 @@ class UserController extends Controller
         ]);
     }
 
-    public function feed()
+    public function feed(Request $request)
     {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
         if (!Schema::hasTable('posts')) {
             return response()->json([
                 'message' => 'Feed fetched successfully',
                 'data' => [],
+                'pagination' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => $perPage,
+                    'total' => 0,
+                ],
             ]);
         }
 
+        $user = $request->user();
         $query = Post::query()->latest()->with(['user.role']);
 
-        if (Schema::hasTable('post_media')) {
+        if ($user) {
+            $allowedUserIds = [(int) $user->id];
+
+            if (Schema::hasTable('connections')) {
+                $friendIds = Connection::query()
+                    ->where('status', 'accepted')
+                    ->where(function ($connectionQuery) use ($user) {
+                        $connectionQuery->where('requester_id', $user->id)
+                            ->orWhere('addressee_id', $user->id);
+                    })
+                    ->get()
+                    ->map(function ($row) use ($user) {
+                        return (int) ($row->requester_id === (int) $user->id
+                            ? $row->addressee_id
+                            : $row->requester_id);
+                    })
+                    ->values()
+                    ->all();
+
+                $allowedUserIds = array_values(array_unique(array_merge($allowedUserIds, $friendIds)));
+            }
+
+            $query->whereIn('user_id', $allowedUserIds);
+        }
+
+        if (Schema::hasTable('media')) {
             $query->with(['media']);
         }
 
@@ -50,11 +84,25 @@ class UserController extends Controller
             $query->withCount($countableRelations);
         }
 
-        $posts = $query->get();
+        if ($user && Schema::hasTable('likes')) {
+            $query->withExists([
+                'likes as liked_by_me' => function ($likeQuery) use ($user) {
+                    $likeQuery->where('user_id', $user->id);
+                },
+            ]);
+        }
+
+        $posts = $query->paginate($perPage);
 
         return response()->json([
             'message' => 'Feed fetched successfully',
-            'data' => $posts,
+            'data' => $posts->items(),
+            'pagination' => [
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+            ],
         ]);
     }
 
@@ -446,14 +494,19 @@ class UserController extends Controller
         ]);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $user = $request->user();
+
         $query = User::query()->with(['role']);
 
         if (Schema::hasTable('posts')) {
             $query->with([
                 'posts' => function ($postQuery) {
                     $postQuery->latest();
+                    if (Schema::hasTable('media')) {
+                        $postQuery->with('media');
+                    }
 
                     $countableRelations = [];
                     if (Schema::hasTable('likes')) {
@@ -465,6 +518,14 @@ class UserController extends Controller
 
                     if (!empty($countableRelations)) {
                         $postQuery->withCount($countableRelations);
+                    }
+
+                    if ($user && Schema::hasTable('likes')) {
+                        $postQuery->withExists([
+                            'likes as liked_by_me' => function ($likeQuery) use ($user) {
+                                $likeQuery->where('user_id', $user->id);
+                            },
+                        ]);
                     }
                 },
             ]);
