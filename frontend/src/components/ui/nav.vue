@@ -41,7 +41,7 @@
         <RouterLink
           v-if="user"
           :to="{ name: 'Profile', params: { id: user.id } }"
-          class="ml-1 overflow-hidden rounded-xl border border-cyan-200 bg-white p-0.5 shadow-sm"
+          class="ml-1 hidden overflow-hidden rounded-xl border border-cyan-200 bg-white p-0.5 shadow-sm sm:inline-flex lg:hidden"
         >
           <img
             :src="user.profile?.avatar || fallbackAvatar"

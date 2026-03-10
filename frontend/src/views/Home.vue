@@ -157,14 +157,26 @@ const loadMorePosts = async () => {
   }
 };
 
+let scrollTicking = false;
+let lastScrollLoadAt = 0;
+
 const onScroll = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   const fullHeight = document.documentElement.scrollHeight;
+  if (scrollTicking) return;
+  scrollTicking = true;
 
-  if (scrollTop + viewportHeight >= fullHeight - 280) {
-    loadMorePosts();
-  }
+  window.requestAnimationFrame(() => {
+    if (scrollTop + viewportHeight >= fullHeight - 280) {
+      const now = Date.now();
+      if (now - lastScrollLoadAt > 400) {
+        lastScrollLoadAt = now;
+        loadMorePosts();
+      }
+    }
+    scrollTicking = false;
+  });
 };
 
 const prependPost = (newPost) => {

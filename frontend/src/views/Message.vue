@@ -352,6 +352,8 @@ const connectionStatus = ref('none')
 const blockedByMe = ref(false)
 const blockedMe = ref(false)
 let echoChannel = null
+let contactRefreshTimer = null
+let lastContactRefreshAt = 0
 
 const form = ref({
   content: '',
@@ -421,6 +423,25 @@ const loadContacts = async (page = 1) => {
   }
 }
 
+const scheduleContactsRefresh = (page = contactsPagination.value.current_page, immediate = false) => {
+  if (contactRefreshTimer) {
+    clearTimeout(contactRefreshTimer)
+    contactRefreshTimer = null
+  }
+
+  const now = Date.now()
+  if (immediate && now - lastContactRefreshAt > 300) {
+    lastContactRefreshAt = now
+    loadContacts(page)
+    return
+  }
+
+  contactRefreshTimer = setTimeout(() => {
+    lastContactRefreshAt = Date.now()
+    loadContacts(page)
+  }, 350)
+}
+
 const loadConnectionStatus = async (userId) => {
   try {
     const response = await api.get(`/connections/status/${userId}`)
@@ -477,7 +498,7 @@ const loadMessages = async (userId, page = 1, appendOlder = false) => {
       await api.post(`/messages/${userId}/read`)
     }
 
-    await loadContacts(contactsPagination.value.current_page)
+    scheduleContactsRefresh(contactsPagination.value.current_page, true)
     window.dispatchEvent(new Event('messages:updated'))
   } catch (error) {
     if (!appendOlder) {
@@ -559,7 +580,7 @@ const sendMessage = async () => {
       await loadMessages(selectedUser.value.id, 1, false)
     }
 
-    await loadContacts(contactsPagination.value.current_page)
+    scheduleContactsRefresh(contactsPagination.value.current_page, true)
     form.value.content = ''
     form.value.mediaFile = null
     successMessage.value = 'Message sent.'
@@ -640,7 +661,7 @@ const blockSelectedUser = async () => {
   try {
     await api.post(`/connections/user/${selectedUser.value.id}/block`)
     await loadConnectionStatus(selectedUser.value.id)
-    await loadContacts(contactsPagination.value.current_page)
+    scheduleContactsRefresh(contactsPagination.value.current_page, true)
     await loadSidebarConnections()
     successMessage.value = 'User blocked.'
     window.dispatchEvent(new Event('messages:updated'))
@@ -659,7 +680,7 @@ const unblockSelectedUser = async () => {
   try {
     await api.post(`/connections/user/${selectedUser.value.id}/unblock`)
     await loadConnectionStatus(selectedUser.value.id)
-    await loadContacts(contactsPagination.value.current_page)
+    scheduleContactsRefresh(contactsPagination.value.current_page, true)
     await loadSidebarConnections()
     successMessage.value = 'User unblocked.'
     window.dispatchEvent(new Event('messages:updated'))
@@ -676,7 +697,7 @@ const unblockUserFromSide = async (userId) => {
   try {
     await api.post(`/connections/user/${userId}/unblock`)
     await loadSidebarConnections()
-    await loadContacts(contactsPagination.value.current_page)
+    scheduleContactsRefresh(contactsPagination.value.current_page, true)
     if (selectedUser.value?.id === userId) {
       await loadConnectionStatus(userId)
     }
@@ -708,7 +729,7 @@ onMounted(async () => {
             messages.value = [...messages.value, message]
           }
 
-          loadContacts(contactsPagination.value.current_page)
+          scheduleContactsRefresh(contactsPagination.value.current_page, true)
           window.dispatchEvent(new Event('messages:updated'))
         })
       }
@@ -737,6 +758,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  if (contactRefreshTimer) {
+    clearTimeout(contactRefreshTimer)
+    contactRefreshTimer = null
+  }
   if (echoChannel && typeof window !== 'undefined' && window.Echo) {
     echoChannel.stopListening('.MessageCreated')
     if (me.value?.id) {

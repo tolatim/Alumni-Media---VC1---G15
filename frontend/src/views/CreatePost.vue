@@ -146,7 +146,6 @@
 <script>
 import axios from 'axios';
 import Navbar from '@/components/ui/nav.vue';
-import { getPosts } from '@/services/authService';
 import { createPost } from '@/services/authService';
 
 export default {
@@ -173,15 +172,6 @@ export default {
   },
 
   methods: {
-    async fetchPosts() {
-      try {
-        const res = await getPosts();
-        this.posts = res.data;
-      } catch (error) {
-        console.error(error);
-      }
-    },
-
     async submitPost() {
       this.isPosting = true;
 
@@ -213,7 +203,6 @@ export default {
         this.content = '';
         this.clearImages();
 
-        this.fetchPosts();
       } catch (error) {
         console.error(error.response?.data || error);
       } finally {
