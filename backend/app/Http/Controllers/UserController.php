@@ -23,6 +23,7 @@ class UserController extends Controller
         ]);
     }
 
+
     public function feed()
     {
         if (!Schema::hasTable('posts')) {
@@ -33,16 +34,41 @@ class UserController extends Controller
         }
 
         $user = auth()->user();
-        $query = Post::query()->latest()->with(['user.role']);
+
+        $connectionIds = [];
+
+        if ($user && Schema::hasTable('connections')) {
+
+            $connections = \App\Models\Connection::where('status', 'accepted')
+                ->where(function ($q) use ($user) {
+                    $q->where('requester_id', $user->id)
+                        ->orWhere('addressee_id', $user->id);
+                })
+                ->get();
+
+            foreach ($connections as $connection) {
+                $connectionIds[] =
+                    $connection->requester_id == $user->id
+                    ? $connection->addressee_id
+                    : $connection->requester_id;
+            }
+        }
+
+        $query = Post::query()
+            ->whereIn('user_id', $connectionIds)
+            ->latest()
+            ->with(['user.role']);
 
         if (Schema::hasTable('media')) {
             $query->with(['media']);
         }
 
         $countableRelations = [];
+
         if (Schema::hasTable('likes')) {
             $countableRelations[] = 'likes';
         }
+
         if (Schema::hasTable('comments')) {
             $countableRelations[] = 'comments';
         }
