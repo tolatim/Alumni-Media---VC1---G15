@@ -38,6 +38,7 @@ import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
+import { createEcho } from "@/services/realtime";
 
 const currentUser = ref(null);
 const posts = ref([]);
@@ -225,12 +226,32 @@ const refreshSuggestions = async () => {
   }
 };
 
+const attachFeedRealtime = () => {
+  const echo = createEcho();
+  if (!echo) return;
+
+  echo.channel('feed').listen('.PostCreated', (payload) => {
+    const post = payload?.post || payload;
+    if (!post?.id) return;
+    if (posts.value.some((item) => item.id === post.id)) return;
+    posts.value = [post, ...posts.value];
+  });
+};
+
+const detachFeedRealtime = () => {
+  if (typeof window !== 'undefined' && window.Echo) {
+    window.Echo.leave('feed');
+  }
+};
+
 onMounted(() => {
   loadHomeData();
+  attachFeedRealtime();
   window.addEventListener("scroll", onScroll, { passive: true });
 });
 
 onBeforeUnmount(() => {
+  detachFeedRealtime();
   window.removeEventListener("scroll", onScroll);
 });
 </script>

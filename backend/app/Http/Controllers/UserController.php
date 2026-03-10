@@ -502,7 +502,7 @@ class UserController extends Controller
 
         if (Schema::hasTable('posts')) {
             $query->with([
-                'posts' => function ($postQuery) {
+                'posts' => function ($postQuery) use ($user) {
                     $postQuery->latest();
                     if (Schema::hasTable('media')) {
                         $postQuery->with('media');

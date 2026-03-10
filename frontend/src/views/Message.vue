@@ -2,10 +2,22 @@
   <Navbar />
   <main class="min-h-screen py-6 md:py-8">
     <div class="mx-auto grid max-w-7xl grid-cols-12 gap-5 px-4 sm:px-5">
-      <aside class="col-span-12 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur lg:col-span-3">
+      <aside
+        class="col-span-12 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur lg:col-span-3"
+        :class="selectedUser ? 'hidden lg:block' : ''"
+      >
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-base font-semibold text-slate-800">Conversations</h2>
           <span class="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{{ contactsPagination.total }}</span>
+        </div>
+
+        <div class="mb-3">
+          <input
+            v-model="contactSearch"
+            type="text"
+            placeholder="Search friends..."
+            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+          >
         </div>
 
         <div v-if="loadingContacts" class="space-y-3">
@@ -20,7 +32,7 @@
 
         <div v-else class="space-y-2">
           <button
-            v-for="contact in contacts"
+            v-for="contact in filteredContacts"
             :key="contact.id"
             @click="selectContact(contact)"
             class="flex w-full items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100"
@@ -40,7 +52,7 @@
               {{ contact.unread_count > 99 ? '99+' : contact.unread_count }}
             </span>
           </button>
-          <p v-if="!contacts.length" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No chats yet.</p>
+          <p v-if="!filteredContacts.length" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No chats yet.</p>
         </div>
 
         <div v-if="contactsPagination.last_page > 1" class="mt-4 flex items-center justify-between">
@@ -64,9 +76,21 @@
         </div>
       </aside>
 
-      <section class="col-span-12 flex h-[80vh] flex-col rounded-2xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur lg:col-span-6">
+      <section
+        class="col-span-12 flex h-[70vh] flex-col rounded-2xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur sm:h-[75vh] lg:col-span-6 lg:h-[80vh]"
+        :class="selectedUser ? 'flex' : 'hidden lg:flex'"
+      >
         <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div class="flex items-center gap-3">
+            <button
+              v-if="selectedUser"
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 lg:hidden"
+              @click="clearSelectedUser"
+              aria-label="Back"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
             <img v-if="selectedUser" :src="selectedUser.profile?.avatar || fallbackAvatar" class="h-10 w-10 rounded-full object-cover" />
             <div>
               <h3 class="text-sm font-semibold text-slate-800">
@@ -175,7 +199,7 @@
                     v-if="message.sender_id === me?.id && editingMessageId !== message.id"
                     class="invisible rounded px-1 text-[11px] text-red-500 hover:bg-red-50 hover:text-red-600 group-hover:visible"
                     :disabled="deletingMessageId === message.id"
-                    @click="deleteMessage(message.id)"
+                    @click="openDeleteConfirm(message)"
                   >
                     {{ deletingMessageId === message.id ? 'Deleting...' : 'Delete' }}
                   </button>
@@ -214,7 +238,7 @@
         </form>
       </section>
 
-      <aside class="col-span-12 space-y-4 lg:col-span-3">
+      <aside class="col-span-12 space-y-4 lg:col-span-3" :class="selectedUser ? 'hidden lg:block' : ''">
         <div class="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
           <h3 class="mb-3 text-base font-semibold text-slate-800">Friends</h3>
           <div v-if="loadingSidebar" class="space-y-3">
@@ -262,14 +286,40 @@
       </aside>
     </div>
   </main>
+
+  <div v-if="confirmDeleteMessageId" class="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="closeDeleteConfirm"></div>
+    <div class="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+      <h3 class="text-base font-semibold text-slate-900">Delete message?</h3>
+      <p class="mt-1 text-sm text-slate-600">Are you sure you want to delete this message? This action cannot be undone.</p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+          @click="closeDeleteConfirm"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+          :disabled="deletingMessageId === confirmDeleteMessageId"
+          @click="confirmDeleteMessage"
+        >
+          {{ deletingMessageId === confirmDeleteMessageId ? 'Deleting...' : 'Delete' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { createEcho } from '@/services/realtime'
 
 const route = useRoute()
 const router = useRouter()
@@ -290,15 +340,18 @@ const loadingOlder = ref(false)
 const sending = ref(false)
 const processingUserAction = ref(false)
 const deletingMessageId = ref(null)
+const confirmDeleteMessageId = ref(null)
 const editingMessageId = ref(null)
 const editingContent = ref('')
 const savingEdit = ref(false)
+const contactSearch = ref('')
 
 const errorMessage = ref('')
 const successMessage = ref('')
 const connectionStatus = ref('none')
 const blockedByMe = ref(false)
 const blockedMe = ref(false)
+let echoChannel = null
 
 const form = ref({
   content: '',
@@ -327,6 +380,16 @@ const normalizePagination = (payload, fallbackPerPage) => {
     total: list.length,
   }
 }
+
+const filteredContacts = computed(() => {
+  const query = contactSearch.value.trim().toLowerCase()
+  if (!query) return contacts.value
+  return contacts.value.filter((contact) => {
+    const name = String(contact?.name || '').toLowerCase()
+    const headline = String(contact?.profile?.headline || '').toLowerCase()
+    return name.includes(query) || headline.includes(query)
+  })
+})
 
 const clearFeedback = () => {
   errorMessage.value = ''
@@ -435,6 +498,13 @@ const selectContact = async (contact) => {
   await loadMessages(contact.id, 1, false)
 }
 
+const clearSelectedUser = () => {
+  selectedUser.value = null
+  messages.value = []
+  messagesPagination.value = defaultPagination(MESSAGES_PER_PAGE)
+  router.replace({ path: '/message' })
+}
+
 const loadOlderMessages = async () => {
   if (!selectedUser.value) return
   if (messagesPagination.value.current_page >= messagesPagination.value.last_page) return
@@ -513,6 +583,20 @@ const deleteMessage = async (messageId) => {
   } finally {
     deletingMessageId.value = null
   }
+}
+
+const openDeleteConfirm = (message) => {
+  confirmDeleteMessageId.value = message?.id || null
+}
+
+const closeDeleteConfirm = () => {
+  confirmDeleteMessageId.value = null
+}
+
+const confirmDeleteMessage = async () => {
+  if (!confirmDeleteMessageId.value) return
+  await deleteMessage(confirmDeleteMessageId.value)
+  confirmDeleteMessageId.value = null
 }
 
 const startEdit = (message) => {
@@ -610,6 +694,26 @@ onMounted(async () => {
     await loadMe()
     await Promise.all([loadContacts(1), loadSidebarConnections()])
 
+    if (me.value?.id) {
+      const echo = createEcho()
+      if (echo) {
+        echoChannel = echo.private(`user.${me.value.id}`)
+        echoChannel.listen('.MessageCreated', (payload) => {
+          const message = payload?.message || payload
+          if (!message?.id) return
+          if (messages.value.some((item) => item.id === message.id)) return
+
+          const otherId = message.sender_id === me.value.id ? message.receiver_id : message.sender_id
+          if (selectedUser.value?.id && Number(selectedUser.value.id) === Number(otherId)) {
+            messages.value = [...messages.value, message]
+          }
+
+          loadContacts(contactsPagination.value.current_page)
+          window.dispatchEvent(new Event('messages:updated'))
+        })
+      }
+    }
+
     const contactId = route.params.userId
     if (!contactId) return
 
@@ -629,6 +733,16 @@ onMounted(async () => {
     }
   } catch {
     errorMessage.value = 'Failed to load messages.'
+  }
+})
+
+onUnmounted(() => {
+  if (echoChannel && typeof window !== 'undefined' && window.Echo) {
+    echoChannel.stopListening('.MessageCreated')
+    if (me.value?.id) {
+      window.Echo.leave(`user.${me.value.id}`)
+    }
+    echoChannel = null
   }
 })
 </script>

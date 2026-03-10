@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Events\PostCreated;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
@@ -68,9 +69,14 @@ class PostController extends Controller
         }
 
         // Return post with media
+        $post = $post->load('media', 'user.role')->loadCount(['likes', 'comments']);
+        $post->setAttribute('liked_by_me', false);
+
+        broadcast(new PostCreated($post))->toOthers();
+
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments'])
+            'post' => $post
         ], 201);
     }
 

@@ -15,6 +15,10 @@ api.interceptors.request.use(config => {
     config.__trackLoading = true
   }
 
+  if (typeof window !== 'undefined' && window.Echo && typeof window.Echo.socketId === 'function') {
+    config.headers['X-Socket-ID'] = window.Echo.socketId()
+  }
+
   const token = localStorage.getItem("token")
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

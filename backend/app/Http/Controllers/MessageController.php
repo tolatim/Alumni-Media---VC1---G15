@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Message;
 use App\Models\User;
+use App\Events\MessageCreated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -144,6 +145,8 @@ class MessageController extends Controller
             'media_type' => $mediaType,
             'status' => 'sent',
         ])->load(['sender', 'receiver']);
+
+        broadcast(new MessageCreated($message))->toOthers();
 
         return response()->json([
             'message' => 'Message sent successfully',
