@@ -78,7 +78,11 @@ const navClass = (prefix) => {
 
 const fetchMe = async () => {
   try {
-    const response = await api.get('/me')
+    const response = await api.get('/me', {
+      headers: {
+        'X-Skip-Loading': 'true',
+      },
+    })
     user.value = response.data
     localStorage.setItem('user', JSON.stringify(response.data))
   } catch {
@@ -88,7 +92,11 @@ const fetchMe = async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    const response = await api.get('/messages/unread-count')
+    const response = await api.get('/messages/unread-count', {
+      headers: {
+        'X-Skip-Loading': 'true',
+      },
+    })
     unreadCount.value = response.data?.data?.count || 0
   } catch {
     unreadCount.value = 0
