@@ -23,17 +23,50 @@ class UserController extends Controller
         ]);
     }
 
-    public function feed()
+    public function feed(Request $request)
     {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
         if (!Schema::hasTable('posts')) {
             return response()->json([
                 'message' => 'Feed fetched successfully',
                 'data' => [],
+                'pagination' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => $perPage,
+                    'total' => 0,
+                ],
             ]);
         }
 
-        $user = auth()->user();
+        $user = $request->user();
         $query = Post::query()->latest()->with(['user.role']);
+
+        if ($user) {
+            $allowedUserIds = [(int) $user->id];
+
+            if (Schema::hasTable('connections')) {
+                $friendIds = Connection::query()
+                    ->where('status', 'accepted')
+                    ->where(function ($connectionQuery) use ($user) {
+                        $connectionQuery->where('requester_id', $user->id)
+                            ->orWhere('addressee_id', $user->id);
+                    })
+                    ->get()
+                    ->map(function ($row) use ($user) {
+                        return (int) ($row->requester_id === (int) $user->id
+                            ? $row->addressee_id
+                            : $row->requester_id);
+                    })
+                    ->values()
+                    ->all();
+
+                $allowedUserIds = array_values(array_unique(array_merge($allowedUserIds, $friendIds)));
+            }
+
+            $query->whereIn('user_id', $allowedUserIds);
+        }
 
         if (Schema::hasTable('media')) {
             $query->with(['media']);
@@ -59,20 +92,29 @@ class UserController extends Controller
             ]);
         }
 
-        $posts = $query->get();
+        $posts = $query->paginate($perPage);
 
         return response()->json([
             'message' => 'Feed fetched successfully',
-            'data' => $posts,
+            'data' => $posts->items(),
+            'pagination' => [
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+            ],
         ]);
     }
 
     public function pendingConnections(Request $request)
     {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
         if (!Schema::hasTable('connections')) {
             return response()->json([
                 'message' => 'Connections table is missing. Run migrations first.',
                 'data' => [],
+                'pagination' => null,
             ], 503);
         }
 
@@ -83,21 +125,30 @@ class UserController extends Controller
             ->where('addressee_id', $user->id)
             ->where('status', 'pending')
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'message' => 'Pending connections fetched successfully',
-            'data' => $pending,
+            'data' => $pending->items(),
+            'pagination' => [
+                'current_page' => $pending->currentPage(),
+                'last_page' => $pending->lastPage(),
+                'per_page' => $pending->perPage(),
+                'total' => $pending->total(),
+            ],
         ]);
     }
 
     public function myConnections(Request $request)
     {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
         if (!Schema::hasTable('connections')) {
             return response()->json([
                 'message' => 'Connections table is missing. Run migrations first.',
                 'data' => [],
                 'count' => 0,
+                'pagination' => null,
             ], 503);
         }
 
@@ -111,12 +162,51 @@ class UserController extends Controller
                     ->orWhere('addressee_id', $user->id);
             })
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'message' => 'My connections fetched successfully',
-            'data' => $connections,
-            'count' => $connections->count(),
+            'data' => $connections->items(),
+            'count' => $connections->total(),
+            'pagination' => [
+                'current_page' => $connections->currentPage(),
+                'last_page' => $connections->lastPage(),
+                'per_page' => $connections->perPage(),
+                'total' => $connections->total(),
+            ],
+        ]);
+    }
+
+    public function blockedConnections(Request $request)
+    {
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+                'data' => [],
+                'pagination' => null,
+            ], 503);
+        }
+
+        $user = $request->user();
+
+        $blocked = Connection::query()
+            ->with(['requester.role', 'addressee.role'])
+            ->where('status', 'blocked')
+            ->where('requester_id', $user->id)
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'message' => 'Blocked connections fetched successfully',
+            'data' => $blocked->items(),
+            'pagination' => [
+                'current_page' => $blocked->currentPage(),
+                'last_page' => $blocked->lastPage(),
+                'per_page' => $blocked->perPage(),
+                'total' => $blocked->total(),
+            ],
         ]);
     }
 
@@ -125,7 +215,7 @@ class UserController extends Controller
         if (!Schema::hasTable('connections')) {
             return response()->json([
                 'message' => 'Connections table is missing. Run migrations first.',
-                'data' => ['status' => 'none', 'connection' => null],
+                'data' => ['status' => 'none', 'connection' => null, 'blocked_by_me' => false, 'blocked_me' => false],
             ], 503);
         }
 
@@ -135,7 +225,7 @@ class UserController extends Controller
         if ($targetId === (int) $me->id) {
             return response()->json([
                 'message' => 'Self profile',
-                'data' => ['status' => 'self', 'connection' => null],
+                'data' => ['status' => 'self', 'connection' => null, 'blocked_by_me' => false, 'blocked_me' => false],
             ]);
         }
 
@@ -150,11 +240,16 @@ class UserController extends Controller
             })
             ->first();
 
+        $blockedByMe = (bool) ($connection && $connection->status === 'blocked' && (int) $connection->requester_id === (int) $me->id);
+        $blockedMe = (bool) ($connection && $connection->status === 'blocked' && (int) $connection->addressee_id === (int) $me->id);
+
         return response()->json([
             'message' => 'Connection status fetched successfully',
             'data' => [
                 'status' => $connection?->status ?? 'none',
                 'connection' => $connection,
+                'blocked_by_me' => $blockedByMe,
+                'blocked_me' => $blockedMe,
             ],
         ]);
     }
@@ -262,7 +357,12 @@ class UserController extends Controller
             ], 404);
         }
 
-        $connection->update(['status' => 'blocked']);
+        // Reject acts as block from current user to requester.
+        $connection->update([
+            'requester_id' => $me->id,
+            'addressee_id' => $connection->requester_id,
+            'status' => 'blocked',
+        ]);
 
         return response()->json([
             'message' => 'Connection blocked successfully',
@@ -324,19 +424,25 @@ class UserController extends Controller
 
         $connection = Connection::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query->where('requester_id', $me->id)
-                    ->where('addressee_id', $targetId);
-            })
-            ->orWhere(function ($query) use ($me, $targetId) {
-                $query->where('requester_id', $targetId)
-                    ->where('addressee_id', $me->id);
+                $query->where(function ($q) use ($me, $targetId) {
+                    $q->where('requester_id', $me->id)
+                        ->where('addressee_id', $targetId);
+                })->orWhere(function ($q) use ($me, $targetId) {
+                    $q->where('requester_id', $targetId)
+                        ->where('addressee_id', $me->id);
+                });
             })
             ->first();
 
-        if ($connection) {
-            $connection->update(['status' => 'blocked']);
-        } else {
+        if (!$connection) {
             $connection = Connection::create([
+                'requester_id' => $me->id,
+                'addressee_id' => $targetId,
+                'status' => 'blocked',
+            ]);
+        } else {
+            // requester_id = blocker, addressee_id = blocked user
+            $connection->update([
                 'requester_id' => $me->id,
                 'addressee_id' => $targetId,
                 'status' => 'blocked',
@@ -345,7 +451,46 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User blocked successfully',
-            'data' => $connection,
+            'data' => $connection->fresh()->load(['requester', 'addressee']),
+        ]);
+    }
+
+    public function unblockUser(Request $request, $userId)
+    {
+        if (!Schema::hasTable('connections')) {
+            return response()->json([
+                'message' => 'Connections table is missing. Run migrations first.',
+            ], 503);
+        }
+
+        $me = $request->user();
+        $targetId = (int) $userId;
+
+        if ($targetId === (int) $me->id) {
+            return response()->json([
+                'message' => 'You cannot unblock yourself.',
+            ], 422);
+        }
+
+        $connection = Connection::query()
+            ->where('status', 'blocked')
+            ->where('requester_id', $me->id)
+            ->where('addressee_id', $targetId)
+            ->first();
+
+        if (!$connection) {
+            return response()->json([
+                'message' => 'Blocked connection not found.',
+            ], 404);
+        }
+
+        $connection->update([
+            'status' => 'accepted',
+        ]);
+
+        return response()->json([
+            'message' => 'User unblocked successfully',
+            'data' => $connection->fresh()->load(['requester', 'addressee']),
         ]);
     }
 
@@ -404,6 +549,7 @@ class UserController extends Controller
 
     public function suggestions(Request $request)
     {
+        $perPage = min(max((int) $request->query('per_page', 8), 1), 50);
         $me = $request->user();
 
         $excludedIds = [];
@@ -430,13 +576,18 @@ class UserController extends Controller
             ->when(!empty($excludedIds), function ($query) use ($excludedIds) {
                 $query->whereNotIn('id', $excludedIds);
             })
-            ->inRandomOrder()
-            ->limit(8)
-            ->get();
+            ->latest('id')
+            ->paginate($perPage);
 
         return response()->json([
             'message' => 'Suggestions fetched successfully',
-            'data' => $suggestions,
+            'data' => $suggestions->items(),
+            'pagination' => [
+                'current_page' => $suggestions->currentPage(),
+                'last_page' => $suggestions->lastPage(),
+                'per_page' => $suggestions->perPage(),
+                'total' => $suggestions->total(),
+            ],
         ]);
     }
 

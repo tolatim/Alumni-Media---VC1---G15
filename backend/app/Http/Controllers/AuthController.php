@@ -2,13 +2,20 @@
 
 namespace App\Http\Controllers;
 
+<<<<<<< HEAD
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
+=======
+>>>>>>> b339a8c7fa75814b232b74d1ba3e18083c43fc6c
 use App\Models\Role;
-use Illuminate\Support\Facades\Redis;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+<<<<<<< HEAD
+=======
+use Illuminate\Http\Request;
+>>>>>>> b339a8c7fa75814b232b74d1ba3e18083c43fc6c
 
 class AuthController extends Controller
 {
@@ -22,12 +29,12 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        $alumniRole = Role::firstOrCreate(['name' => 'alumni']);
+        $userRole = Role::firstOrCreate(['name' => 'user']);
 
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
-            'role_id' => $alumniRole->id,
+            'role_id' => $userRole->id,
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);

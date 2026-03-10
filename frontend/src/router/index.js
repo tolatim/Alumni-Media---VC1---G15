@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { startRouteLoading, stopRouteLoading } from '@/services/loadingService'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
@@ -69,11 +70,15 @@ const routes = [
     component: Profile,
     name: 'Profile',
     meta: { requiresAuth: true },
+<<<<<<< HEAD
   },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
+=======
+  }
+>>>>>>> b339a8c7fa75814b232b74d1ba3e18083c43fc6c
 ]
 
 const router = createRouter({
@@ -81,10 +86,25 @@ const router = createRouter({
   routes,
 })
 
+<<<<<<< HEAD
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user'))
   
+=======
+router.beforeEach((to, from, next) => {
+  startRouteLoading()
+
+  const token = localStorage.getItem('token')
+  let user = null
+
+  try {
+    const savedUser = localStorage.getItem('user')
+    user = savedUser ? JSON.parse(savedUser) : null
+  } catch {
+    user = null
+  }
+>>>>>>> b339a8c7fa75814b232b74d1ba3e18083c43fc6c
 
   if (to.meta.requiresAuth && !token) {
     return '/login'
@@ -96,21 +116,43 @@ router.beforeEach((to, from) => {
 
   if (to.meta.requiresAdmin) {
     if (!token) {
+<<<<<<< HEAD
       return '/login'
     } else if (user.role) {
       if (user.role !== 'admin') {
         return '/'
+=======
+      next('/login')
+      return
+    } else if (user?.role) {
+      const roleName = typeof user.role === 'string' ? user.role : user.role?.name
+      if (roleName !== 'admin') {
+        next('/')
+        return
+>>>>>>> b339a8c7fa75814b232b74d1ba3e18083c43fc6c
       }
     }
   }
 
+<<<<<<< HEAD
   return true
+=======
+  next()
+>>>>>>> b339a8c7fa75814b232b74d1ba3e18083c43fc6c
 })
  
 
 
 
 
+
+router.afterEach(() => {
+  stopRouteLoading()
+})
+
+router.onError(() => {
+  stopRouteLoading()
+})
 
 export default router
 

@@ -9,24 +9,15 @@
 
       <div v-if="user" class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)]">
         <div class="h-60 w-full relative">
-<<<<<<< HEAD
-          <img :src="coverImage" class="w-full h-full object-cover">
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-900/35 via-slate-800/5 to-transparent"></div>
-=======
           <img :src="coverImage" class="w-full h-full object-cover" />
->>>>>>> 0faa795c2a5d859b2d8484b188891e5d97b605f2
         </div>
 
         <div class="relative px-6 pb-6">
           <div class="absolute -top-16 left-6">
-<<<<<<< HEAD
-            <img :src="user.profile?.avatar || fallbackAvatar" class="h-32 w-32 rounded-full border-4 border-white object-cover shadow-xl">
-=======
             <img
               :src="user.profile?.avatar || fallbackAvatar"
               class="w-32 h-32 rounded-full border-4 border-white object-cover shadow-md"
             />
->>>>>>> 0faa795c2a5d859b2d8484b188891e5d97b605f2
           </div>
 
           <div class="pt-20">
@@ -126,6 +117,57 @@
 
 
 
+      
+
+      
+      <div v-if="user && isOwnProfile" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-4 text-lg font-semibold text-slate-900">Change Password</h2>
+
+        <p v-if="passwordError" class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ passwordError }}</p>
+        <p v-if="passwordMessage" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ passwordMessage }}</p>
+
+        <form @submit.prevent="changePassword" class="space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Old Password</label>
+            <input
+              v-model="oldPassword"
+              type="password"
+              required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+            />
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">New Password</label>
+            <input
+              v-model="newPassword"
+              type="password"
+              required
+              minlength="6"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+            />
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Confirm New Password</label>
+            <input
+              v-model="newPasswordConfirmation"
+              type="password"
+              required
+              minlength="6"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+            />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="passwordLoading"
+            class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:from-cyan-700 hover:to-blue-700 disabled:opacity-60"
+          >
+            {{ passwordLoading ? 'Updating...' : 'Change Password' }}
+          </button>
+        </form>
+      </div>
       <div v-if="user" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 class="mb-4 text-lg font-semibold text-slate-900">
           {{ isOwnProfile ? 'My Posts' : `${user.name}'s Posts` }}
@@ -259,56 +301,7 @@
         
         <p v-else class="text-sm text-slate-500">No posts yet.</p>
       </div>
-
       
-      <div v-if="user && isOwnProfile" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 class="mb-4 text-lg font-semibold text-slate-900">Change Password</h2>
-
-        <p v-if="passwordError" class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ passwordError }}</p>
-        <p v-if="passwordMessage" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ passwordMessage }}</p>
-
-        <form @submit.prevent="changePassword" class="space-y-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-600">Old Password</label>
-            <input
-              v-model="oldPassword"
-              type="password"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-            />
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-600">New Password</label>
-            <input
-              v-model="newPassword"
-              type="password"
-              required
-              minlength="6"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-            />
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-600">Confirm New Password</label>
-            <input
-              v-model="newPasswordConfirmation"
-              type="password"
-              required
-              minlength="6"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-            />
-          </div>
-
-          <button
-            type="submit"
-            :disabled="passwordLoading"
-            class="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:from-cyan-700 hover:to-blue-700 disabled:opacity-60"
-          >
-            {{ passwordLoading ? 'Updating...' : 'Change Password' }}
-          </button>
-        </form>
-      </div>
     </div>
   </main>
 </template>
@@ -333,6 +326,12 @@ const newPasswordConfirmation = ref('')
 const passwordLoading = ref(false)
 const passwordError = ref('')
 const passwordMessage = ref('')
+const postActionLoading = ref(false)
+const editingPostId = ref(null)
+const editTitle = ref('')
+const editContent = ref('')
+const editMediaFiles = ref([])
+const editMediaPreviews = ref([])
 
 const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
 const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
