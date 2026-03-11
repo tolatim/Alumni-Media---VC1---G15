@@ -5,7 +5,7 @@
         <img :src="currentUser?.profile?.avatar || fallbackAvatar" class="h-11 w-11 rounded-full border border-slate-200 object-cover shadow-sm">
         <input
           v-model="searchQuery"
-          type="text"
+          type="text" 
           placeholder="Search posts..."
           class="block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
         >
