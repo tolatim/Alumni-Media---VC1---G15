@@ -179,7 +179,62 @@
             :key="post.id"
             class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
           >
-            <h3 v-if="editingPostId !== post.id && post.title" class="px-4 pt-4 text-base font-semibold text-slate-900">
+            <div class="flex items-start justify-between px-4 pt-4">
+              <p class="text-xs text-slate-500">{{ formatPostDate(post.created_at) }}</p>
+              <div v-if="isOwnProfile" class="relative">
+                <button
+                  type="button"
+                  @click.stop="togglePostActionsMenu(post.id)"
+                  :disabled="postActionLoading"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1 disabled:opacity-60"
+                  aria-label="Post actions"
+                  title="Post actions"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-4 w-4"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="5" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="19" r="2" />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="openPostActionsMenuId === post.id"
+                  class="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                >
+                  <button
+                    type="button"
+                    @click="handleStartEdit(post)"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    @click="handleDeletePost(post.id)"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                    </svg>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <h3 v-if="editingPostId !== post.id && post.title" class="px-4 pt-2 text-base font-semibold text-slate-900">
               {{ post.title }}
             </h3>
             <div v-if="editingPostId === post.id" class="space-y-3 p-4">
@@ -255,46 +310,88 @@
 
 
             <p v-else class="mt-2 whitespace-pre-line px-4 text-sm text-slate-700">{{ post.content }}</p>
-            <div v-if="post.media?.length" class="mt-3 grid grid-cols-2 gap-2 px-4">
-              <template
-                v-for="media in post.media"
-                :key="media.id ?? media.file_path ?? media.media_url"
-              >
-                <img
-                  v-if="isImageMedia(media)"
-                  :src="getMediaSrc(media)"
-                  alt="Post image"
-                  class="w-full max-h-72 rounded-lg border border-slate-200 object-cover"
+            <div v-if="post.media?.length" class="mt-3 space-y-2 px-4">
+              <template v-if="shouldCondenseMedia(post) && !isMediaExpanded(post.id)">
+                <div
+                  v-if="getCollapsedMainMedia(post)"
+                  class="overflow-hidden rounded-xl border border-slate-200"
                 >
-                <video
-                  v-else-if="isVideoMedia(media)"
-                  :src="getMediaSrc(media)"
-                  class="w-full max-h-72 rounded-lg border border-slate-200 bg-black object-cover"
-                  controls
-                  preload="metadata"
-                ></video>
-              </template>
-            </div>
-            <div class="mt-3 flex items-center justify-between border-t border-slate-100 px-4 py-3">
-              <p class="text-xs text-slate-500">{{ formatPostDate(post.created_at) }}</p>
-              <div v-if="isOwnProfile" class="flex gap-2">
-                <button
-                  @click="startPostEdit(post)"
-                  :disabled="postActionLoading"
-                  class="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 disabled:opacity-60"
-                >
-                  Edit
-                </button>
-                <button
-                  @click="deletePost(post.id)"
-                  :disabled="postActionLoading"
-                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
-                >
-                  Delete
-                </button>
-              </div>
+                  <img
+                    v-if="isImageMedia(getCollapsedMainMedia(post))"
+                    :src="getMediaSrc(getCollapsedMainMedia(post))"
+                    alt="Post image"
+                    class="w-full max-h-72 object-cover"
+                  >
+                  <video
+                    v-else-if="isVideoMedia(getCollapsedMainMedia(post))"
+                    :src="getMediaSrc(getCollapsedMainMedia(post))"
+                    class="w-full max-h-72 bg-black object-cover"
+                    controls
+                    preload="metadata"
+                  ></video>
+                </div>
 
-              
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    v-for="(media, index) in getCollapsedRowMedia(post)"
+                    :key="media.id ?? media.file_path ?? media.media_url"
+                    type="button"
+                    @click="expandPostMedia(post.id)"
+                    class="relative overflow-hidden rounded-xl border border-slate-200 text-left"
+                  >
+                    <img
+                      v-if="isImageMedia(media)"
+                      :src="getMediaSrc(media)"
+                      alt="Post image"
+                      class="h-28 w-full object-cover"
+                    >
+                    <video
+                      v-else-if="isVideoMedia(media)"
+                      :src="getMediaSrc(media)"
+                      class="h-28 w-full bg-black object-cover"
+                      preload="metadata"
+                    ></video>
+                    <div
+                      v-if="index === 2 && getHiddenMediaCount(post) > 0"
+                      class="absolute inset-0 flex items-center justify-center bg-black/55 text-2xl font-semibold text-white"
+                    >
+                      +{{ getHiddenMediaCount(post) }}
+                    </div>
+                  </button>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="grid grid-cols-2 gap-2">
+                  <template
+                    v-for="media in post.media"
+                    :key="media.id ?? media.file_path ?? media.media_url"
+                  >
+                    <img
+                      v-if="isImageMedia(media)"
+                      :src="getMediaSrc(media)"
+                      alt="Post image"
+                      class="w-full max-h-72 rounded-lg border border-slate-200 object-cover"
+                    >
+                    <video
+                      v-else-if="isVideoMedia(media)"
+                      :src="getMediaSrc(media)"
+                      class="w-full max-h-72 rounded-lg border border-slate-200 bg-black object-cover"
+                      controls
+                      preload="metadata"
+                    ></video>
+                  </template>
+                </div>
+                <div v-if="shouldCondenseMedia(post)" class="flex justify-end">
+                  <button
+                    type="button"
+                    @click="collapsePostMedia(post.id)"
+                    class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Show less media
+                  </button>
+                </div>
+              </template>
             </div>
           </article>
         </div>
@@ -307,7 +404,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
 import api from '@/services/api'
@@ -369,12 +466,42 @@ const getMediaType = (media) => {
 
 const isImageMedia = (media) => getMediaType(media) === 'image'
 const isVideoMedia = (media) => getMediaType(media) === 'video'
+const shouldCondenseMedia = (post) => Array.isArray(post?.media) && post.media.length > 4
+const isMediaExpanded = (postId) => expandedMediaPostIds.value.includes(postId)
+const expandPostMedia = (postId) => {
+  if (isMediaExpanded(postId)) return
+  expandedMediaPostIds.value = [...expandedMediaPostIds.value, postId]
+}
+const collapsePostMedia = (postId) => {
+  expandedMediaPostIds.value = expandedMediaPostIds.value.filter((id) => id !== postId)
+}
+const getCollapsedMainMedia = (post) => post?.media?.[0] || null
+const getCollapsedRowMedia = (post) => (post?.media || []).slice(1, 4)
+const getHiddenMediaCount = (post) => Math.max((post?.media?.length || 0) - 4, 0)
 
 const startPostEdit = (post) => {
   editingPostId.value = post.id
   editTitle.value = post.title || ''
   editContent.value = post.content || ''
   clearEditMediaSelection()
+}
+
+const togglePostActionsMenu = (postId) => {
+  openPostActionsMenuId.value = openPostActionsMenuId.value === postId ? null : postId
+}
+
+const handleStartEdit = (post) => {
+  openPostActionsMenuId.value = null
+  startPostEdit(post)
+}
+
+const handleDeletePost = (postId) => {
+  openPostActionsMenuId.value = null
+  deletePost(postId)
+}
+
+const closePostActionsMenu = () => {
+  openPostActionsMenuId.value = null
 }
 
 const cancelPostEdit = () => {
@@ -576,5 +703,13 @@ onMounted(async () => {
     await loadProfile(route.params.id)
     await loadConnectionStatus(route.params.id)
   }
+})
+
+onMounted(() => {
+  window.addEventListener('click', closePostActionsMenu)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('click', closePostActionsMenu)
 })
 </script>
