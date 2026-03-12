@@ -33,9 +33,15 @@
           </span>
         </RouterLink>
 
-        <RouterLink to="/notification" :class="navClass('/notification')">
+        <RouterLink to="/notification" :class="navClass('/notification')" class="relative">
           <i class="fa-solid fa-bell"></i>
           <span>Notification</span>
+          <span
+            v-if="notificationUnread > 0"
+            class="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-amber-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white"
+          >
+            {{ notificationUnread > 99 ? '99+' : notificationUnread }}
+          </span>
         </RouterLink>
 
         <RouterLink
@@ -63,7 +69,9 @@ import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.we
 const route = useRoute()
 const user = ref(null)
 const unreadCount = ref(0)
+const notificationUnread = ref(0)
 let unreadTimer = null
+let notificationTimer = null
 const handleMessagesUpdated = () => {
   fetchUnreadCount()
 }
@@ -103,23 +111,42 @@ const fetchUnreadCount = async () => {
   }
 }
 
+const fetchNotificationUnread = async () => {
+  try {
+    const response = await api.get('/notifications/unread-count', {
+      headers: {
+        'X-Skip-Loading': 'true',
+      },
+    })
+    notificationUnread.value = response.data?.data?.count || 0
+  } catch {
+    notificationUnread.value = 0
+  }
+}
+
 watch(
   () => route.fullPath,
   async () => {
     await fetchUnreadCount()
+    await fetchNotificationUnread()
   }
 )
 
 onMounted(async () => {
   await fetchMe()
   await fetchUnreadCount()
+  await fetchNotificationUnread()
   unreadTimer = setInterval(fetchUnreadCount, 15000)
+  notificationTimer = setInterval(fetchNotificationUnread, 15000)
   window.addEventListener('messages:updated', handleMessagesUpdated)
 })
 
 onUnmounted(() => {
   if (unreadTimer) {
     clearInterval(unreadTimer)
+  }
+  if (notificationTimer) {
+    clearInterval(notificationTimer)
   }
   window.removeEventListener('messages:updated', handleMessagesUpdated)
 })

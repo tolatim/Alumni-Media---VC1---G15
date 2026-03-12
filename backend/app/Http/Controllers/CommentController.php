@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Http\Request;
+use App\Notifications\CommentNotification;
 
 class CommentController extends Controller
 {
@@ -66,6 +67,13 @@ class CommentController extends Controller
             'parent_id' => $parentId,
             'content' => trim($validated['content']),
         ]);
+
+        // After creating the comment
+        
+        if ((int) $post->user_id !== (int) $user->id) {
+            $post->user->notify(new \App\Notifications\CommentNotification($user, $post->id));
+        }
+
 
         return response()->json([
             'message' => 'Comment added successfully',

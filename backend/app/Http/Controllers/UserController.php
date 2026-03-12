@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Notifications\ConnectionNotification;
 
 class UserController extends Controller
 {
@@ -324,6 +325,13 @@ class UserController extends Controller
             'addressee_id' => $targetId,
             'status' => 'pending',
         ]);
+
+        $targetUser = User::find($targetId);
+
+        if ($targetUser) {
+            $targetUser->notify(new \App\Notifications\ConnectionNotification($me, $connection->id));
+        }
+
 
         return response()->json([
             'message' => 'Connection request sent successfully',

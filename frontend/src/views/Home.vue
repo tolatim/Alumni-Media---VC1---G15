@@ -32,14 +32,20 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref , nextTick } from "vue";
 import Navbar from "@/components/ui/nav.vue";
 import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
+import { useUserStore } from "@/stores/user";
+import { computed } from "vue";
+import { useRoute } from "vue-router";
 
-const currentUser = ref(null);
+const userStore = useUserStore();
+const route = useRoute();
+
+const currentUser = computed(() => userStore.currentUser);
 const posts = ref([]);
 const suggestions = ref([]);
 const pendingRequests = ref([]);
@@ -49,7 +55,21 @@ const feedPage = ref(1);
 const feedLastPage = ref(1);
 const FEED_PER_PAGE = 8;
 
+onMounted(async() => {
+  await userStore.fetchUser();
+});
 const hasMorePosts = ref(true);
+
+// ADD: scroll helper
+const scrollToPostFromQuery = async () => {
+  const postId = route.query.post;
+  if (!postId) return;
+  await nextTick();
+  const el = document.getElementById(`post-${postId}`);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+};
 
 const loadFeedPage = async (page = 1, append = false) => {
   const response = await api.get("/feed", {
@@ -65,26 +85,25 @@ const loadFeedPage = async (page = 1, append = false) => {
 
   posts.value = append ? [...posts.value, ...items] : items;
 };
-
+console.log(userStore.currentUser)
 const loadHomeData = async () => {
   errorMessage.value = "";
-
-  const [meRes, feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
-    api.get("/me"),
+  userStore.fetchUser()
+  const [ feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
     api.get("/feed", { params: { page: 1, per_page: FEED_PER_PAGE } }),
     api.get("/users/suggestions"),
     api.get("/connections/pending"),
   ]);
 
-  if (meRes.status === "fulfilled") {
-    currentUser.value = meRes.value.data;
-    localStorage.setItem("user", JSON.stringify(meRes.value.data));
-  } else {
-    currentUser.value = null;
-    errorMessage.value =
-      meRes.reason?.response?.data?.message || "Failed to load your account.";
-    return;
-  }
+  // if (meRes.status === "fulfilled") {
+  //   currentUser.value = meRes.value.data;
+  //   localStorage.setItem("user", JSON.stringify(meRes.value.data));
+  // } else {
+  //   currentUser.value = null;
+  //   errorMessage.value =
+  //     meRes.reason?.response?.data?.message || "Failed to load your account.";
+  //   return;
+  // }
 
   if (feedRes.status === "fulfilled") {
     const pagination = feedRes.value.data?.pagination || {};
@@ -225,8 +244,10 @@ const refreshSuggestions = async () => {
   }
 };
 
-onMounted(() => {
-  loadHomeData();
+// ADD: make this async and call scrollToPostFromQuery after loadHomeData
+onMounted(async () => {
+  await loadHomeData();
+  await scrollToPostFromQuery();
   window.addEventListener("scroll", onScroll, { passive: true });
 });
 

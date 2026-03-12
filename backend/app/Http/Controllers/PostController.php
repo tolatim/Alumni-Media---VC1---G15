@@ -5,7 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\Connection;
+use App\Models\User;
+use App\Notifications\NewPostNotification;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+
 
 class PostController extends Controller
 {
@@ -28,6 +33,8 @@ class PostController extends Controller
             'videos.*' => 'nullable|file|mimetypes:video/mp4,video/avi,video/mov|max:20480'
         ]);
 
+        $actor = $request->user();
+
         // Ensure there is at least text or media
         $hasText = !empty(trim($validated['title'] ?? '')) || !empty(trim($validated['content'] ?? ''));
         $hasMedia = $request->hasFile('images') || $request->hasFile('videos');
@@ -40,7 +47,7 @@ class PostController extends Controller
 
         // Create the post first
         $post = Post::create([
-            'user_id' => auth()->id(),
+            'user_id' => $actor?->id,
             'title' => $validated['title'] ?? null,
             'content' => $validated['content'] ?? null,
         ]);
@@ -64,6 +71,33 @@ class PostController extends Controller
                     'file_path' => $path,
                     'type' => 'video'
                 ]);
+            }
+        }
+
+        if ($actor && Schema::hasTable('connections')) {
+            // Fetch all accepted connections for the actor
+            $connections = Connection::query()
+                ->where('status', 'accepted')
+                ->where(function ($query) use ($actor) {
+                    $query->where('requester_id', $actor->id)
+                        ->orWhere('addressee_id', $actor->id);
+                })
+                ->get(['requester_id', 'addressee_id']);
+
+            // Map connections to target user IDs (the "other" user)
+            $targetIds = $connections->map(
+                fn($connection) =>
+                (int) ($connection->requester_id === (int) $actor->id
+                    ? $connection->addressee_id
+                    : $connection->requester_id)
+            )->unique()->values()->all();
+
+            // Notify all target users
+            if (!empty($targetIds)) {
+                User::query()
+                    ->whereIn('id', $targetIds)
+                    ->get()
+                    ->each(fn($user) => $user->notify(new \App\Notifications\NewPostNotification($actor, $post->id)));
             }
         }
 

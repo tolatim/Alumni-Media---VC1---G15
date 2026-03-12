@@ -2,38 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\DatabaseNotification;
 
-class Notification extends Model
+class Notification extends DatabaseNotification
 {
-    use HasFactory;
+    protected $table = 'notifications';
 
-    public const UPDATED_AT = null;
+    public $incrementing = false;
 
-    protected $fillable = [
-        'user_id',
-        'notifiable_id',
-        'notifiable_type',
-        'type',
-        'data',
-        'read_at',
-        'created_at',
-    ];
-
-    protected $casts = [
-        'data' => 'array',
-        'read_at' => 'datetime',
-        'created_at' => 'datetime',
-    ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function notifiable()
-    {
-        return $this->morphTo();
-    }
+    protected $keyType = 'string';
 }

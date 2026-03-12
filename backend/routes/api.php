@@ -7,9 +7,12 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\NotificationController;
+
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+
 
 Route::apiResource('/users', UserController::class);
 Route::get('/users', [UserController::class, 'index']);
@@ -30,7 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/comments/{comment}', [CommentController::class, 'update']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 });
-   
+
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -65,4 +68,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile/change-password', [UserController::class, 'changePassword']);
+});
+
+// notification Route
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+
 });
