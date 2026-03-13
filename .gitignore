@@ -30,3 +30,6 @@ Thumbs.db
 /frontend/*.tsbuildinfo
 /frontend/*.log
 /frontend/*.env
+
+# WebSocket 
+/websocket-server/node_modules
