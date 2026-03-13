@@ -552,21 +552,23 @@ class UserController extends Controller
                     if (!empty($countableRelations)) {
                         $postQuery->withCount($countableRelations);
                     }
-
-                    if ($authUser && Schema::hasTable('likes')) {
-                        $postQuery->withExists([
-                            'likes as liked_by_me' => function ($likeQuery) use ($authUser) {
-                                $likeQuery->where('user_id', $authUser->id);
-                            },
-                        ]);
-                    }
                 },
             ]);
         }
 
         $profileUser = $query->find($id);
 
-        if (!$profileUser) {
+        if ($user && Schema::hasTable('likes')) {
+            $user->load(['posts' => function ($postQuery) use ($user) {
+                $postQuery->withExists([
+                    'likes as liked_by_me' => function ($likeQuery) use ($user) {
+                        $likeQuery->where('user_id', $user->id);
+                    },
+                ]);
+            }]);
+        }
+
+        if (!$user) {
             return response()->json([
                 'message' => 'User not found',
             ], 404);

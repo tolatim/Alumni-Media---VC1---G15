@@ -72,6 +72,7 @@ const unreadCount = ref(0)
 const notificationUnread = ref(0)
 let unreadTimer = null
 let notificationTimer = null
+
 const handleMessagesUpdated = () => {
   fetchUnreadCount()
 }

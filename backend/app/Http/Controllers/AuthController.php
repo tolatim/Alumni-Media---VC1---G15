@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use App\Models\Notification;
+
 
 class AuthController extends Controller
 {
@@ -30,13 +32,24 @@ class AuthController extends Controller
             'password' => $validated['password'],
         ]);
 
-        // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
             'id' => $user->id,
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email' => $user->email
         ], 300);
+
+        Notification::create([
+            'user_id' => $user->id,            // 👈 add this
+            'notifiable_id' => $user->id,
+            'notifiable_type' => \App\Models\User::class,
+            'type' => 'login_success',
+            'data' => [
+                'message' => 'You logged in successfully.',
+            ],
+        ]);
+
+
 
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -51,7 +64,10 @@ class AuthController extends Controller
     // Login
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
@@ -60,6 +76,15 @@ class AuthController extends Controller
         }
 
         $user = User::with(['role'])->findOrFail(Auth::id());
+
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'register_success',
+            'data' => [
+                'message' => 'Welcome! Your account was created successfully.',
+            ],
+        ]);
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

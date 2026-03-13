@@ -1,205 +1,180 @@
 <template>
-  <Navbar />
-  <main class="min-h-screen bg-transparent py-6 md:py-8">
-    <div class="mx-auto max-w-5xl px-4 sm:px-5">
-      <section class="rounded-[26px] border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-600">Stay Updated</p>
-            <h1 class="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Your Notifications</h1>
-            <p class="mt-1 text-sm text-slate-500">
-              {{ unreadCount }} unread of {{ totalCount }} total
-            </p>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button
-              class="rounded-full border px-4 py-1.5 text-xs font-semibold transition"
-              :class="filter === 'all'
-                ? 'border-cyan-300 bg-cyan-100 text-cyan-800'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
-              @click="filter = 'all'"
-            >
-              All
-            </button>
-            <button
-              class="rounded-full border px-4 py-1.5 text-xs font-semibold transition"
-              :class="filter === 'unread'
-                ? 'border-cyan-300 bg-cyan-100 text-cyan-800'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
-              @click="filter = 'unread'"
-            >
-              Unread
-            </button>
-            <button
-              class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-              @click="fetchNotifications"
-              :disabled="loading"
-            >
-              {{ loading ? 'Refreshing...' : 'Refresh' }}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <p v-if="errorMessage" class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700">
-        {{ errorMessage }}
-      </p>
-
-      <div v-if="!loading && filteredNotifications.length === 0 && !errorMessage" class="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-        <p class="text-sm font-semibold text-slate-700">No notifications yet</p>
-        <p class="mt-1 text-xs text-slate-500">Likes, comments, connections, and new posts will appear here.</p>
+  <div class="min-h-screen bg-gray-50 p-4">
+    <div class="max-w-2xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Notifications</h1>
+        <button
+          v-if="unreadCount > 0"
+          @click="markAllAsRead"
+          class="text-sm px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600"
+        >
+          Mark all as read
+        </button>
       </div>
 
-      <div class="mt-6 space-y-3">
-        <article
-          v-for="item in filteredNotifications"
-          :key="item.id"
-          class="flex flex-col gap-3 rounded-2xl border px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-          :class="item.read_at ? 'border-slate-200 bg-white' : 'border-cyan-200 bg-cyan-50/60'"
+      <div v-if="loading" class="text-center py-8">
+        <p class="text-gray-600">Loading notifications...</p>
+      </div>
+
+      <div v-else-if="notifications.length === 0" class="bg-white rounded-lg shadow p-8 text-center">
+        <p class="text-gray-600">No notifications yet</p>
+      </div>
+
+      <div v-else class="space-y-3">
+        <div
+          v-for="notification in notifications"
+          :key="notification.id"
+          class="bg-white rounded-lg shadow p-4 hover:shadow-md transition flex items-start gap-4"
+          :class="{ 'bg-blue-50 border-l-4 border-blue-500': !notification.read_at }"
         >
-          <div class="flex items-start gap-3">
-            <span
-              class="mt-1 grid h-10 w-10 place-items-center rounded-xl"
-              :class="item.read_at ? 'bg-slate-100 text-slate-500' : 'bg-cyan-600 text-white'"
+          <!-- Icon based on type -->
+          <div class="flex-shrink-0 mt-1">
+            <div
+              class="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg"
+              :class="getNotificationIconClass(notification.type)"
             >
-              <i :class="iconFor(item)"></i>
-            </span>
-            <div>
-              <p class="text-sm font-semibold text-slate-900">{{ item.data?.message || fallbackMessage(item) }}</p>
-              <p class="mt-1 text-xs text-slate-500">{{ labelFor(item) }} • {{ formatTime(item.created_at) }}</p>
+              {{ getNotificationIcon(notification.type) }}
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <span v-if="!item.read_at" class="rounded-full bg-cyan-600 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">New</span>
+          <!-- Content -->
+          <div class="flex-1 min-w-0">
+            <p class="text-gray-800 font-medium">{{ getNotificationTitle(notification) }}</p>
+            <p class="text-gray-600 text-sm mt-1">{{ notification.data?.message }}</p>
+            <p class="text-gray-400 text-xs mt-2">{{ timeAgo(notification.created_at) }}</p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-2 flex-shrink-0">
             <button
-              v-if="!item.read_at"
-              class="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-50"
-              @click="markAsRead(item)"
+              v-if="!notification.read_at"
+              @click="markAsRead(notification.id)"
+              class="text-sm px-2 py-1 bg-teal-500 text-white rounded hover:bg-teal-600"
+              title="Mark as read"
             >
-              Mark as read
+              ✓
+            </button>
+            <button
+              @click="deleteNotification(notification.id)"
+              class="text-sm px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+              title="Delete"
+            >
+              ✕
             </button>
           </div>
-        </article>
+        </div>
       </div>
     </div>
-  </main>
+  </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue"
-import Navbar from "@/components/ui/nav.vue"
-import { useUserStore } from "@/stores/user"
-import { useRouter } from "vue-router"
-import { useNotificationStore } from "@/stores/notifications"
+import { onMounted, ref, computed } from 'vue'
+import api from '@/services/api'
 
-const filter = ref("all")
-const router = useRouter()
-const notificationStore = useNotificationStore()
-const userStore = useUserStore()
+const notifications = ref([])
+const loading = ref(true)
 
-const destinationFor = (item) => {
-  const type = item.data?.notification_type
-  if ((type === "like_post" || type === "comment" || type === "new_post") && item.data?.post_id) {
-    return { path: "/", query: { post: item.data.post_id } }
-  }
-  if (type === "connection_request") {
-    return "/connection"
-  }
-  return null
-}
+const unreadCount = computed(() => notifications.value.filter(n => !n.read_at).length)
 
 const fetchNotifications = async () => {
-  await notificationStore.fetchNotifications()
-}
-
-const markAsRead = async (item) => {
-  await notificationStore.markAsRead(item.id)
-  const destination = destinationFor(item)
-  if (destination) {
-    router.push(destination)
+  try {
+    loading.value = true
+    const response = await api.get('/notifications')
+    notifications.value = response.data.data || response.data || []
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error)
+    notifications.value = []
+  } finally {
+    loading.value = false
   }
 }
 
-const labelFor = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-    case "like_post":
-      return "Like"
-    case "comment_post":
-      return "Comment"
-    case "connection_request":
-      return "Connection"
-    case "new_post":
-      return "New post"
-    default:
-      return "Update"
+const markAsRead = async (notificationId) => {
+  try {
+    await api.patch(`/notifications/${notificationId}/read`)
+    await fetchNotifications()
+  } catch (error) {
+    console.error('Failed to mark notification as read:', error)
   }
 }
 
-const iconFor = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-    case "like_post":
-      return "fa-solid fa-heart"
-    case "comment_post":
-      return "fa-solid fa-comment"
-    case "connection_request":
-      return "fa-solid fa-user-plus"
-    case "new_post":
-      return "fa-solid fa-feather-pointed"
-    default:
-      return "fa-solid fa-bell"
+const markAllAsRead = async () => {
+  try {
+    const unreadNotifications = notifications.value.filter(n => !n.read_at)
+    await Promise.all(unreadNotifications.map(n => api.patch(`/notifications/${n.id}/read`)))
+    await fetchNotifications()
+  } catch (error) {
+    console.error('Failed to mark all as read:', error)
   }
 }
 
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-    case "like_post":
-      return "Someone liked your post."
-    case "comment_post":
-      return "Someone commented on your post."
-    case "connection_request":
-      return "You received a connection request."
-    case "new_post":
-      return "A connection created a new post."
-    default:
-      return "You have a new notification."
+const deleteNotification = async (notificationId) => {
+  try {
+    await api.delete(`/notifications/${notificationId}`)
+    await fetchNotifications()
+  } catch (error) {
+    console.error('Failed to delete notification:', error)
   }
 }
 
-const formatTime = (value) => {
-  if (!value) return "Just now"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Just now"
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(date)
+const getNotificationIcon = (type) => {
+  const iconMap = {
+    'like': '👍',
+    'comment': '💬',
+    'follow': '👤',
+    'post': '📝',
+    'message': '📨',
+    'new_post': '✨',
+  }
+  return iconMap[type] || '🔔'
 }
 
-const filteredNotifications = computed(() => {
-  if (filter.value === "unread") {
-    return notificationStore.items.filter((item) => !item.read_at)
+const getNotificationIconClass = (type) => {
+  const classMap = {
+    'like': 'bg-red-500',
+    'comment': 'bg-blue-500',
+    'follow': 'bg-purple-500',
+    'post': 'bg-orange-500',
+    'message': 'bg-green-500',
+    'new_post': 'bg-teal-500',
   }
-  return notificationStore.items
-})
+  return classMap[type] || 'bg-gray-500'
+}
 
-const totalCount = computed(() => notificationStore.totalCount)
-const unreadCount = computed(() => notificationStore.unreadItems.length)
-const loading = computed(() => notificationStore.loading)
-const errorMessage = computed(() => notificationStore.error)
+const getNotificationTitle = (notification) => {
+  const { type, data } = notification
+  
+  const titleMap = {
+    'like': `${data?.user_name || 'Someone'} liked your post`,
+    'comment': `${data?.user_name || 'Someone'} commented on your post`,
+    'follow': `${data?.user_name || 'Someone'} started following you`,
+    'post': `${data?.user_name || 'Someone'} posted something`,
+    'message': `New message from ${data?.user_name || 'someone'}`,
+    'new_post': `${data?.user_name || 'Someone'} posted something new`,
+  }
+  
+  return titleMap[type] || data?.title || type
+}
 
-onMounted(async () => {
-  await notificationStore.fetchNotifications()
-  await userStore.fetchUser()
-  const userId = userStore.currentUser?.id
-  notificationStore.connect(userId)
-})
+const timeAgo = (date) => {
+  const seconds = Math.floor((new Date() - new Date(date)) / 1000)
+  
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  
+  return new Date(date).toLocaleDateString()
+}
 
-onUnmounted(() => {
-  notificationStore.disconnect()
+// Fetch notifications on mount and set up polling
+onMounted(() => {
+  fetchNotifications()
+  // Poll for new notifications every 10 seconds
+  setInterval(fetchNotifications, 10000)
 })
 </script>

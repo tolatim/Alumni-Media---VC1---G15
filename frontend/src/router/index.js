@@ -91,30 +91,22 @@ router.beforeEach((to, from, next) => {
     user = null
   }
 
+  
   if (to.meta.requiresAuth && !token) {
-    next('/login')
-    return
+    return next('/login')
   }
 
   if ((to.path === '/login' || to.path === '/register') && token) {
-    next('/')
-    return
+    return next('/')
   }
 
   if (to.meta.requiresAdmin) {
-    if (!token) {
-      next('/login')
-      return
-    } else if (user?.role) {
-      const roleName = typeof user.role === 'string' ? user.role : user.role?.name
-      if (roleName !== 'admin') {
-        next('/')
-        return
-      }
-    }
+    if (!token) return next('/login')
+    const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name
+    if (roleName !== 'admin') return next('/')
   }
 
-  next()
+  return next()
 })
 
 router.afterEach(() => {

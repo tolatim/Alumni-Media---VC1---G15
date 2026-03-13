@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Connection;
 use App\Models\Message;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -144,6 +145,16 @@ class MessageController extends Controller
             'media_type' => $mediaType,
             'status' => 'sent',
         ])->load(['sender', 'receiver']);
+
+        Notification::create([
+            'notifiable_id' => $targetId,
+            'notifiable_type' => User::class,
+            'type' => 'new_message',
+            'data' => [
+                'message' => ($me->first_name ?: 'Someone') . ' sent you a message.',
+                'link' => '/message',
+            ],
+        ]);
 
         return response()->json([
             'message' => 'Message sent successfully',
