@@ -88,154 +88,118 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import Navbar from '@/components/ui/nav.vue'
-import api from '@/services/api'
-import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref } from "vue"
+import Navbar from "@/components/ui/nav.vue"
+import { useUserStore } from "@/stores/user"
+import { useRouter } from "vue-router"
+import { useNotificationStore } from "@/stores/notifications"
 
-const notifications = ref([])
-const loading = ref(false)
-const errorMessage = ref('')
-const filter = ref('all')
+const filter = ref("all")
 const router = useRouter()
-
+const notificationStore = useNotificationStore()
 const userStore = useUserStore()
-let channelName = null
-
 
 const destinationFor = (item) => {
   const type = item.data?.notification_type
-  if ((type === 'like_post' || type === 'comment' || type === 'new_post') && item.data?.post_id) {
-    return { path: '/', query: { post: item.data.post_id } }
+  if ((type === "like_post" || type === "comment" || type === "new_post") && item.data?.post_id) {
+    return { path: "/", query: { post: item.data.post_id } }
   }
-  if (type === 'connection_request') {
-    return '/connection'
+  if (type === "connection_request") {
+    return "/connection"
   }
   return null
 }
 
-
-
 const fetchNotifications = async () => {
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const response = await api.get('/notifications')
-    notifications.value = response.data?.data || []
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to load notifications.'
-  } finally {
-    loading.value = false
-  }
+  await notificationStore.fetchNotifications()
 }
 
 const markAsRead = async (item) => {
-  if (item.read_at) return
-  try {
-    await api.post(`/notifications/${item.id}/read`)
-    item.read_at = new Date().toISOString()
-    const destination = destinationFor(item)
-    if (destination) {
-      router.push(destination)
-    }
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to mark notification as read.'
+  await notificationStore.markAsRead(item.id)
+  const destination = destinationFor(item)
+  if (destination) {
+    router.push(destination)
   }
 }
 
 const labelFor = (item) => {
   const type = item.data?.notification_type
   switch (type) {
-    case 'like_post':
-      return 'Like'
-    case 'comment_post':
-      return 'Comment'
-    case 'connection_request':
-      return 'Connection'
-    case 'new_post':
-      return 'New post'
+    case "like_post":
+      return "Like"
+    case "comment_post":
+      return "Comment"
+    case "connection_request":
+      return "Connection"
+    case "new_post":
+      return "New post"
     default:
-      return 'Update'
+      return "Update"
   }
 }
 
 const iconFor = (item) => {
   const type = item.data?.notification_type
   switch (type) {
-    case 'like_post':
-      return 'fa-solid fa-heart'
-    case 'comment_post':
-      return 'fa-solid fa-comment'
-    case 'connection_request':
-      return 'fa-solid fa-user-plus'
-    case 'new_post':
-      return 'fa-solid fa-feather-pointed'
+    case "like_post":
+      return "fa-solid fa-heart"
+    case "comment_post":
+      return "fa-solid fa-comment"
+    case "connection_request":
+      return "fa-solid fa-user-plus"
+    case "new_post":
+      return "fa-solid fa-feather-pointed"
     default:
-      return 'fa-solid fa-bell'
+      return "fa-solid fa-bell"
   }
 }
 
 const fallbackMessage = (item) => {
   const type = item.data?.notification_type
   switch (type) {
-    case 'like_post':
-      return 'Someone liked your post.'
-    case 'comment_post':
-      return 'Someone commented on your post.'
-    case 'connection_request':
-      return 'You received a connection request.'
-    case 'new_post':
-      return 'A connection created a new post.'
+    case "like_post":
+      return "Someone liked your post."
+    case "comment_post":
+      return "Someone commented on your post."
+    case "connection_request":
+      return "You received a connection request."
+    case "new_post":
+      return "A connection created a new post."
     default:
-      return 'You have a new notification.'
+      return "You have a new notification."
   }
 }
 
 const formatTime = (value) => {
-  if (!value) return 'Just now'
+  if (!value) return "Just now"
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return 'Just now'
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+  if (Number.isNaN(date.getTime())) return "Just now"
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
   }).format(date)
 }
 
 const filteredNotifications = computed(() => {
-  if (filter.value === 'unread') {
-    return notifications.value.filter((item) => !item.read_at)
+  if (filter.value === "unread") {
+    return notificationStore.items.filter((item) => !item.read_at)
   }
-  return notifications.value
+  return notificationStore.items
 })
 
-const totalCount = computed(() => notifications.value.length)
-const unreadCount = computed(() => notifications.value.filter((item) => !item.read_at).length)
-
+const totalCount = computed(() => notificationStore.totalCount)
+const unreadCount = computed(() => notificationStore.unreadItems.length)
+const loading = computed(() => notificationStore.loading)
+const errorMessage = computed(() => notificationStore.error)
 
 onMounted(async () => {
-  await fetchNotifications()
-
+  await notificationStore.fetchNotifications()
   await userStore.fetchUser()
   const userId = userStore.currentUser?.id
-  if (!userId || !window.Echo) return
-
-  channelName = `App.Models.User.${userId}`
-
-  window.Echo.private(channelName)
-    .notification((notification) => {
-      notifications.value.unshift({
-        id: notification.id ?? `rt-${Date.now()}`,
-        data: notification,
-        read_at: null,
-        created_at: new Date().toISOString(),
-      })
-    })
+  notificationStore.connect(userId)
 })
 
 onUnmounted(() => {
-  if (channelName && window.Echo) {
-    window.Echo.leave(`private-${channelName}`)
-  }
+  notificationStore.disconnect()
 })
 </script>
