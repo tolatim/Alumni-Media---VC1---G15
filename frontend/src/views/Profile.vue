@@ -173,229 +173,18 @@
           {{ isOwnProfile ? 'My Posts' : `${user.name}'s Posts` }}
         </h2>
 
-        <div v-if="sortedPosts.length" class="space-y-4">
-          <article
-            v-for="post in sortedPosts"
+        <div v-if="sortedPosts.length" class="space-y-5">
+          <PostCard
+            v-for="post in postsWithAuthor"
             :key="post.id"
-            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-          >
-            <div class="flex items-start justify-between px-4 pt-4">
-              <p class="text-xs text-slate-500">{{ formatPostDate(post.created_at) }}</p>
-              <div v-if="isOwnProfile" class="relative">
-                <button
-                  type="button"
-                  @click.stop="togglePostActionsMenu(post.id)"
-                  :disabled="postActionLoading"
-                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1 disabled:opacity-60"
-                  aria-label="Post actions"
-                  title="Post actions"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    class="h-4 w-4"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <circle cx="12" cy="5" r="2" />
-                    <circle cx="12" cy="12" r="2" />
-                    <circle cx="12" cy="19" r="2" />
-                  </svg>
-                </button>
-
-                <div
-                  v-if="openPostActionsMenuId === post.id"
-                  class="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-                >
-                  <button
-                    type="button"
-                    @click="handleStartEdit(post)"
-                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                    </svg>
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    type="button"
-                    @click="handleDeletePost(post.id)"
-                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
-                  >
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path d="M3 6h18" />
-                      <path d="M8 6V4h8v2" />
-                      <path d="M19 6l-1 14H6L5 6" />
-                      <path d="M10 11v6" />
-                      <path d="M14 11v6" />
-                    </svg>
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <h3 v-if="editingPostId !== post.id && post.title" class="px-4 pt-2 text-base font-semibold text-slate-900">
-              {{ post.title }}
-            </h3>
-            <div v-if="editingPostId === post.id" class="space-y-3 p-4">
-              <input
-                v-model="editTitle"
-                type="text"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-                placeholder="Post title"
-              />
-              <textarea
-                v-model="editContent"
-                rows="4"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-                placeholder="Post content"
-              />
-              <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Replace media (optional)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  @change="onEditMediaChange"
-                  class="block w-full text-xs text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-700"
-                />
-                <p class="mt-1 text-[11px] text-slate-500">
-                  First selected file replaces first old media. More selected files are added.
-                </p>
-                <button
-                  v-if="editMediaFiles.length"
-                  type="button"
-                  @click="clearEditMediaSelection"
-                  class="mt-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  Clear selected files
-                </button>
-              </div>
-              <div v-if="editMediaPreviews.length" class="grid grid-cols-2 gap-2">
-                <template v-for="preview in editMediaPreviews" :key="preview.url">
-                  <img
-                    v-if="preview.type.startsWith('image/')"
-                    :src="preview.url"
-                    alt="Selected image"
-                    class="w-full max-h-40 rounded-lg border border-slate-200 object-cover"
-                  >
-                  <video
-                    v-else
-                    :src="preview.url"
-                    class="w-full max-h-40 rounded-lg border border-slate-200 bg-black object-cover"
-                    controls
-                    preload="metadata"
-                  ></video>
-                </template>
-              </div>
-              <div class="flex gap-2">
-                <button
-                  @click="savePostEdit(post.id)"
-                  :disabled="postActionLoading"
-                  class="rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:from-cyan-700 hover:to-blue-700 disabled:opacity-60"
-                >
-                  Save
-                </button>
-                <button
-                  @click="cancelPostEdit"
-                  :disabled="postActionLoading"
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-
-
-            <p v-else class="mt-2 whitespace-pre-line px-4 text-sm text-slate-700">{{ post.content }}</p>
-            <div v-if="post.media?.length" class="mt-3 space-y-2 px-4">
-              <template v-if="shouldCondenseMedia(post) && !isMediaExpanded(post.id)">
-                <div
-                  v-if="getCollapsedMainMedia(post)"
-                  class="overflow-hidden rounded-xl border border-slate-200"
-                >
-                  <img
-                    v-if="isImageMedia(getCollapsedMainMedia(post))"
-                    :src="getMediaSrc(getCollapsedMainMedia(post))"
-                    alt="Post image"
-                    class="w-full max-h-72 object-cover"
-                  >
-                  <video
-                    v-else-if="isVideoMedia(getCollapsedMainMedia(post))"
-                    :src="getMediaSrc(getCollapsedMainMedia(post))"
-                    class="w-full max-h-72 bg-black object-cover"
-                    controls
-                    preload="metadata"
-                  ></video>
-                </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                  <button
-                    v-for="(media, index) in getCollapsedRowMedia(post)"
-                    :key="media.id ?? media.file_path ?? media.media_url"
-                    type="button"
-                    @click="expandPostMedia(post.id)"
-                    class="relative overflow-hidden rounded-xl border border-slate-200 text-left"
-                  >
-                    <img
-                      v-if="isImageMedia(media)"
-                      :src="getMediaSrc(media)"
-                      alt="Post image"
-                      class="h-28 w-full object-cover"
-                    >
-                    <video
-                      v-else-if="isVideoMedia(media)"
-                      :src="getMediaSrc(media)"
-                      class="h-28 w-full bg-black object-cover"
-                      preload="metadata"
-                    ></video>
-                    <div
-                      v-if="index === 2 && getHiddenMediaCount(post) > 0"
-                      class="absolute inset-0 flex items-center justify-center bg-black/55 text-2xl font-semibold text-white"
-                    >
-                      +{{ getHiddenMediaCount(post) }}
-                    </div>
-                  </button>
-                </div>
-              </template>
-
-              <template v-else>
-                <div class="grid grid-cols-2 gap-2">
-                  <template
-                    v-for="media in post.media"
-                    :key="media.id ?? media.file_path ?? media.media_url"
-                  >
-                    <img
-                      v-if="isImageMedia(media)"
-                      :src="getMediaSrc(media)"
-                      alt="Post image"
-                      class="w-full max-h-72 rounded-lg border border-slate-200 object-cover"
-                    >
-                    <video
-                      v-else-if="isVideoMedia(media)"
-                      :src="getMediaSrc(media)"
-                      class="w-full max-h-72 rounded-lg border border-slate-200 bg-black object-cover"
-                      controls
-                      preload="metadata"
-                    ></video>
-                  </template>
-                </div>
-                <div v-if="shouldCondenseMedia(post)" class="flex justify-end">
-                  <button
-                    type="button"
-                    @click="collapsePostMedia(post.id)"
-                    class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Show less media
-                  </button>
-                </div>
-              </template>
-            </div>
-          </article>
+            :post="post"
+            :current-user="loggedInUser"
+            :comments-refresh-key="commentsRefreshKey"
+            auto-open-comments
+            @deleted="refreshProfilePosts"
+            @refresh-posts="refreshProfilePosts"
+          />
         </div>
-        
         <p v-else class="text-sm text-slate-500">No posts yet.</p>
       </div>
       
@@ -407,6 +196,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
+import PostCard from '@/components/ui/PostCard.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
@@ -423,12 +213,6 @@ const newPasswordConfirmation = ref('')
 const passwordLoading = ref(false)
 const passwordError = ref('')
 const passwordMessage = ref('')
-const postActionLoading = ref(false)
-const editingPostId = ref(null)
-const editTitle = ref('')
-const editContent = ref('')
-const editMediaFiles = ref([])
-const editMediaPreviews = ref([])
 
 const coverImage = computed(() => user.value?.profile?.cover || defaultCover)
 const isOwnProfile = computed(() => loggedInUser.value?.id === user.value?.id)
@@ -447,164 +231,17 @@ const sortedPosts = computed(() => {
   return [...posts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 })
 
-const formatPostDate = (value) => {
-  if (!value) return 'Unknown time'
-  return new Date(value).toLocaleString()
-}
-
-const getMediaSrc = (media) => media?.media_url || media?.file_path || ''
-
-const getMediaType = (media) => {
-  const explicitType = String(media?.type || '').toLowerCase()
-  if (explicitType === 'image' || explicitType === 'video') return explicitType
-
-  const src = getMediaSrc(media).toLowerCase()
-  if (/\.(mp4|mov|avi|webm|mkv)(\?|#|$)/.test(src)) return 'video'
-  if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|#|$)/.test(src)) return 'image'
-  return ''
-}
-
-const isImageMedia = (media) => getMediaType(media) === 'image'
-const isVideoMedia = (media) => getMediaType(media) === 'video'
-const shouldCondenseMedia = (post) => Array.isArray(post?.media) && post.media.length > 4
-const isMediaExpanded = (postId) => expandedMediaPostIds.value.includes(postId)
-const expandPostMedia = (postId) => {
-  if (isMediaExpanded(postId)) return
-  expandedMediaPostIds.value = [...expandedMediaPostIds.value, postId]
-}
-const collapsePostMedia = (postId) => {
-  expandedMediaPostIds.value = expandedMediaPostIds.value.filter((id) => id !== postId)
-}
-const getCollapsedMainMedia = (post) => post?.media?.[0] || null
-const getCollapsedRowMedia = (post) => (post?.media || []).slice(1, 4)
-const getHiddenMediaCount = (post) => Math.max((post?.media?.length || 0) - 4, 0)
-
-const startPostEdit = (post) => {
-  editingPostId.value = post.id
-  editTitle.value = post.title || ''
-  editContent.value = post.content || ''
-  clearEditMediaSelection()
-}
-
-const togglePostActionsMenu = (postId) => {
-  openPostActionsMenuId.value = openPostActionsMenuId.value === postId ? null : postId
-}
-
-const handleStartEdit = (post) => {
-  openPostActionsMenuId.value = null
-  startPostEdit(post)
-}
-
-const handleDeletePost = (postId) => {
-  openPostActionsMenuId.value = null
-  deletePost(postId)
-}
-
-const closePostActionsMenu = () => {
-  openPostActionsMenuId.value = null
-}
-
-const cancelPostEdit = () => {
-  editingPostId.value = null
-  editTitle.value = ''
-  editContent.value = ''
-  clearEditMediaSelection()
-}
-
-const clearEditMediaSelection = () => {
-  editMediaPreviews.value.forEach((preview) => {
-    if (preview?.url) {
-      URL.revokeObjectURL(preview.url)
-    }
-  })
-  editMediaFiles.value = []
-  editMediaPreviews.value = []
-}
-
-const onEditMediaChange = (event) => {
-  const files = Array.from(event.target.files || [])
-  if (!files.length) return
-
-  files.forEach((file) => {
-    editMediaFiles.value.push(file)
-    editMediaPreviews.value.push({
-      url: URL.createObjectURL(file),
-      type: file.type || '',
-    })
-  })
-
-  event.target.value = ''
-}
-
-const savePostEdit = async (postId) => {
-  const hasTitle = !!editTitle.value.trim()
-  const hasContent = !!editContent.value.trim()
-  const hasNewMedia = editMediaFiles.value.length > 0
-  const currentPost = user.value?.posts?.find((item) => item.id === postId)
-  const hasExistingMedia = (currentPost?.media?.length || 0) > 0
-
-  if (!hasTitle && !hasContent && !hasNewMedia && !hasExistingMedia) {
-    errorMessage.value = 'Please add title, content, or at least one image/video.'
-    return
-  }
-
-  postActionLoading.value = true
-  try {
-    if (editMediaFiles.value.length) {
-      const formData = new FormData()
-      formData.append('title', editTitle.value.trim())
-      formData.append('content', editContent.value.trim())
-
-      editMediaFiles.value.forEach((file) => {
-        if (file.type.startsWith('image/')) {
-          formData.append('images[]', file)
-        } else if (file.type.startsWith('video/')) {
-          formData.append('videos[]', file)
-        }
-      })
-
-      await api.post(`/posts/${postId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-    } else {
-      await api.put(`/posts/${postId}`, {
-        title: editTitle.value.trim(),
-        content: editContent.value.trim(),
-      })
-    }
-
-    await loadProfile(route.params.id)
-    const post = user.value?.posts?.find((item) => item.id === postId)
-    if (!post) {
-      cancelPostEdit()
-      return
-    }
-
-    cancelPostEdit()
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to update post.'
-  } finally {
-    postActionLoading.value = false
-  }
-}
-
-const deletePost = async (postId) => {
-  if (!confirm('Are you sure you want to delete this post?')) return
-
-  postActionLoading.value = true
-  try {
-    await api.delete(`/posts/${postId}`)
-    if (user.value?.posts) {
-      user.value.posts = user.value.posts.filter((item) => item.id !== postId)
-    }
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to delete post.'
-  } finally {
-    postActionLoading.value = false
-  }
-}
+const postsWithAuthor = computed(() =>
+  sortedPosts.value.map((post) => ({
+    ...post,
+    user: post.user || {
+      id: user.value?.id,
+      name: user.value?.name,
+      profile: user.value?.profile,
+    },
+    user_id: post.user_id || user.value?.id,
+  }))
+)
 
 const loadLoggedInUser = async () => {
   try {
@@ -618,9 +255,15 @@ const loadLoggedInUser = async () => {
 const loadProfile = async (id) => {
   errorMessage.value = ''
 
+  if (!id) {
+    user.value = null
+    return
+  }
+
   try {
     const response = await api.get(`/profiles/${id}`)
     user.value = response.data.data
+    commentsRefreshKey.value += 1
   } catch (error) {
     const own = loggedInUser.value?.id && String(loggedInUser.value.id) === String(id)
 
@@ -646,6 +289,32 @@ const loadConnectionStatus = async (id) => {
   } catch {
     connectionStatus.value = 'none'
   }
+}
+
+const commentsRefreshKey = ref(0)
+
+const refreshProfilePosts = async () => {
+  if (!route.params.id) return
+  await loadProfile(route.params.id)
+}
+
+const refreshIntervalMs = 15000
+let profileRefreshTimer = null
+
+const stopProfileRefreshLoop = () => {
+  if (profileRefreshTimer) {
+    clearInterval(profileRefreshTimer)
+    profileRefreshTimer = null
+  }
+}
+
+const startProfileRefreshLoop = () => {
+  stopProfileRefreshLoop()
+  profileRefreshTimer = setInterval(async () => {
+    if (route.params.id) {
+      await loadProfile(route.params.id)
+    }
+  }, refreshIntervalMs)
 }
 
 const sendConnectionRequest = async () => {
@@ -690,9 +359,11 @@ const changePassword = async () => {
 watch(
   () => route.params.id,
   (id) => {
+    stopProfileRefreshLoop()
     if (id) {
       loadProfile(id)
       loadConnectionStatus(id)
+      startProfileRefreshLoop()
     }
   }
 )
@@ -702,14 +373,11 @@ onMounted(async () => {
   if (route.params.id) {
     await loadProfile(route.params.id)
     await loadConnectionStatus(route.params.id)
+    startProfileRefreshLoop()
   }
 })
 
-onMounted(() => {
-  window.addEventListener('click', closePostActionsMenu)
-})
-
 onBeforeUnmount(() => {
-  window.removeEventListener('click', closePostActionsMenu)
+  stopProfileRefreshLoop()
 })
 </script>
