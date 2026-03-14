@@ -23,6 +23,7 @@ class UserController extends Controller
         ]);
     }
 
+
     public function feed(Request $request)
     {
         $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
@@ -40,8 +41,31 @@ class UserController extends Controller
             ]);
         }
 
-        $user = $request->user();
-        $query = Post::query()->latest()->with(['user.role']);
+        $user = auth()->user();
+
+        $connectionIds = [];
+
+        if ($user && Schema::hasTable('connections')) {
+
+            $connections = \App\Models\Connection::where('status', 'accepted')
+                ->where(function ($q) use ($user) {
+                    $q->where('requester_id', $user->id)
+                        ->orWhere('addressee_id', $user->id);
+                })
+                ->get();
+
+            foreach ($connections as $connection) {
+                $connectionIds[] =
+                    $connection->requester_id == $user->id
+                    ? $connection->addressee_id
+                    : $connection->requester_id;
+            }
+        }
+
+        $query = Post::query()
+            ->whereIn('user_id', $connectionIds)
+            ->latest()
+            ->with(['user.role']);
 
         if ($user) {
             $allowedUserIds = [(int) $user->id];
@@ -73,9 +97,11 @@ class UserController extends Controller
         }
 
         $countableRelations = [];
+
         if (Schema::hasTable('likes')) {
             $countableRelations[] = 'likes';
         }
+
         if (Schema::hasTable('comments')) {
             $countableRelations[] = 'comments';
         }
@@ -365,8 +391,7 @@ class UserController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Connection blocked successfully',
-            'data' => $connection->fresh()->load(['requester', 'addressee']),
+            'message' => 'Connection rejected successfully',
         ]);
     }
 
@@ -496,13 +521,13 @@ class UserController extends Controller
 
     public function show(Request $request, $id)
     {
-        $user = $request->user();
+        $authUser = $request->user();
 
         $query = User::query()->with(['role']);
 
         if (Schema::hasTable('posts')) {
             $query->with([
-                'posts' => function ($postQuery) {
+                'posts' => function ($postQuery) use ($authUser) {
                     $postQuery->latest();
                     if (Schema::hasTable('media')) {
                         $postQuery->with('media');
@@ -520,10 +545,10 @@ class UserController extends Controller
                         $postQuery->withCount($countableRelations);
                     }
 
-                    if ($user && Schema::hasTable('likes')) {
+                    if ($authUser && Schema::hasTable('likes')) {
                         $postQuery->withExists([
-                            'likes as liked_by_me' => function ($likeQuery) use ($user) {
-                                $likeQuery->where('user_id', $user->id);
+                            'likes as liked_by_me' => function ($likeQuery) use ($authUser) {
+                                $likeQuery->where('user_id', $authUser->id);
                             },
                         ]);
                     }
@@ -531,9 +556,9 @@ class UserController extends Controller
             ]);
         }
 
-        $user = $query->find($id);
+        $profileUser = $query->find($id);
 
-        if (!$user) {
+        if (!$profileUser) {
             return response()->json([
                 'message' => 'User not found',
             ], 404);
@@ -541,7 +566,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User fetched successfully',
-            'data' => $user,
+            'data' => $profileUser,
         ]);
     }
 

@@ -188,11 +188,20 @@ class PostController extends Controller
     }
 
     // delete post
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
         $post = Post::with('media')->find($id);
         if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
+        }
+
+        if ((int) $post->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'You can delete only your own posts.'], 403);
         }
 
         foreach ($post->media as $media) {
