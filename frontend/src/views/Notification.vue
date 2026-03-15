@@ -88,16 +88,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import Navbar from "@/components/ui/nav.vue"
-import { useUserStore } from "@/stores/user"
 import { useRouter } from "vue-router"
 import { useNotificationStore } from "@/stores/notifications"
 
 const filter = ref("all")
 const router = useRouter()
 const notificationStore = useNotificationStore()
-const userStore = useUserStore()
 
 const destinationFor = (item) => {
   const type = item.data?.notification_type
@@ -127,7 +125,7 @@ const labelFor = (item) => {
   switch (type) {
     case "like_post":
       return "Like"
-    case "comment_post":
+    case "comment":
       return "Comment"
     case "connection_request":
       return "Connection"
@@ -194,12 +192,6 @@ const errorMessage = computed(() => notificationStore.error)
 
 onMounted(async () => {
   await notificationStore.fetchNotifications()
-  await userStore.fetchUser()
-  const userId = userStore.currentUser?.id
-  notificationStore.connect(userId)
-})
-
-onUnmounted(() => {
-  notificationStore.disconnect()
+  await notificationStore.refreshUnreadCount()
 })
 </script>

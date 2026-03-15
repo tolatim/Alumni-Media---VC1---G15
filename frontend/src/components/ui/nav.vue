@@ -61,15 +61,17 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
+import { useNotificationStore } from '@/stores/notifications'
 import { useRoute } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
 const route = useRoute()
+const notificationStore = useNotificationStore()
 const user = ref(null)
 const unreadCount = ref(0)
-const notificationUnread = ref(0)
+const notificationUnread = computed(() => notificationStore.unreadCount)
 let unreadTimer = null
 let notificationTimer = null
 
@@ -94,6 +96,7 @@ const fetchMe = async () => {
     })
     user.value = response.data
     localStorage.setItem('user', JSON.stringify(response.data))
+    notificationStore.connect(user.value?.id)
   } catch {
     user.value = null
   }
@@ -112,33 +115,20 @@ const fetchUnreadCount = async () => {
   }
 }
 
-const fetchNotificationUnread = async () => {
-  try {
-    const response = await api.get('/notifications/unread-count', {
-      headers: {
-        'X-Skip-Loading': 'true',
-      },
-    })
-    notificationUnread.value = response.data?.data?.count || 0
-  } catch {
-    notificationUnread.value = 0
-  }
-}
-
 watch(
   () => route.fullPath,
   async () => {
     await fetchUnreadCount()
-    await fetchNotificationUnread()
+    await notificationStore.refreshUnreadCount()
   }
 )
 
 onMounted(async () => {
   await fetchMe()
   await fetchUnreadCount()
-  await fetchNotificationUnread()
+  await notificationStore.refreshUnreadCount()
   unreadTimer = setInterval(fetchUnreadCount, 15000)
-  notificationTimer = setInterval(fetchNotificationUnread, 15000)
+  notificationTimer = setInterval(() => notificationStore.refreshUnreadCount(), 15000)
   window.addEventListener('messages:updated', handleMessagesUpdated)
 })
 
@@ -149,6 +139,7 @@ onUnmounted(() => {
   if (notificationTimer) {
     clearInterval(notificationTimer)
   }
+  notificationStore.disconnect()
   window.removeEventListener('messages:updated', handleMessagesUpdated)
 })
 </script>

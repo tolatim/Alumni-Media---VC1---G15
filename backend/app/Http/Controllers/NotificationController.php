@@ -30,9 +30,10 @@ class NotificationController extends Controller
     /**
      * Mark a notification as read
      */
-    public function markAsRead(Request $request, Notification $notification)
+    public function markAsRead(Request $request, string $id)
     {
         $user = $request->user();
+        $notification = Notification::query()->findOrFail($id);
 
         // Authorize the user
         abort_unless(
@@ -56,9 +57,10 @@ class NotificationController extends Controller
     /**
      * Delete a notification
      */
-    public function destroy(Request $request, Notification $notification)
+    public function destroy(Request $request, string $id)
     {
         $user = $request->user();
+        $notification = Notification::query()->findOrFail($id);
 
         // Authorize the user
         abort_unless(
@@ -88,7 +90,10 @@ class NotificationController extends Controller
             ->count();
 
         return response()->json([
-            'unread_count' => $unreadCount,
+            'message' => 'Unread notification count fetched successfully',
+            'data' => [
+                'count' => $unreadCount,
+            ],
         ]);
     }
 }

@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Like;
 use App\Models\Post;
-use App\Services\NotificationService;
-use Illuminate\Http\Request;
 use App\Notifications\LikePostNotification;
+use Illuminate\Http\Request;
 
 class LikeController extends Controller
 {
@@ -40,8 +39,9 @@ class LikeController extends Controller
             'created_at' => now(),
         ]);
 
-        // Trigger notification
-        NotificationService::notifyPostLiked($post, $user);
+        if ((int) $post->user_id !== (int) $user->id) {
+            $post->user->notify(new LikePostNotification($user, $post->id));
+        }
 
         return response()->json([
             'message' => 'Post liked successfully',
