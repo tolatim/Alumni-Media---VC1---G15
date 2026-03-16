@@ -47,7 +47,7 @@ class UserController extends Controller
 
         if ($user && Schema::hasTable('connections')) {
 
-            $connections = \App\Models\Connection::where('status', 'accepted')
+            $connections = Connection::where('status', 'accepted')
                 ->where(function ($q) use ($user) {
                     $q->where('requester_id', $user->id)
                         ->orWhere('addressee_id', $user->id);
