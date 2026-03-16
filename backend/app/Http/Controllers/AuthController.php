@@ -39,13 +39,14 @@ class AuthController extends Controller
             'email' => $user->email
         ], 300);
 
+
         Notification::create([
-            'user_id' => $user->id,            // 👈 add this
+            'user_id' => $user->id,
             'notifiable_id' => $user->id,
             'notifiable_type' => \App\Models\User::class,
             'type' => 'login_success',
             'data' => [
-                'message' => 'You logged in successfully.',
+                'message' => $user->name . ' logged in successfully.',
             ],
         ]);
 
