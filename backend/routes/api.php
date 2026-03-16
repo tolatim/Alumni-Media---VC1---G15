@@ -101,4 +101,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+
+
+    // --- saved items ---
+    Route::post('/save-post/{postId}', [SavedPostController::class, 'save']);
+    Route::delete('/unsave-post/{postId}', [SavedPostController::class, 'unsave']);
+    Route::get('/saved-posts', [SavedPostController::class, 'index']);
 });
