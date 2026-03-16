@@ -32,15 +32,14 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref , nextTick } from "vue";
+import { onBeforeUnmount, onMounted, ref, nextTick, computed } from "vue";
+import { useRoute } from "vue-router";
 import Navbar from "@/components/ui/nav.vue";
 import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
 import { useUserStore } from "@/stores/user";
-import { computed } from "vue";
-import { useRoute } from "vue-router";
 
 const userStore = useUserStore();
 const route = useRoute();
@@ -53,14 +52,9 @@ const errorMessage = ref("");
 const loadingMore = ref(false);
 const feedPage = ref(1);
 const feedLastPage = ref(1);
+const hasMorePosts = ref(true);
 const FEED_PER_PAGE = 8;
 
-onMounted(async() => {
-  await userStore.fetchUser();
-});
-const hasMorePosts = ref(true);
-
-// ADD: scroll helper
 const scrollToPostFromQuery = async () => {
   const postId = route.query.post;
   if (!postId) return;
@@ -85,25 +79,16 @@ const loadFeedPage = async (page = 1, append = false) => {
 
   posts.value = append ? [...posts.value, ...items] : items;
 };
-console.log(userStore.currentUser)
+
 const loadHomeData = async () => {
   errorMessage.value = "";
-  userStore.fetchUser()
-  const [ feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
+  await userStore.fetchUser();
+
+  const [feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
     api.get("/feed", { params: { page: 1, per_page: FEED_PER_PAGE } }),
     api.get("/users/suggestions"),
     api.get("/connections/pending"),
   ]);
-
-  // if (meRes.status === "fulfilled") {
-  //   currentUser.value = meRes.value.data;
-  //   localStorage.setItem("user", JSON.stringify(meRes.value.data));
-  // } else {
-  //   currentUser.value = null;
-  //   errorMessage.value =
-  //     meRes.reason?.response?.data?.message || "Failed to load your account.";
-  //   return;
-  // }
 
   if (feedRes.status === "fulfilled") {
     const pagination = feedRes.value.data?.pagination || {};
@@ -127,7 +112,7 @@ const loadHomeData = async () => {
 
   if (suggestionRes.status === "rejected") {
     try {
-      const [fallbackUsersRes, myConnectionsRes, pendingRes, blockedRes] = await Promise.allSettled([
+      const [fallbackUsersRes, myConnectionsRes, pendingRes2, blockedRes] = await Promise.allSettled([
         api.get("/users"),
         api.get("/connections/my", { params: { page: 1, per_page: 200 } }),
         api.get("/connections/pending", { params: { page: 1, per_page: 200 } }),
@@ -136,7 +121,7 @@ const loadHomeData = async () => {
 
       const allUsers = fallbackUsersRes.status === "fulfilled" ? (fallbackUsersRes.value.data?.data || []) : [];
       const myRows = myConnectionsRes.status === "fulfilled" ? (myConnectionsRes.value.data?.data || []) : [];
-      const pendingRows = pendingRes.status === "fulfilled" ? (pendingRes.value.data?.data || []) : [];
+      const pendingRows = pendingRes2.status === "fulfilled" ? (pendingRes2.value.data?.data || []) : [];
       const blockedRows = blockedRes.status === "fulfilled" ? (blockedRes.value.data?.data || []) : [];
       const meId = Number(currentUser.value?.id || 0);
       const existingIds = new Set();
@@ -244,7 +229,6 @@ const refreshSuggestions = async () => {
   }
 };
 
-// ADD: make this async and call scrollToPostFromQuery after loadHomeData
 onMounted(async () => {
   await loadHomeData();
   await scrollToPostFromQuery();
