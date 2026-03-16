@@ -534,9 +534,10 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { getLastEventForPost, notify, subscribe } from '@/utils/commentHub.js'
 
 const props = defineProps({
   post: {
@@ -546,6 +547,14 @@ const props = defineProps({
   currentUser: {
     type: Object,
     default: null,
+  },
+  autoOpenComments: {
+    type: Boolean,
+    default: false,
+  },
+  commentsRefreshKey: {
+    type: Number,
+    default: 0,
   },
 })
 
@@ -562,7 +571,7 @@ const likeSubmitting = ref(false)
 const likedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
 
-const commentsOpen = ref(false)
+const commentsOpen = ref(props.autoOpenComments ?? false)
 const commentsLoading = ref(false)
 const comments = ref([])
 const commentsCountOverride = ref(null)
@@ -576,6 +585,7 @@ const openCommentActionsMenuId = ref(null)
 const editingCommentId = ref(null)
 const editingCommentContent = ref('')
 const commentUpdating = ref(false)
+let commentHubUnsubscribe = null
 
 const isMediaExpanded = ref(false)
 
@@ -734,6 +744,23 @@ const loadComments = async () => {
   }
 }
 
+const handleCommentNotification = async (payload) => {
+  if (!payload || String(payload.postId) !== String(props.post.id)) return
+  if (payload.commentsCount !== undefined) {
+    commentsCountOverride.value = toSafeCount(payload.commentsCount)
+  }
+
+  comments.value = []
+  await loadComments()
+}
+
+watch(
+  () => props.commentsRefreshKey,
+  () => {
+    handleCommentNotification({ postId: props.post.id })
+  }
+)
+
 const toggleComments = async () => {
   commentsOpen.value = !commentsOpen.value
   if (!commentsOpen.value) return
@@ -751,6 +778,7 @@ const submitComment = async () => {
     const createdComment = response.data?.comment
     if (createdComment) {
       comments.value = [normalizeComment(createdComment), ...comments.value]
+      notify({ postId: props.post.id, commentsCount: response.data?.comments_count })
     }
     commentDraft.value = ''
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
@@ -788,6 +816,7 @@ const submitReply = async (comment) => {
         comment.replies = []
       }
       comment.replies = [...comment.replies, normalizeComment(createdReply)]
+      notify({ postId: props.post.id, commentsCount: response.data?.comments_count })
     }
     replyDraftByCommentId.value[commentId] = ''
     replyOpenByCommentId.value[commentId] = false
@@ -866,6 +895,7 @@ const deleteComment = async (commentId) => {
     const response = await api.delete(`/comments/${commentId}`)
     removeCommentById(commentId)
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
+    notify({ postId: props.post.id, commentsCount: response.data?.comments_count })
   } catch (error) {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to delete comment.'))
@@ -911,9 +941,21 @@ const closeMenus = () => {
 
 onMounted(() => {
   window.addEventListener('click', closeMenus)
+  if (commentsOpen.value) {
+    loadComments()
+  }
+  commentHubUnsubscribe = subscribe(handleCommentNotification)
+  const lastEvent = getLastEventForPost(props.post.id)
+  if (lastEvent) {
+    handleCommentNotification(lastEvent)
+  }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('click', closeMenus)
+  if (commentHubUnsubscribe) {
+    commentHubUnsubscribe()
+    commentHubUnsubscribe = null
+  }
 })
 </script>
