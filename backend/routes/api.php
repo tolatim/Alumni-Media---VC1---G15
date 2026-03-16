@@ -7,6 +7,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\SavedPostController;
 use App\Models\Message;
 use App\Models\Notification;
 use Illuminate\Http\Request;
