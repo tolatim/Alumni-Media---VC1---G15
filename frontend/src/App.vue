@@ -6,5 +6,5 @@
 </template>
 
 <script setup>
-import GlobalLoading from '@/components/ui/GlobalLoading.vue'
+import GlobalLoading from "@/components/ui/GlobalLoading.vue";
 </script>

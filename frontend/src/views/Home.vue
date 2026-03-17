@@ -6,7 +6,7 @@
         <userLeftSideBar :user="currentUser" />
 
         <centerFeed
-          :posts="posts"
+          :posts="feedStore.posts"
           :current-user="currentUser"
           @post-created="prependPost"
           @refresh-posts="refreshPosts"
@@ -38,14 +38,8 @@ import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
-import { useUserStore } from "@/stores/user";
-import { computed } from "vue";
-import { useRoute } from "vue-router";
 
-const userStore = useUserStore();
-const route = useRoute();
-
-const currentUser = computed(() => userStore.currentUser);
+const currentUser = ref(null);
 const posts = ref([]);
 const suggestions = ref([]);
 const pendingRequests = ref([]);
@@ -59,17 +53,6 @@ onMounted(async() => {
   await userStore.fetchUser();
 });
 const hasMorePosts = ref(true);
-
-// ADD: scroll helper
-const scrollToPostFromQuery = async () => {
-  const postId = route.query.post;
-  if (!postId) return;
-  await nextTick();
-  const el = document.getElementById(`post-${postId}`);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-};
 
 const loadFeedPage = async (page = 1, append = false) => {
   const response = await api.get("/feed", {
@@ -85,7 +68,7 @@ const loadFeedPage = async (page = 1, append = false) => {
 
   posts.value = append ? [...posts.value, ...items] : items;
 };
-console.log(userStore.currentUser)
+
 const loadHomeData = async () => {
   errorMessage.value = "";
   userStore.fetchUser()
@@ -244,11 +227,10 @@ const refreshSuggestions = async () => {
   }
 };
 
-// ADD: make this async and call scrollToPostFromQuery after loadHomeData
-onMounted(async () => {
-  await loadHomeData();
-  await scrollToPostFromQuery();
+onMounted(() => {
+  loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
+
 });
 
 onBeforeUnmount(() => {
