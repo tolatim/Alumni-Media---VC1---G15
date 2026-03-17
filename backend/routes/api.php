@@ -13,6 +13,7 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+
 // ---------------- Authentication ----------------
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -23,6 +24,7 @@ Route::get('/users', [UserController::class, 'index']);
 
 // ---------------- Protected Routes ----------------
 Route::middleware('auth:sanctum')->group(function () {
+
     // --- Current User ---
     Route::get('/me', [AuthController::class, 'me']);
 
@@ -44,7 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/comments/{comment}', [CommentController::class, 'update']);
     Route::patch('/comments/{comment}', [CommentController::class, 'update']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
-    
 
     // --- Messages ---
     Route::get('/messages/{userId}', [MessageController::class, 'index']);
@@ -55,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
     Route::get('/messages/contacts', [MessageController::class, 'contacts']);
 
+    // --- Mark message read & notifications ---
     Route::patch('/messages/{message}/read', function (Request $request, Message $message) {
         $user = $request->user();
         abort_unless((int) $message->receiver_id === (int) $user->id, 403);
@@ -63,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
             $message->update(['read_at' => now()]);
         }
 
+        // Mark related notification as read
         Notification::query()
             ->where('user_id', $user->id)
             ->where('type', 'new_message')
@@ -97,15 +100,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/feed', [UserController::class, 'feed']);
 
     // --- Notifications ---
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
-    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::get('/notifications', [NotificationController::class, 'index']);               // Fetch all notifications
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']); // Mark as read
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);    // Delete
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']); // Unread count
 
-
-    // --- saved items ---
+    // --- Saved Posts ---
     Route::post('/save-post/{postId}', [SavedPostController::class, 'save']);
     Route::delete('/unsave-post/{postId}', [SavedPostController::class, 'unsave']);
     Route::get('/saved-posts', [SavedPostController::class, 'index']);
 });
+

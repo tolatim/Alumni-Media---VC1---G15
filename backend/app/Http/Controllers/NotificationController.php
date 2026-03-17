@@ -8,15 +8,11 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    /**
-     * Get all notifications for the authenticated user
-     */
     public function index(Request $request)
     {
         $user = $request->user();
 
-        $notifications = Notification::query()
-            ->where('notifiable_type', User::class)
+        $notifications = Notification::where('notifiable_type', User::class)
             ->where('notifiable_id', $user->id)
             ->orderByDesc('created_at')
             ->get();
@@ -27,15 +23,11 @@ class NotificationController extends Controller
         ]);
     }
 
-    /**
-     * Mark a notification as read
-     */
     public function markAsRead(Request $request, string $id)
     {
         $user = $request->user();
-        $notification = Notification::query()->findOrFail($id);
+        $notification = Notification::findOrFail($id);
 
-        // Authorize the user
         abort_unless(
             $notification->notifiable_type === User::class &&
             (int) $notification->notifiable_id === (int) $user->id,
@@ -43,9 +35,7 @@ class NotificationController extends Controller
         );
 
         if (!$notification->read_at) {
-            $notification->update([
-                'read_at' => now()
-            ]);
+            $notification->update(['read_at' => now()]);
         }
 
         return response()->json([
@@ -54,15 +44,11 @@ class NotificationController extends Controller
         ]);
     }
 
-    /**
-     * Delete a notification
-     */
     public function destroy(Request $request, string $id)
     {
         $user = $request->user();
-        $notification = Notification::query()->findOrFail($id);
+        $notification = Notification::findOrFail($id);
 
-        // Authorize the user
         abort_unless(
             $notification->notifiable_type === User::class &&
             (int) $notification->notifiable_id === (int) $user->id,
@@ -71,29 +57,32 @@ class NotificationController extends Controller
 
         $notification->delete();
 
-        return response()->json([
-            'message' => 'Notification deleted successfully',
-        ]);
+        return response()->json(['message' => 'Notification deleted successfully']);
     }
 
-    /**
-     * Get unread notification count
-     */
     public function unreadCount(Request $request)
     {
         $user = $request->user();
 
-        $unreadCount = Notification::query()
-            ->where('notifiable_type', User::class)
+        $count = Notification::where('notifiable_type', User::class)
             ->where('notifiable_id', $user->id)
             ->whereNull('read_at')
             ->count();
 
         return response()->json([
             'message' => 'Unread notification count fetched successfully',
-            'data' => [
-                'count' => $unreadCount,
-            ],
+            'data' => ['count' => $count],
+        ]);
+    }
+
+    public function createNotification(User $user, string $type, string $message)
+    {
+        return Notification::create([
+            'user_id' => $user->id,
+            'notifiable_id' => $user->id,
+            'notifiable_type' => User::class,
+            'type' => $type,
+            'data' => json_encode(['message' => $message]),
         ]);
     }
 }
