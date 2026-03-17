@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -282,11 +283,6 @@ class UserController extends Controller
 
     public function sendConnectionRequest(Request $request)
     {
-        if (!Schema::hasTable('connections')) {
-            return response()->json([
-                'message' => 'Connections table is missing. Run migrations first.',
-            ], 503);
-        }
 
         $validated = $request->validate([
             'user_id' => 'required|integer|exists:users,id',
@@ -325,6 +321,21 @@ class UserController extends Controller
             'status' => 'pending',
         ]);
 
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'connection_request',
+                'data' => [
+                    'requester_id' => $me->id,
+                    'addressee_id' => $targetId,
+                    'status' => 'pending'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Connection request sent successfully',
             'data' => $connection->load(['requester', 'addressee']),
@@ -333,12 +344,6 @@ class UserController extends Controller
 
     public function acceptConnection(Request $request, $id)
     {
-        if (!Schema::hasTable('connections')) {
-            return response()->json([
-                'message' => 'Connections table is missing. Run migrations first.',
-            ], 503);
-        }
-
         $me = $request->user();
 
         $connection = Connection::query()
@@ -354,6 +359,21 @@ class UserController extends Controller
         }
 
         $connection->update(['status' => 'accepted']);
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'accept_request',
+                'data' => [
+                    'requester_id' => $connection->requester_id,
+                    'addressee_id' => $connection->addressee_id,
+                    'status' => 'accepted'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Connection accepted successfully',
@@ -382,13 +402,22 @@ class UserController extends Controller
                 'message' => 'Connection request not found.',
             ], 404);
         }
+        
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'reject',
+                'data' => [
+                    'requester_id' => $connection->requester_id,
+                    'addressee_id' => $connection->addressee_id,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
 
-        // Reject acts as block from current user to requester.
-        $connection->update([
-            'requester_id' => $me->id,
-            'addressee_id' => $connection->requester_id,
-            'status' => 'blocked',
-        ]);
+        $connection->delete();
 
         return response()->json([
             'message' => 'Connection rejected successfully',
@@ -397,11 +426,6 @@ class UserController extends Controller
 
     public function unfriend(Request $request, $userId)
     {
-        if (!Schema::hasTable('connections')) {
-            return response()->json([
-                'message' => 'Connections table is missing. Run migrations first.',
-            ], 503);
-        }
 
         $me = $request->user();
         $targetId = (int) $userId;
@@ -422,7 +446,19 @@ class UserController extends Controller
                 'message' => 'Friend connection not found.',
             ], 404);
         }
-
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'unfriend',
+                'data' => [
+                    'requester_id' => $connection->requester_id,
+                    'addressee_id' => $connection->addressee_id,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
         $connection->delete();
 
         return response()->json([
@@ -472,6 +508,20 @@ class UserController extends Controller
                 'addressee_id' => $targetId,
                 'status' => 'blocked',
             ]);
+        }
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'block',
+                'data' => [
+                    'blocker_id' => $connection->requester_id,
+                    'blocker_id' => $connection->addressee_id,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
         }
 
         return response()->json([
