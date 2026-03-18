@@ -7,5 +7,4 @@ import './style.css'
 createApp(App)
   .use(createPinia())
   .use(router)
-  .use(createPinia())
   .mount('#app')
