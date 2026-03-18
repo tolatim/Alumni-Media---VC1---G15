@@ -12,28 +12,23 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// ---------------- Authentication ----------------
+
+
+
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
-
 Route::get('/users', [UserController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
 
+    Route::post('/messages/{message}/read', function (Request $request, Message $message) {
+        $user = $request->user();
         if (!$message->read_at) {
             $message->update(['read_at' => now()]);
         }
-
-        Notification::query()
-            ->where('user_id', $user->id)
-            ->where('type', 'new_message')
-            ->where('notifiable_type', Message::class)
-            ->where('notifiable_id', $message->id)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
-
+       
         return response()->json([
             'message' => 'Message marked as read',
             'unread_messages' => Message::query()
@@ -44,7 +39,6 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
 
-    // --- Connections ---
     Route::get('/connections/my', [UserController::class, 'myConnections']);
     Route::get('/connections/blocked', [UserController::class, 'blockedConnections']);
     Route::get('/connections/pending', [UserController::class, 'pendingConnections']);
@@ -56,25 +50,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connections/user/{userId}/block', [UserController::class, 'blockUser']);
     Route::post('/connections/user/{userId}/unblock', [UserController::class, 'unblockUser']);
 
-    // --- Feed ---
     Route::get('/feed', [UserController::class, 'feed']);
-
     Route::get('/users/suggestions', [UserController::class, 'suggestions']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::get('/profiles/{id}', [UserController::class, 'show']);
     Route::patch('/user/profile', [UserController::class, 'update']);
-
     Route::put('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile', [UserController::class, 'updateMyProfile']);
     Route::post('/profile/change-password', [UserController::class, 'changePassword']);
 
-    // post
     Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::post('/posts/{id}', [PostController::class, 'update']);
     Route::put('/posts/{id}', [PostController::class, 'update']);
-    Route::patch('/posts/{id}', [PostController::class, 'update']);a
+    Route::patch('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
     Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
@@ -82,4 +72,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/comments/{comment}', [CommentController::class, 'update']);
     Route::patch('/comments/{comment}', [CommentController::class, 'update']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+
+
+    //notification
+    Route::get('/notifications',                [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all',      [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read',     [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}',        [NotificationController::class, 'destroy']);
 });
+

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use App\Models\Notification;
+use App\Services\NotificationService;
 
 
 class AuthController extends Controller
@@ -39,17 +40,7 @@ class AuthController extends Controller
             'email' => $user->email
         ], 300);
 
-
-        Notification::create([
-            'user_id' => $user->id,
-            'notifiable_id' => $user->id,
-            'notifiable_type' => \App\Models\User::class,
-            'type' => 'login_success',
-            'data' => [
-                'message' => $user->name . ' logged in successfully.',
-            ],
-        ]);
-
+        NotificationService::welcome($user); // ✅ this is all you need
 
 
         // Create token
@@ -77,14 +68,9 @@ class AuthController extends Controller
         }
 
         $user = User::with(['role'])->findOrFail(Auth::id());
-
-        Notification::create([
-            'user_id' => $user->id,
-            'type' => 'register_success',
-            'data' => [
-                'message' => 'Welcome! Your account was created successfully.',
-            ],
-        ]);
+        
+        // ✅ Connected to NotificationService
+        NotificationService::login($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

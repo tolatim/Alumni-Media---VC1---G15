@@ -14,6 +14,7 @@ const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  { path: '/forgot-password', component: Login }, // redirects to login since no page exists
   {
     path: '/profile',
     redirect: () => {
@@ -70,7 +71,11 @@ const routes = [
     component: Profile,
     name: 'Profile',
     meta: { requiresAuth: true },
-  }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/',
+  },
 ]
 
 const router = createRouter({
