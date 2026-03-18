@@ -14,13 +14,26 @@ class NotificationController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        $unread_count = Notification::where('user_id', $request->user()->id)
+        return response()->json([
+            'data'       => $notifications->items(),
+            'pagination' => [
+                'current_page' => $notifications->currentPage(),
+                'last_page'    => $notifications->lastPage(),
+                'per_page'     => $notifications->perPage(),
+                'total'        => $notifications->total(),
+            ],
+        ]);
+    }
+
+    // GET /api/notifications/unread-count
+    public function unreadCount(Request $request)
+    {
+        $count = Notification::where('user_id', $request->user()->id)
             ->whereNull('read_at')
             ->count();
 
         return response()->json([
-            'notifications' => $notifications,
-            'unread_count'  => $unread_count,
+            'data' => ['count' => $count]
         ]);
     }
 

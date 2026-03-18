@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 
 
+
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/users', [UserController::class, 'index']);
@@ -28,7 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
         if (!$message->read_at) {
             $message->update(['read_at' => now()]);
         }
-       
+
         return response()->json([
             'message' => 'Message marked as read',
             'unread_messages' => Message::query()
@@ -75,9 +76,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     //notification
-    Route::get('/notifications',                [NotificationController::class, 'index']);
-    Route::post('/notifications/read-all',      [NotificationController::class, 'markAllAsRead']);
-    Route::post('/notifications/{id}/read',     [NotificationController::class, 'markAsRead']);
-    Route::delete('/notifications/{id}',        [NotificationController::class, 'destroy']);
+    Route::get('/notifications',                  [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count',     [NotificationController::class, 'unreadCount']); // ✅ move here
+    Route::post('/notifications/read-all',        [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read',       [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}',          [NotificationController::class, 'destroy']);
 });
-
