@@ -97,12 +97,36 @@ const filter = ref("all")
 const router = useRouter()
 const notificationStore = useNotificationStore()
 
+const filteredNotifications = computed(() => {
+  if (filter.value === "unread") {
+    return notificationStore.items.filter((item) => !item.read_at)
+  }
+  return notificationStore.items
+})
+
+const totalCount = computed(() => notificationStore.totalCount)
+const unreadCount = computed(() => notificationStore.unreadItems.length)
+const loading = computed(() => notificationStore.loading)
+const errorMessage = computed(() => notificationStore.error)
+
+const filteredNotifications = computed(() => {
+  if (filter.value === "unread") {
+    return notificationStore.items.filter((item) => !item.read_at)
+  }
+  return notificationStore.items
+})
+
+const totalCount = computed(() => notificationStore.totalCount)
+const unreadCount = computed(() => notificationStore.unreadItems.length)
+const loading = computed(() => notificationStore.loading)
+const errorMessage = computed(() => notificationStore.error)
+
 const destinationFor = (item) => {
   const type = item.data?.notification_type
-  if ((type === "like_post" || type === "comment" || type === "new_post") && item.data?.post_id) {
+  if ((type === "like_post" || type === "comment_post" || type === "new_post") && item.data?.post_id) {
     return { path: "/", query: { post: item.data.post_id } }
   }
-  if (type === "connection_request") {
+  if (type === "connection_request" || type === "connection_accept" || type === "connection_reject") {
     return "/connection"
   }
   return null
@@ -125,73 +149,60 @@ const labelFor = (item) => {
   switch (type) {
     case "like_post":
       return "Like"
-    case "comment":
+    case "comment_post":
       return "Comment"
     case "connection_request":
-      return "Connection"
-    case "new_post":
-      return "New post"
-    default:
-      return "Update"
-  }
-}
-
-const iconFor = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-    case "like_post":
-      return "fa-solid fa-heart"
-    case "comment_post":
-      return "fa-solid fa-comment"
-    case "connection_request":
-      return "fa-solid fa-user-plus"
+      return "Connection request"
+    case "connection_accept":
     case "new_post":
       return "fa-solid fa-feather-pointed"
     default:
       return "fa-solid fa-bell"
   }
 }
+    case "new_post":
+      return "fa-solid fa-feather-pointed"
+    default:
+      return "fa-solid fa-bell"
 
 const fallbackMessage = (item) => {
   const type = item.data?.notification_type
   switch (type) {
-    case "like_post":
-      return "Someone liked your post."
-    case "comment_post":
-      return "Someone commented on your post."
-    case "connection_request":
-      return "You received a connection request."
-    case "new_post":
-      return "A connection created a new post."
-    default:
-      return "You have a new notification."
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
+
+const fallbackMessage = (item) => {
+  const type = item.data?.notification_type
+  switch (type) {
   }
 }
-
-const formatTime = (value) => {
-  if (!value) return "Just now"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Just now"
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(date)
-}
-
-const filteredNotifications = computed(() => {
-  if (filter.value === "unread") {
-    return notificationStore.items.filter((item) => !item.read_at)
-  }
-  return notificationStore.items
-})
-
-const totalCount = computed(() => notificationStore.totalCount)
-const unreadCount = computed(() => notificationStore.unreadItems.length)
-const loading = computed(() => notificationStore.loading)
-const errorMessage = computed(() => notificationStore.error)
-
-onMounted(async () => {
-  await notificationStore.fetchNotifications()
-  await notificationStore.refreshUnreadCount()
-})
-</script>
