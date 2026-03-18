@@ -39,9 +39,7 @@ class LikeController extends Controller
             'created_at' => now(),
         ]);
 
-        if ((int) $post->user_id !== (int) $user->id) {
-            $post->user->notify(new LikePostNotification($user, $post->id));
-        }
+       
 
         return response()->json([
             'message' => 'Post liked successfully',
