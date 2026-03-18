@@ -11,33 +11,22 @@
               {{ unreadCount }} unread of {{ totalCount }} total
             </p>
           </div>
-
           <div class="flex items-center gap-2">
             <button
               class="rounded-full border px-4 py-1.5 text-xs font-semibold transition"
-              :class="filter === 'all'
-                ? 'border-cyan-300 bg-cyan-100 text-cyan-800'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
+              :class="filter === 'all' ? 'border-cyan-300 bg-cyan-100 text-cyan-800' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
               @click="filter = 'all'"
-            >
-              All
-            </button>
+            >All</button>
             <button
               class="rounded-full border px-4 py-1.5 text-xs font-semibold transition"
-              :class="filter === 'unread'
-                ? 'border-cyan-300 bg-cyan-100 text-cyan-800'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
+              :class="filter === 'unread' ? 'border-cyan-300 bg-cyan-100 text-cyan-800' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'"
               @click="filter = 'unread'"
-            >
-              Unread
-            </button>
+            >Unread</button>
             <button
               class="rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
               @click="fetchNotifications"
               :disabled="loading"
-            >
-              {{ loading ? 'Refreshing...' : 'Refresh' }}
-            </button>
+            >{{ loading ? 'Refreshing...' : 'Refresh' }}</button>
           </div>
         </div>
       </section>
@@ -66,20 +55,17 @@
               <i :class="iconFor(item)"></i>
             </span>
             <div>
-              <p class="text-sm font-semibold text-slate-900">{{ item.data?.message || fallbackMessage(item) }}</p>
+              <p class="text-sm font-semibold text-slate-900">{{ item.message || fallbackMessage(item) }}</p>
               <p class="mt-1 text-xs text-slate-500">{{ labelFor(item) }} • {{ formatTime(item.created_at) }}</p>
             </div>
           </div>
-
           <div class="flex items-center gap-2">
             <span v-if="!item.read_at" class="rounded-full bg-cyan-600 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">New</span>
             <button
               v-if="!item.read_at"
               class="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-50"
               @click="markAsRead(item)"
-            >
-              Mark as read
-            </button>
+            >Mark as read</button>
           </div>
         </article>
       </div>
@@ -109,29 +95,6 @@ const unreadCount = computed(() => notificationStore.unreadItems.length)
 const loading = computed(() => notificationStore.loading)
 const errorMessage = computed(() => notificationStore.error)
 
-const filteredNotifications = computed(() => {
-  if (filter.value === "unread") {
-    return notificationStore.items.filter((item) => !item.read_at)
-  }
-  return notificationStore.items
-})
-
-const totalCount = computed(() => notificationStore.totalCount)
-const unreadCount = computed(() => notificationStore.unreadItems.length)
-const loading = computed(() => notificationStore.loading)
-const errorMessage = computed(() => notificationStore.error)
-
-const destinationFor = (item) => {
-  const type = item.data?.notification_type
-  if ((type === "like_post" || type === "comment_post" || type === "new_post") && item.data?.post_id) {
-    return { path: "/", query: { post: item.data.post_id } }
-  }
-  if (type === "connection_request" || type === "connection_accept" || type === "connection_reject") {
-    return "/connection"
-  }
-  return null
-}
-
 const fetchNotifications = async () => {
   await notificationStore.fetchNotifications()
 }
@@ -139,70 +102,64 @@ const fetchNotifications = async () => {
 const markAsRead = async (item) => {
   await notificationStore.markAsRead(item.id)
   const destination = destinationFor(item)
-  if (destination) {
-    router.push(destination)
+  if (destination) router.push(destination)
+}
+
+const destinationFor = (item) => {
+  const type = item.type
+  if ((type === "like" || type === "comment" || type === "post") && item.related_id) {
+    return { path: "/", query: { post: item.related_id } }
+  }
+  if (type === "connect" || type === "accept" || type === "reject") {
+    return "/connection"
+  }
+  return null
+}
+
+const iconFor = (item) => {
+  switch (item.type) {
+    case "like":    return "fa-solid fa-heart"
+    case "comment": return "fa-solid fa-comment"
+    case "connect": return "fa-solid fa-user-plus"
+    case "accept":  return "fa-solid fa-user-check"
+    case "reject":  return "fa-solid fa-user-xmark"
+    case "post":    return "fa-solid fa-feather-pointed"
+    case "login":   return "fa-solid fa-right-to-bracket"
+    case "system":  return "fa-solid fa-bell"
+    default:        return "fa-solid fa-bell"
   }
 }
 
 const labelFor = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-    case "like_post":
-      return "Like"
-    case "comment_post":
-      return "Comment"
-    case "connection_request":
-      return "Connection request"
-    case "connection_accept":
-    case "new_post":
-      return "fa-solid fa-feather-pointed"
-    default:
-      return "fa-solid fa-bell"
+  switch (item.type) {
+    case "like":    return "Like"
+    case "comment": return "Comment"
+    case "connect": return "Connection Request"
+    case "accept":  return "Connection Accepted"
+    case "reject":  return "Connection Rejected"
+    case "post":    return "New Post"
+    case "login":   return "Login"
+    case "system":  return "System"
+    default:        return "Notification"
   }
 }
-    case "new_post":
-      return "fa-solid fa-feather-pointed"
-    default:
-      return "fa-solid fa-bell"
 
 const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-
-const fallbackMessage = (item) => {
-  const type = item.data?.notification_type
-  switch (type) {
-  }
+  return item.message || "You have a new notification"
 }
+
+const formatTime = (dateStr) => {
+  if (!dateStr) return ""
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = Math.floor((now - date) / 1000)
+  if (diff < 60) return "Just now"
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
+}
+
+onMounted(async () => {
+  await notificationStore.fetchNotifications()
+})
+</script>
