@@ -39,8 +39,9 @@ import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
 
+const posts = ref([])
+
 const currentUser = ref(null);
-const posts = ref([]);
 const suggestions = ref([]);
 const pendingRequests = ref([]);
 const errorMessage = ref("");
@@ -50,21 +51,6 @@ const feedLastPage = ref(1);
 const FEED_PER_PAGE = 8;
 
 const hasMorePosts = ref(true);
-
-const loadFeedPage = async (page = 1, append = false) => {
-  const response = await api.get("/feed", {
-    params: { page, per_page: FEED_PER_PAGE },
-  });
-
-  const items = response.data?.data || [];
-  const pagination = response.data?.pagination || {};
-
-  feedPage.value = Number(pagination.current_page || page);
-  feedLastPage.value = Number(pagination.last_page || page);
-  hasMorePosts.value = feedPage.value < feedLastPage.value;
-
-  posts.value = append ? [...posts.value, ...items] : items;
-};
 
 const loadHomeData = async () => {
   errorMessage.value = "";
@@ -228,6 +214,7 @@ const refreshSuggestions = async () => {
 onMounted(() => {
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
+
 });
 
 onBeforeUnmount(() => {

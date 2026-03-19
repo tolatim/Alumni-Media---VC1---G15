@@ -1,52 +1,98 @@
-// server.js
 const WebSocket = require('ws');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const app = express();
-app.use(cors()); // allow Laravel/other frontend
+app.use(cors());
 app.use(bodyParser.json());
 
-// WebSocket server on port 8081
 const wss = new WebSocket.Server({ port: 8081 }, () => {
-    console.log('WebSocket server running on ws://localhost:8081');
+    console.log('WebSocket server running on port 8081');
 });
 
-// Broadcast helper
-function broadcast(data) {
-    console.log('Broadcasting:', data); // debug
-    console.log('Clients connected:', wss.clients.size);
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
+let clients = {};
+
+wss.on('connection', (ws) => {
+    console.log("New client connected");
+
+    ws.on('message', (message) => {
+        try {
+
+            const data = JSON.parse(message.toString());
+
+            console.log("Received:", data);
+
+            if (data.type === 'auth') {
+
+                ws.user_id = data.user_id;
+                clients[data.user_id] = ws;
+
+                console.log("User authenticated:", data.user_id);
+
+            }
+
+        } catch (err) {
+            console.log('Invalid message', err);
         }
     });
-}
 
-// HTTP endpoint for Laravel to send events
-app.post('/event', (req, res) => {
-    const { type, data } = req.body;
-    console.log('Received POST:', type, data); // debug
+    ws.on('close', () => {
 
-    if (type === 'new_user') {
-        const user = {
-            id: data.id,
-            first_name: data.first_name || data.name?.split(' ')[0] || 'Unknown',
-            last_name: data.last_name || data.name?.split(' ')[1] || ''
-        };
-        broadcast({ type, data: user });
-    }
-    else if(type === 'login') {
-        const user = {
-            id: data.id,
-            first_name: data.first_name || data.name?.split(' ')[0] || 'Unknown',
-            last_name: data.last_name || data.name?.split(' ')[1] || ''
-        };
-        broadcast({ type, data: user });
-    }
+        if (ws.user_id) {
 
-    res.sendStatus(200);
+            delete clients[ws.user_id];
+
+            console.log(`User ${ws.user_id} disconnected`);
+
+        }
+
+    });
 });
-// Start HTTP server on port 3000 (avoiding 8080 conflict)
-app.listen(3000, () => console.log('HTTP server running on port 3000'));
+
+app.post('/event', (req, res) => {
+
+    const { type, data } = req.body;
+
+    let targetUser;
+
+    if(type === 'connection_request'){
+        targetUser = clients[data.addressee_id];
+    }
+    else if(type === 'accept_request'){
+        targetUser = clients[data.requester_id]
+    }
+    else if(type === 'unfriend'){
+        targetUser = clients[data.requester_id]
+    }
+    else if(type === 'reject'){
+        targetUser = clients[data.requester_id]
+    }
+    else if(type === 'block'){
+        targetUser = clients[data.blocker_id]
+    }
+
+    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
+
+        targetUser.send(JSON.stringify({
+            type: type,
+            data: data
+        }));
+
+        console.log(`Event sent to user ${data.addressee_id}`);
+
+    } else {
+
+        console.log(`User ${data.addressee_id} is offline`);
+
+    }
+
+    res.json({
+        status: 'event processed'
+    });
+
+});
+
+app.listen(3000, () => {
+    console.log('Event server listening on port 3000');
+});

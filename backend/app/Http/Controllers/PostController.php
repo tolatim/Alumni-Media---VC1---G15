@@ -200,7 +200,11 @@ class PostController extends Controller
             return response()->json(['message' => 'Post not found'], 404);
         }
 
-        if ((int) $post->user_id !== (int) $user->id) {
+        $user->loadMissing('role');
+        $isOwner = (int) $post->user_id === (int) $user->id;
+        $isAdmin = ($user->role->name ?? null) === 'admin';
+
+        if (!$isOwner && !$isAdmin) {
             return response()->json(['message' => 'You can delete only your own posts.'], 403);
         }
 

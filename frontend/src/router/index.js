@@ -30,6 +30,31 @@ const routes = [
     meta: {requiresAdmin: true}
   },
   {
+    path: '/users',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/posts',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/reports',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
     path: '/connection',
     name: 'Connection',
     component: Connect,

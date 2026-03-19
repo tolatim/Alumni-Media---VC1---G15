@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppSetting;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +20,22 @@ class AuthController extends Controller
             'last_name' => 'required|string|max:100',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
+            'registration_key' => 'required|string|max:255',
         ]);
+
+        $configuredKey = AppSetting::query()->where('key', 'registration_key')->value('value');
+
+        if (!$configuredKey) {
+            return response()->json([
+                'message' => 'Registration is currently closed. Please contact admin.',
+            ], 403);
+        }
+
+        if (!hash_equals((string) $configuredKey, (string) $validated['registration_key'])) {
+            return response()->json([
+                'message' => 'Invalid registration key.',
+            ], 403);
+        }
 
         // Assign default role
         $userRole = Role::firstOrCreate(['name' => 'user']);
@@ -79,6 +95,14 @@ class AuthController extends Controller
         }
 
         $user = User::with(['role'])->findOrFail(Auth::id());
+
+        if ($user->isSuspended()) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Your account is suspended',
+            ], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
 
