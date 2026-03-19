@@ -6,7 +6,7 @@
         <userLeftSideBar :user="currentUser" />
 
         <centerFeed
-          :posts="feedStore.posts"
+          :posts="posts"
           :current-user="currentUser"
           @post-created="prependPost"
           @refresh-posts="refreshPosts"
@@ -32,102 +32,76 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Navbar from "@/components/ui/nav.vue";
 import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
-import { useFeedStore } from "@/store/feed";
+import { useFeedStore } from "@/stores/feed";
+import { subscribeToPostEvents, setPostHubUserId } from "@/utils/postHub";
 
-const feedStore = useFeedStore()
-
+const feedStore = useFeedStore();
 const currentUser = ref(null);
 const suggestions = ref([]);
 const pendingRequests = ref([]);
 const errorMessage = ref("");
 const loadingMore = ref(false);
-const feedPage = ref(1);
-const feedLastPage = ref(1);
-const FEED_PER_PAGE = 8;
 
-const hasMorePosts = ref(true);
+const posts = computed(() => feedStore.posts);
+const hasMorePosts = computed(() => feedStore.page < feedStore.lastPage);
+
+let unsubscribePostHub = null;
+
+const handlePostEvent = (payload) => {
+  if (!payload) return;
+  if (payload.type === "post_created" && payload.data?.post) {
+    feedStore.addPost(payload.data.post);
+  } else if (payload.type === "post_updated" && payload.data?.post) {
+    feedStore.replacePost(payload.data.post);
+  } else if (payload.type === "post_deleted") {
+    const postId = payload.data?.post_id || payload.data?.postId;
+    if (postId) {
+      feedStore.removePost(postId);
+    }
+  }
+};
 
 const loadHomeData = async () => {
   errorMessage.value = "";
 
-  const [meRes, feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
-    api.get("/me"),
-    api.get("/feed", { params: { page: 1, per_page: FEED_PER_PAGE } }),
-    api.get("/users/suggestions"),
-    api.get("/connections/pending"),
-  ]);
-
-  if (meRes.status === "fulfilled") {
-    currentUser.value = meRes.value.data;
-    localStorage.setItem("user", JSON.stringify(meRes.value.data));
-  } else {
+  try {
+    const response = await api.get("/me");
+    currentUser.value = response.data;
+    localStorage.setItem("user", JSON.stringify(currentUser.value));
+    setPostHubUserId(currentUser.value?.id ?? null);
+  } catch (error) {
     currentUser.value = null;
     errorMessage.value =
-      meRes.reason?.response?.data?.message || "Failed to load your account.";
+      error.response?.data?.message || "Failed to load your account.";
+    setPostHubUserId(null);
     return;
   }
 
-  if (feedRes.status === "fulfilled") {
-    const pagination = feedRes.value.data?.pagination || {};
-    posts.value = feedRes.value.data?.data || [];
-    feedPage.value = Number(pagination.current_page || 1);
-    feedLastPage.value = Number(pagination.last_page || 1);
-    hasMorePosts.value = feedPage.value < feedLastPage.value;
-  } else {
-    posts.value = [];
-    feedPage.value = 1;
-    feedLastPage.value = 1;
-    hasMorePosts.value = false;
+  try {
+    await feedStore.load(1);
+  } catch (error) {
+    errorMessage.value =
+      error.response?.data?.message || "Failed to load posts.";
   }
 
-  suggestions.value =
-    suggestionRes.status === "fulfilled"
-      ? suggestionRes.value.data?.data || []
-      : [];
-  pendingRequests.value =
-    pendingRes.status === "fulfilled" ? pendingRes.value.data?.data || [] : [];
-
-  if (suggestionRes.status === "rejected") {
-    try {
-      const [fallbackUsersRes, myConnectionsRes, pendingRes, blockedRes] = await Promise.allSettled([
-        api.get("/users"),
-        api.get("/connections/my", { params: { page: 1, per_page: 200 } }),
-        api.get("/connections/pending", { params: { page: 1, per_page: 200 } }),
-        api.get("/connections/blocked", { params: { page: 1, per_page: 200 } }),
-      ]);
-
-      const allUsers = fallbackUsersRes.status === "fulfilled" ? (fallbackUsersRes.value.data?.data || []) : [];
-      const myRows = myConnectionsRes.status === "fulfilled" ? (myConnectionsRes.value.data?.data || []) : [];
-      const pendingRows = pendingRes.status === "fulfilled" ? (pendingRes.value.data?.data || []) : [];
-      const blockedRows = blockedRes.status === "fulfilled" ? (blockedRes.value.data?.data || []) : [];
-      const meId = Number(currentUser.value?.id || 0);
-      const existingIds = new Set();
-
-      [...myRows, ...pendingRows, ...blockedRows].forEach((row) => {
-        const requesterId = Number(row.requester_id || 0);
-        const addresseeId = Number(row.addressee_id || 0);
-        if (requesterId === meId && addresseeId) existingIds.add(addresseeId);
-        if (addresseeId === meId && requesterId) existingIds.add(requesterId);
-      });
-
-      suggestions.value = allUsers
-        .filter((user) => Number(user.id) !== meId && !existingIds.has(Number(user.id)))
-        .slice(0, 8);
-    } catch {
-      suggestions.value = [];
-    }
+  try {
+    const response = await api.get("/users/suggestions");
+    suggestions.value = response.data?.data || [];
+  } catch {
+    suggestions.value = [];
   }
 
-  if (feedRes.status === "rejected") {
-    errorMessage.value = "Feed failed to load.";
-  } else if (pendingRes.status === "rejected") {
-    errorMessage.value = "Pending requests failed to load.";
+  try {
+    const response = await api.get("/connections/pending");
+    pendingRequests.value = response.data?.data || [];
+  } catch {
+    pendingRequests.value = [];
   }
 };
 
@@ -135,9 +109,10 @@ const loadMorePosts = async () => {
   if (loadingMore.value || !hasMorePosts.value) return;
   loadingMore.value = true;
   try {
-    await loadFeedPage(feedPage.value + 1, true);
+    await feedStore.load(feedStore.page + 1, true);
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || "Failed to load more posts.";
+    errorMessage.value =
+      error.response?.data?.message || "Failed to load more posts.";
   } finally {
     loadingMore.value = false;
   }
@@ -145,7 +120,8 @@ const loadMorePosts = async () => {
 
 const onScroll = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const viewportHeight =
+    window.innerHeight || document.documentElement.clientHeight;
   const fullHeight = document.documentElement.scrollHeight;
 
   if (scrollTop + viewportHeight >= fullHeight - 280) {
@@ -154,12 +130,12 @@ const onScroll = () => {
 };
 
 const prependPost = (newPost) => {
-  posts.value = [newPost, ...posts.value];
+  feedStore.addPost(newPost);
 };
 
 const refreshPosts = async () => {
   try {
-    await loadFeedPage(1, false);
+    await feedStore.load(1);
   } catch (error) {
     console.error(error.response?.data || error);
   }
@@ -213,13 +189,16 @@ const refreshSuggestions = async () => {
 };
 
 onMounted(() => {
-  feedStore.loadFeedPage();
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
-
+  unsubscribePostHub = subscribeToPostEvents(handlePostEvent);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("scroll", onScroll);
+  if (unsubscribePostHub) {
+    unsubscribePostHub();
+    unsubscribePostHub = null;
+  }
 });
 </script>

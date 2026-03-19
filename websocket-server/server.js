@@ -12,6 +12,19 @@ const wss = new WebSocket.Server({ port: 8081 }, () => {
 });
 
 let clients = {};
+const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted']);
+
+const broadcastToAllClients = (payload) => {
+    const message = JSON.stringify(payload);
+    let recipients = 0;
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+            recipients += 1;
+        }
+    });
+    return recipients;
+};
 
 wss.on('connection', (ws) => {
     console.log("New client connected");
@@ -53,6 +66,15 @@ wss.on('connection', (ws) => {
 app.post('/event', (req, res) => {
 
     const { type, data } = req.body;
+    if (BROADCAST_EVENTS.has(type)) {
+        const recipients = broadcastToAllClients({ type, data });
+        console.log(`Broadcast event '${type}' to ${recipients} clients`);
+
+        return res.json({
+            status: 'event broadcasted',
+            recipients,
+        });
+    }
 
     let targetUser;
 

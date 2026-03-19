@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 
 class PostController extends Controller
 {
@@ -67,10 +68,27 @@ class PostController extends Controller
             }
         }
 
-        // Return post with media
+        $postPayload = $post
+            ->fresh()
+            ->load('media', 'user.role')
+            ->loadCount(['likes', 'comments']);
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'post_created',
+                'data' => [
+                    'post' => $postPayload,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments'])
+            'post' => $postPayload,
         ], 201);
     }
 
@@ -181,9 +199,27 @@ class PostController extends Controller
             }
         }
 
+        $updatedPost = $post
+            ->fresh()
+            ->load('media', 'user.role')
+            ->loadCount(['likes', 'comments']);
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'post_updated',
+                'data' => [
+                    'post' => $updatedPost,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Post updated successfully',
-            'post' => $post->fresh()->load('media', 'user')->loadCount(['likes', 'comments']),
+            'post' => $updatedPost,
         ]);
     }
 
@@ -210,7 +246,22 @@ class PostController extends Controller
             }
         }
 
+        $deletedPostId = $post->id;
         $post->delete();
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'post_deleted',
+                'data' => [
+                    'post_id' => $deletedPostId,
+                    'user_id' => $user->id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
 
         return response()->json(['message' => 'Post deleted successfully']);
     }
