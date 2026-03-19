@@ -12,6 +12,21 @@ const wss = new WebSocket.Server({ port: 8081 }, () => {
 });
 
 let clients = {};
+const adminClients = new Set();
+
+const sendToAdmins = (payload) => {
+    const deadSockets = [];
+
+    adminClients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(payload));
+        } else {
+            deadSockets.push(ws);
+        }
+    });
+
+    deadSockets.forEach((ws) => adminClients.delete(ws));
+};
 
 wss.on('connection', (ws) => {
     console.log("New client connected");
@@ -27,6 +42,13 @@ wss.on('connection', (ws) => {
 
                 ws.user_id = data.user_id;
                 clients[data.user_id] = ws;
+                const role = String(data.role || '').toLowerCase();
+                const channel = String(data.channel || '').toLowerCase();
+
+                if (role === 'admin' || channel === 'admin') {
+                    ws.isAdmin = true;
+                    adminClients.add(ws);
+                }
 
                 console.log("User authenticated:", data.user_id);
 
@@ -39,7 +61,7 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
 
-        if (ws.user_id) {
+        if (ws.user_id && clients[ws.user_id] === ws) {
 
             delete clients[ws.user_id];
 
@@ -47,12 +69,29 @@ wss.on('connection', (ws) => {
 
         }
 
+        if (ws.isAdmin) {
+            adminClients.delete(ws);
+        }
+
     });
 });
 
 app.post('/event', (req, res) => {
 
-    const { type, data } = req.body;
+    const { type, data = {}, audience } = req.body || {};
+
+    if (audience === 'admins') {
+        sendToAdmins({
+            type,
+            data,
+            audience: 'admins',
+        });
+
+        return res.json({
+            status: 'event processed',
+            delivered_to: 'admins',
+        });
+    }
 
     let targetUser;
 
@@ -79,11 +118,11 @@ app.post('/event', (req, res) => {
             data: data
         }));
 
-        console.log(`Event sent to user ${data.addressee_id}`);
+        console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocker_id}`);
 
     } else {
 
-        console.log(`User ${data.addressee_id} is offline`);
+        console.log('Target user is offline or not specified');
 
     }
 

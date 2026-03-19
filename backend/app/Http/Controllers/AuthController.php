@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AppSetting;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
@@ -76,6 +77,16 @@ class AuthController extends Controller
             // Optional: log errors if Node.js is not running
             \Log::error('Failed to send new user event: ' . $e->getMessage());
         }
+
+        WebsocketNotifier::send('admin_activity', [
+            'event' => 'user_registered',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'occurred_at' => now()->toIso8601String(),
+        ], 'admins');
 
         return response()->json([
             'message' => 'User created successfully',

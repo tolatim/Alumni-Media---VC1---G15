@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -97,6 +98,13 @@ class AdminReportModerationController extends Controller
             ]);
         }
 
+        WebsocketNotifier::send('admin_activity', [
+            'event' => 'report_ignored',
+            'report_id' => $report->id,
+            'admin_id' => $admin->id,
+            'occurred_at' => now()->toIso8601String(),
+        ], 'admins');
+
         return response()->json([
             'message' => 'Report ignored successfully.',
         ]);
@@ -161,6 +169,14 @@ class AdminReportModerationController extends Controller
 
             $post->delete();
         });
+
+        WebsocketNotifier::send('admin_activity', [
+            'event' => 'report_post_deleted',
+            'report_id' => $report->id,
+            'post_id' => $post->id,
+            'admin_id' => $admin->id,
+            'occurred_at' => now()->toIso8601String(),
+        ], 'admins');
 
         return response()->json([
             'message' => 'Post deleted successfully.',
@@ -231,6 +247,16 @@ class AdminReportModerationController extends Controller
                 ]);
             }
         });
+
+        WebsocketNotifier::send('admin_activity', [
+            'event' => 'report_user_suspended',
+            'report_id' => $report->id,
+            'user_id' => $targetUser->id,
+            'admin_id' => $admin->id,
+            'duration' => $duration,
+            'suspended_until' => $suspendedUntil?->toIso8601String(),
+            'occurred_at' => now()->toIso8601String(),
+        ], 'admins');
 
         return response()->json([
             'message' => 'User suspended successfully.',

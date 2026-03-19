@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::patch('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+    Route::post('/posts/{id}/report', [PostController::class, 'report']);
     Route::get('/admin/reported-posts', [AdminPostModerationController::class, 'indexReportedPosts']);
     Route::delete('/admin/reported-posts/{postId}', [AdminPostModerationController::class, 'deleteReportedPost']);
     Route::get('/admin/users', [AdminUserModerationController::class, 'index']);

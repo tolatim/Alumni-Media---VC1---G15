@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from '@/components/admin/Sidebar.vue'
 import Topbar from '@/components/admin/Topbar.vue'
@@ -16,6 +16,12 @@ type ReportedPost = {
     title: string | null
     content: string | null
     created_at: string | null
+    media?: Array<{
+      id?: number
+      type?: string | null
+      file_path?: string | null
+      media_url?: string | null
+    }>
     user?: {
       id: number
       name?: string
@@ -63,6 +69,7 @@ type ThemeMode = 'light' | 'dark'
 type AdminSection = 'dashboard' | 'settings' | 'reports' | 'posts' | 'users'
 
 const reportedPosts = ref<ReportedPost[]>([])
+const selectedReportedPost = ref<ReportedPost | null>(null)
 const users = ref<AdminUser[]>([])
 const reviewReports = ref<ReviewReport[]>([])
 
@@ -89,6 +96,8 @@ const appearanceMessage = ref('')
 const appearanceError = ref('')
 const loadingMoreUsers = ref(false)
 const usersPerPage = 10
+const adminRealtimeSocket = ref<WebSocket | null>(null)
+let adminRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
 const userPagination = ref({
   current_page: 0,
@@ -119,6 +128,34 @@ const getPosterName = (item: ReportedPost) => {
   const nameFromFields = `${postUser.first_name || ''} ${postUser.last_name || ''}`.trim()
   return postUser.name || nameFromFields || postUser.email || 'Unknown user'
 }
+
+const openReportedPostViewer = (item: ReportedPost) => {
+  selectedReportedPost.value = item
+}
+
+const closeReportedPostViewer = () => {
+  selectedReportedPost.value = null
+}
+
+const getReportedPostMediaSrc = (media: { media_url?: string | null; file_path?: string | null }) => {
+  return media?.media_url || media?.file_path || ''
+}
+
+const getReportedPostMediaType = (media: { type?: string | null; media_url?: string | null; file_path?: string | null }) => {
+  const explicitType = String(media?.type || '').toLowerCase()
+  if (explicitType === 'image' || explicitType === 'video') return explicitType
+
+  const src = getReportedPostMediaSrc(media).toLowerCase()
+  if (/\.(mp4|mov|avi|webm|mkv)(\?|#|$)/.test(src)) return 'video'
+  if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|#|$)/.test(src)) return 'image'
+  return ''
+}
+
+const isReportedPostImage = (media: { type?: string | null; media_url?: string | null; file_path?: string | null }) =>
+  getReportedPostMediaType(media) === 'image'
+
+const isReportedPostVideo = (media: { type?: string | null; media_url?: string | null; file_path?: string | null }) =>
+  getReportedPostMediaType(media) === 'video'
 
 const getUserName = (user: AdminUser) => {
   const nameFromFields = `${user.first_name || ''} ${user.last_name || ''}`.trim()
@@ -317,6 +354,9 @@ const deleteReportedPost = async (item: ReportedPost) => {
   try {
     await api.delete(`/admin/reported-posts/${item.post_id}`)
     reportedPosts.value = reportedPosts.value.filter((post) => post.post_id !== item.post_id)
+    if (selectedReportedPost.value?.post_id === item.post_id) {
+      closeReportedPostViewer()
+    }
     reportMessage.value = `Post #${item.post_id} was deleted.`
   } catch (error: any) {
     reportError.value = error?.response?.data?.message || 'Failed to delete post.'
@@ -436,11 +476,85 @@ const suspendUserFromReport = async (report: ReviewReport) => {
   }
 }
 
+const refreshAdminDataSoon = () => {
+  if (adminRefreshTimer) {
+    clearTimeout(adminRefreshTimer)
+  }
+
+  adminRefreshTimer = setTimeout(() => {
+    loadReportedPosts()
+    loadUsers(true)
+    loadReportsForReview()
+    adminRefreshTimer = null
+  }, 350)
+}
+
+const connectAdminRealtime = () => {
+  const rawUser = localStorage.getItem('user')
+  if (!rawUser) return
+
+  let currentUser: any = null
+  try {
+    currentUser = JSON.parse(rawUser)
+  } catch {
+    return
+  }
+
+  const roleName = typeof currentUser?.role === 'string' ? currentUser.role : currentUser?.role?.name
+  if (roleName !== 'admin' || !currentUser?.id) return
+
+  const socket = new WebSocket('ws://localhost:8081')
+  adminRealtimeSocket.value = socket
+
+  socket.onopen = () => {
+    socket.send(JSON.stringify({
+      type: 'auth',
+      user_id: currentUser.id,
+      role: 'admin',
+      channel: 'admin',
+    }))
+  }
+
+  socket.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data)
+      if (payload?.audience === 'admins' || payload?.type === 'admin_activity') {
+        refreshAdminDataSoon()
+      }
+    } catch (error) {
+      console.error('Invalid admin websocket payload', error)
+    }
+  }
+
+  socket.onerror = () => {
+    // Keep silent in UI; admin can still refresh manually.
+  }
+
+  socket.onclose = () => {
+    if (adminRealtimeSocket.value === socket) {
+      adminRealtimeSocket.value = null
+    }
+  }
+}
+
 onMounted(() => {
   loadAdminAppearance()
   loadReportedPosts()
   loadUsers(true)
   loadReportsForReview()
+  connectAdminRealtime()
+})
+
+onUnmounted(() => {
+  if (adminRefreshTimer) {
+    clearTimeout(adminRefreshTimer)
+    adminRefreshTimer = null
+  }
+
+  if (adminRealtimeSocket.value) {
+    adminRealtimeSocket.value.close()
+    adminRealtimeSocket.value = null
+  }
 })
 </script>
 
@@ -697,20 +811,97 @@ onMounted(() => {
                   <td class="px-4 py-3 text-gray-700">{{ item.latest_reason || 'No reason provided.' }}</td>
                   <td class="px-4 py-3 text-gray-600">{{ formatDateTime(item.latest_report_at) }}</td>
                   <td class="px-4 py-3">
-                    <button
-                      type="button"
-                      class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      @click="deleteReportedPost(item)"
-                      :disabled="deletingPostId === item.post_id"
-                    >
-                      {{ deletingPostId === item.post_id ? 'Deleting...' : 'Delete' }}
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        class="rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        @click="openReportedPostViewer(item)"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="deleteReportedPost(item)"
+                        :disabled="deletingPostId === item.post_id"
+                      >
+                        {{ deletingPostId === item.post_id ? 'Deleting...' : 'Delete' }}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </section>
+
+        <div
+          v-if="selectedReportedPost"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4"
+          @click.self="closeReportedPostViewer"
+        >
+          <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl">
+            <div class="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
+              <div>
+                <h3 class="text-base font-semibold text-gray-900">
+                  Reported Post #{{ selectedReportedPost.post_id }}
+                </h3>
+                <p class="mt-1 text-xs text-gray-500">
+                  Author: {{ getPosterName(selectedReportedPost) }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                @click="closeReportedPostViewer"
+              >
+                Close
+              </button>
+            </div>
+
+            <div class="space-y-4 px-5 py-4">
+              <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+                <p><span class="font-semibold text-gray-800">Reports:</span> {{ selectedReportedPost.report_count }}</p>
+                <p class="mt-1"><span class="font-semibold text-gray-800">Latest Reason:</span> {{ selectedReportedPost.latest_reason || 'No reason provided.' }}</p>
+                <p class="mt-1"><span class="font-semibold text-gray-800">Reported At:</span> {{ formatDateTime(selectedReportedPost.latest_report_at) }}</p>
+              </div>
+
+              <div>
+                <p class="text-sm font-semibold text-gray-900">
+                  {{ selectedReportedPost.post?.title || `Post #${selectedReportedPost.post_id}` }}
+                </p>
+                <p class="mt-2 whitespace-pre-line text-sm text-gray-700">
+                  {{ selectedReportedPost.post?.content || 'No content.' }}
+                </p>
+              </div>
+
+              <div
+                v-if="selectedReportedPost.post?.media?.length"
+                class="grid grid-cols-1 gap-3 sm:grid-cols-2"
+              >
+                <div
+                  v-for="media in selectedReportedPost.post.media"
+                  :key="media.id || media.file_path || media.media_url"
+                  class="overflow-hidden rounded-lg border border-gray-200"
+                >
+                  <img
+                    v-if="isReportedPostImage(media)"
+                    :src="getReportedPostMediaSrc(media)"
+                    alt="Reported post media"
+                    class="h-56 w-full object-cover"
+                  >
+                  <video
+                    v-else-if="isReportedPostVideo(media)"
+                    :src="getReportedPostMediaSrc(media)"
+                    class="h-56 w-full bg-black object-cover"
+                    controls
+                    preload="metadata"
+                  ></video>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <section v-if="activeSection === 'users'" class="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">

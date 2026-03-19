@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -116,6 +117,15 @@ class AdminUserModerationController extends Controller
                 ]);
             }
         });
+
+        WebsocketNotifier::send('admin_activity', [
+            'event' => 'user_suspended',
+            'user_id' => $target->id,
+            'admin_id' => $admin->id,
+            'duration' => $duration,
+            'suspended_until' => $suspendedUntil?->toIso8601String(),
+            'occurred_at' => now()->toIso8601String(),
+        ], 'admins');
 
         return response()->json([
             'message' => 'User suspended successfully.',

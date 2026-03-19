@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Models\Report;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +25,7 @@ class AdminPostModerationController extends Controller
             ->with([
                 'user:id,first_name,last_name,email',
                 'reportable.user:id,first_name,last_name,email',
+                'reportable.media:id,post_id,file_path,type',
             ])
             ->latest('created_at')
             ->get();
@@ -45,6 +47,7 @@ class AdminPostModerationController extends Controller
                         'content' => $post->content,
                         'created_at' => $post->created_at,
                         'user' => $post->user,
+                        'media' => $post->media,
                     ] : null,
                     'reporters' => $group
                         ->pluck('user')
@@ -105,6 +108,13 @@ class AdminPostModerationController extends Controller
 
             $post->delete();
         });
+
+        WebsocketNotifier::send('admin_activity', [
+            'event' => 'reported_post_deleted',
+            'post_id' => $postId,
+            'admin_id' => $admin->id,
+            'occurred_at' => now()->toIso8601String(),
+        ], 'admins');
 
         return response()->json([
             'message' => 'Post deleted successfully by admin.',

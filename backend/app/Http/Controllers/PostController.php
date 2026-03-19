@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\Report;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
@@ -217,5 +218,61 @@ class PostController extends Controller
         $post->delete();
 
         return response()->json(['message' => 'Post deleted successfully']);
+    }
+
+    public function report(Request $request, int $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $post = Post::query()->find($id);
+        if (!$post) {
+            return response()->json(['message' => 'Post not found.'], 404);
+        }
+
+        if ((int) $post->user_id === (int) $user->id) {
+            return response()->json(['message' => 'You cannot report your own post.'], 422);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $existingPending = Report::query()
+            ->where('user_id', $user->id)
+            ->where('reportable_type', Post::class)
+            ->where('reportable_id', $post->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existingPending) {
+            $existingPending->update([
+                'reason' => $validated['reason'],
+            ]);
+
+            return response()->json([
+                'message' => 'Your report was already submitted. Reason updated.',
+                'data' => [
+                    'report_id' => $existingPending->id,
+                ],
+            ]);
+        }
+
+        $report = Report::query()->create([
+            'user_id' => $user->id,
+            'reportable_type' => Post::class,
+            'reportable_id' => $post->id,
+            'reason' => $validated['reason'],
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Report submitted successfully.',
+            'data' => [
+                'report_id' => $report->id,
+            ],
+        ], 201);
     }
 }
