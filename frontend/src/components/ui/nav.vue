@@ -167,12 +167,15 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { createEcho } from '@/services/realtime'
 
 const route = useRoute()
 const user = ref(null)
 const unreadCount = ref(0)
 const menuOpen = ref(false)
 let unreadTimer = null
+let realtimeRefreshTimer = null
+let realtimeChannel = null
 const handleMessagesUpdated = () => {
   fetchUnreadCount()
 }
@@ -212,6 +215,48 @@ const fetchUnreadCount = async () => {
   }
 }
 
+const scheduleUnreadRefresh = () => {
+  if (realtimeRefreshTimer) {
+    clearTimeout(realtimeRefreshTimer)
+  }
+  realtimeRefreshTimer = setTimeout(() => {
+    realtimeRefreshTimer = null
+    fetchUnreadCount()
+  }, 300)
+}
+
+const attachRealtime = () => {
+  const echo = createEcho()
+  if (!echo || !user.value?.id) return
+
+  realtimeChannel = echo.private(`user.${user.value.id}`)
+  realtimeChannel.listen('.MessageCreated', () => {
+    scheduleUnreadRefresh()
+  })
+  realtimeChannel.listen('.MessageUpdated', () => {
+    scheduleUnreadRefresh()
+  })
+  realtimeChannel.listen('.MessageDeleted', () => {
+    scheduleUnreadRefresh()
+  })
+}
+
+const detachRealtime = () => {
+  if (realtimeChannel) {
+    realtimeChannel.stopListening('.MessageCreated')
+    realtimeChannel.stopListening('.MessageUpdated')
+    realtimeChannel.stopListening('.MessageDeleted')
+    realtimeChannel = null
+  }
+  if (typeof window !== 'undefined' && window.Echo && user.value?.id) {
+    window.Echo.leave(`user.${user.value.id}`)
+  }
+  if (realtimeRefreshTimer) {
+    clearTimeout(realtimeRefreshTimer)
+    realtimeRefreshTimer = null
+  }
+}
+
 watch(
   () => route.fullPath,
   async () => {
@@ -223,6 +268,7 @@ watch(
 onMounted(async () => {
   await fetchMe()
   await fetchUnreadCount()
+  attachRealtime()
   unreadTimer = setInterval(fetchUnreadCount, 15000)
   window.addEventListener('messages:updated', handleMessagesUpdated)
 })
@@ -231,6 +277,7 @@ onUnmounted(() => {
   if (unreadTimer) {
     clearInterval(unreadTimer)
   }
+  detachRealtime()
   window.removeEventListener('messages:updated', handleMessagesUpdated)
 })
 </script>

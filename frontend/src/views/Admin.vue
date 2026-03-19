@@ -1,4 +1,5 @@
 <template>
+  <PageLoading />
   <div class="flex min-h-screen bg-gray-100">
 
     <!-- Sidebar -->
@@ -167,6 +168,7 @@
 <script setup>
 import { onMounted, ref } from "vue"
 import Chart from "chart.js/auto"
+import PageLoading from "@/components/ui/PageLoading.vue"
 
 const chart = ref(null)
 

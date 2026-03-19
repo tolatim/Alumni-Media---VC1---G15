@@ -9,9 +9,21 @@ const getApiRoot = () => {
 }
 
 export const createEcho = () => {
-  if (echoInstance) return echoInstance
-
   const token = localStorage.getItem('token')
+
+  if (echoInstance) {
+    if (token) {
+      const authHeaders = echoInstance.connector?.options?.auth?.headers
+      if (authHeaders && authHeaders.Authorization !== `Bearer ${token}`) {
+        authHeaders.Authorization = `Bearer ${token}`
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.Echo = echoInstance
+    }
+    return echoInstance
+  }
+
   if (!token) return null
 
   window.Pusher = Pusher
@@ -32,6 +44,10 @@ export const createEcho = () => {
       },
     },
   })
+
+  if (typeof window !== 'undefined') {
+    window.Echo = echoInstance
+  }
 
   return echoInstance
 }

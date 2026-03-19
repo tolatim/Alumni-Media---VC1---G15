@@ -6,6 +6,8 @@ use App\Models\Connection;
 use App\Models\Message;
 use App\Models\User;
 use App\Events\MessageCreated;
+use App\Events\MessageDeleted;
+use App\Events\MessageUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -204,7 +206,13 @@ class MessageController extends Controller
             }
         }
 
+        $deletedId = $message->id;
+        $senderId = (int) $message->sender_id;
+        $receiverId = (int) $message->receiver_id;
+
         $message->delete();
+
+        broadcast(new MessageDeleted($deletedId, $senderId, $receiverId))->toOthers();
 
         return response()->json([
             'message' => 'Message deleted successfully',
@@ -249,9 +257,13 @@ class MessageController extends Controller
             'status' => 'sent',
         ]);
 
+        $message = $message->fresh()->load(['sender', 'receiver']);
+
+        broadcast(new MessageUpdated($message))->toOthers();
+
         return response()->json([
             'message' => 'Message updated successfully',
-            'data' => $message->fresh()->load(['sender', 'receiver']),
+            'data' => $message,
         ]);
     }
 

@@ -1,4 +1,5 @@
 <template>
+  <PageLoading />
   <div class="page">
     <!-- REGISTER CARD -->
     <div class="card">
@@ -116,6 +117,7 @@
 import { ref } from "vue"
 import { registerUser } from "@/services/authService"
 import { useRouter } from "vue-router"
+import PageLoading from "@/components/ui/PageLoading.vue"
 
 const router = useRouter()
 

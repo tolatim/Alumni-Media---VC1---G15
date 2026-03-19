@@ -1,5 +1,6 @@
 <template>
   <Navbar />
+  <PageLoading />
   <main class="min-h-screen py-6 md:py-8">
     <div class="mx-auto max-w-7xl px-4 sm:px-5">
       <div class="grid grid-cols-12 gap-5">
@@ -215,6 +216,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import Navbar from '@/components/ui/nav.vue'
+import PageLoading from '@/components/ui/PageLoading.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 const errorMessage = ref('')

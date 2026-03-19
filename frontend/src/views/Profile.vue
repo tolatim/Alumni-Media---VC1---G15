@@ -1,5 +1,6 @@
 <template>
   <Navbar />
+  <PageLoading />
 
   <main class="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white py-8">
     <div class="mx-auto max-w-6xl px-4">
@@ -310,9 +311,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
+import PageLoading from '@/components/ui/PageLoading.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
-import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
+import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.webp'
 
 const route = useRoute()
 const user = ref(null)

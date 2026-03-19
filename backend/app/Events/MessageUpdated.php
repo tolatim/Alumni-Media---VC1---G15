@@ -9,7 +9,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageCreated implements ShouldBroadcastNow
+class MessageUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -30,7 +30,7 @@ class MessageCreated implements ShouldBroadcastNow
 
     public function broadcastAs(): string
     {
-        return 'MessageCreated';
+        return 'MessageUpdated';
     }
 
     public function broadcastWith(): array

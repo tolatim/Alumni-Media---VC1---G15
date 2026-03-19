@@ -1,5 +1,6 @@
 <template>
   <Navbar />
+  <PageLoading />
   <main class="min-h-screen bg-transparent py-6 md:py-8">
     <div class="mx-auto max-w-7xl px-4 sm:px-5">
       <div class="grid grid-cols-12 gap-5">
@@ -34,6 +35,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import Navbar from "@/components/ui/nav.vue";
+import PageLoading from "@/components/ui/PageLoading.vue";
 import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";

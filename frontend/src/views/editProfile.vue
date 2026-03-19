@@ -1,4 +1,5 @@
 <template>
+  <PageLoading />
   <div class="min-h-screen bg-gray-100 p-6">
     <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6">
       <h2 class="font-semibold text-gray-700">Edit Profile</h2>
@@ -104,8 +105,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import PageLoading from '@/components/ui/PageLoading.vue'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
-import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
+import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.webp'
 
 const router = useRouter()
 const loading = ref(false)
