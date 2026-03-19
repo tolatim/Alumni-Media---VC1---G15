@@ -220,6 +220,7 @@ import PageLoading from '@/components/ui/PageLoading.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 const errorMessage = ref('')
+const me = ref(null)
 const pendingRequests = ref([])
 const suggestions = ref([])
 const connectionRows = ref([])
@@ -253,19 +254,11 @@ const normalizePagination = (payload, fallbackPerPage) => {
 }
 
 const friends = computed(() => {
-  let me = null
-  try {
-    const meRaw = localStorage.getItem('user')
-    me = meRaw ? JSON.parse(meRaw) : null
-  } catch {
-    me = null
-  }
-
-  if (!me?.id) return []
+  if (!me.value?.id) return []
 
   return connectionRows.value
     .map((row) => {
-      if (row.requester_id === me.id) return row.addressee
+      if (row.requester_id === me.value.id) return row.addressee
       return row.requester
     })
     .filter(Boolean)
@@ -310,15 +303,7 @@ const loadSuggestionsFallback = async () => {
   const pendingRows = pendingRes.status === 'fulfilled' ? (pendingRes.value.data?.data || []) : []
   const blockedRows = blockedRes.status === 'fulfilled' ? (blockedRes.value.data?.data || []) : []
 
-  let me = null
-  try {
-    const meRaw = localStorage.getItem('user')
-    me = meRaw ? JSON.parse(meRaw) : null
-  } catch {
-    me = null
-  }
-
-  const meId = Number(me?.id || 0)
+  const meId = Number(me.value?.id || 0)
   const existingIds = new Set()
   ;[...myRows, ...pendingRows, ...blockedRows].forEach((row) => {
     const requesterId = Number(row.requester_id || 0)
@@ -333,6 +318,47 @@ const loadSuggestionsFallback = async () => {
   suggestionsPagination.value = defaultPagination(SUGGESTIONS_PER_PAGE)
 }
 
+const removeSuggestion = (userId) => {
+  suggestions.value = suggestions.value.filter((person) => Number(person.id) !== Number(userId))
+  suggestionsPagination.value = {
+    ...suggestionsPagination.value,
+    total: Math.max(0, Number(suggestionsPagination.value.total || 0) - 1),
+  }
+}
+
+const removePendingRequest = (connectionId) => {
+  pendingRequests.value = pendingRequests.value.filter((row) => Number(row.id) !== Number(connectionId))
+  pendingPagination.value = {
+    ...pendingPagination.value,
+    total: Math.max(0, Number(pendingPagination.value.total || 0) - 1),
+  }
+}
+
+const addConnectionRow = (row) => {
+  if (!row?.id) return
+  connectionRows.value = [row, ...connectionRows.value.filter((item) => Number(item.id) !== Number(row.id))]
+  friendsPagination.value = {
+    ...friendsPagination.value,
+    total: Number(friendsPagination.value.total || 0) + 1,
+  }
+}
+
+const removeConnectionByUser = (userId) => {
+  const before = connectionRows.value.length
+  connectionRows.value = connectionRows.value.filter((row) => {
+    const requesterId = Number(row.requester_id || 0)
+    const addresseeId = Number(row.addressee_id || 0)
+    return requesterId !== Number(userId) && addresseeId !== Number(userId)
+  })
+
+  if (connectionRows.value.length !== before) {
+    friendsPagination.value = {
+      ...friendsPagination.value,
+      total: Math.max(0, Number(friendsPagination.value.total || 0) - 1),
+    }
+  }
+}
+
 const loadData = async () => {
   errorMessage.value = ''
 
@@ -344,6 +370,7 @@ const loadData = async () => {
   ])
 
   if (meRes.status === 'fulfilled') {
+    me.value = meRes.value.data
     localStorage.setItem('user', JSON.stringify(meRes.value.data))
   } else {
     errorMessage.value = meRes.reason?.response?.data?.message || 'Failed to load user.'
@@ -372,7 +399,7 @@ const loadData = async () => {
 const sendRequest = async (userId) => {
   try {
     await api.post('/connections/request', { user_id: userId })
-    await loadSuggestions(suggestionsPagination.value.current_page)
+    removeSuggestion(userId)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to send request.'
   }
@@ -383,10 +410,13 @@ const acceptRequest = async (connectionId) => {
     const response = await api.post(`/connections/${connectionId}/accept`)
     const row = response.data?.data
     if (row) {
-      await loadMyConnections(friendsPagination.value.current_page)
+      addConnectionRow(row)
+      const requesterId = Number(row.requester_id || 0)
+      if (requesterId) {
+        removeSuggestion(requesterId)
+      }
     }
-    await loadPendingRequests(pendingPagination.value.current_page)
-    await loadSuggestions(suggestionsPagination.value.current_page)
+    removePendingRequest(connectionId)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to accept request.'
   }
@@ -394,9 +424,16 @@ const acceptRequest = async (connectionId) => {
 
 const rejectRequest = async (connectionId) => {
   try {
+    const row = pendingRequests.value.find((item) => Number(item.id) === Number(connectionId))
     await api.post(`/connections/${connectionId}/reject`)
-    await loadPendingRequests(pendingPagination.value.current_page)
-    await loadSuggestions(suggestionsPagination.value.current_page)
+    removePendingRequest(connectionId)
+    if (row?.requester) {
+      suggestions.value = [row.requester, ...suggestions.value.filter((person) => Number(person.id) !== Number(row.requester.id))]
+      suggestionsPagination.value = {
+        ...suggestionsPagination.value,
+        total: Number(suggestionsPagination.value.total || 0) + 1,
+      }
+    }
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to reject request.'
   }
@@ -417,8 +454,8 @@ const toggleFriendMenu = (friendId) => {
 const unfriend = async (userId) => {
   try {
     await api.post(`/connections/user/${userId}/unfriend`)
-    await loadMyConnections(friendsPagination.value.current_page)
-    await refreshSuggestions()
+    removeConnectionByUser(userId)
+    refreshSuggestions()
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to unfriend user.'
   }
@@ -427,9 +464,9 @@ const unfriend = async (userId) => {
 const blockUser = async (userId) => {
   try {
     await api.post(`/connections/user/${userId}/block`)
-    await loadMyConnections(friendsPagination.value.current_page)
-    await loadPendingRequests(pendingPagination.value.current_page)
-    await loadSuggestions(suggestionsPagination.value.current_page)
+    removeConnectionByUser(userId)
+    pendingRequests.value = pendingRequests.value.filter((row) => Number(row.requester?.id || 0) !== Number(userId))
+    removeSuggestion(userId)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Failed to block user.'
   }

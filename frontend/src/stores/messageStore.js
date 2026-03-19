@@ -5,6 +5,8 @@ import { createEcho, disconnectEcho } from '@/services/realtime'
 
 const CONTACTS_PER_PAGE = 12
 const MESSAGES_PER_PAGE = 20
+const LIVE_REFRESH_INTERVAL_MS = 900
+const SOCKET_FALLBACK_DELAY_MS = 1200
 
 const defaultPagination = (perPage) => ({
   current_page: 1,
@@ -73,30 +75,47 @@ export const useMessageStore = defineStore('message', () => {
   const echoChannel = shallowRef(null)
   const socketStatus = ref('idle')
   let contactRefreshTimer = null
+  let liveRefreshTimer = null
+  let fallbackStartTimer = null
   let lastContactRefreshAt = 0
   let lastReadMarkAt = 0
   let lastReadTargetId = null
+  let lastSyncAt = 0
 
   const clearFeedback = () => {
     errorMessage.value = ''
     successMessage.value = ''
   }
 
+  const withSilentLoading = (config = {}) => ({
+    ...config,
+    headers: {
+      ...(config.headers || {}),
+      'X-Skip-Loading': 'true',
+    },
+  })
+
   const loadMe = async () => {
-    const response = await api.get('/me')
+    const response = await api.get('/me', withSilentLoading())
     me.value = response.data
   }
 
-  const loadContacts = async (page = 1) => {
-    loadingContacts.value = true
+  const loadContacts = async (page = 1, options = {}) => {
+    const { silent = false } = options
+    if (!silent) {
+      loadingContacts.value = true
+    }
     try {
       const response = await api.get('/messages/contacts', {
         params: { page, per_page: CONTACTS_PER_PAGE },
+        headers: { 'X-Skip-Loading': 'true' },
       })
       contacts.value = response.data?.data || []
       contactsPagination.value = normalizePagination(response.data, CONTACTS_PER_PAGE)
     } finally {
-      loadingContacts.value = false
+      if (!silent) {
+        loadingContacts.value = false
+      }
     }
   }
 
@@ -109,19 +128,19 @@ export const useMessageStore = defineStore('message', () => {
     const now = Date.now()
     if (immediate && now - lastContactRefreshAt > 400) {
       lastContactRefreshAt = now
-      loadContacts(page)
+      loadContacts(page, { silent: true })
       return
     }
 
     contactRefreshTimer = setTimeout(() => {
       lastContactRefreshAt = Date.now()
-      loadContacts(page)
+      loadContacts(page, { silent: true })
     }, 450)
   }
 
   const loadConnectionStatus = async (userId) => {
     try {
-      const response = await api.get(`/connections/status/${userId}`)
+      const response = await api.get(`/connections/status/${userId}`, withSilentLoading())
       connectionStatus.value = response.data?.data?.status || 'none'
       blockedByMe.value = !!response.data?.data?.blocked_by_me
       blockedMe.value = !!response.data?.data?.blocked_me
@@ -136,11 +155,14 @@ export const useMessageStore = defineStore('message', () => {
     const meId = me.value?.id
     if (!meId) return
 
-    loadingSidebar.value = true
+    const shouldShowSidebarLoader = sideFriends.value.length === 0 && sideBlockedFriends.value.length === 0
+    if (shouldShowSidebarLoader) {
+      loadingSidebar.value = true
+    }
     try {
       const [friendsRes, blockedRes] = await Promise.all([
-        api.get('/connections/my', { params: { page: 1, per_page: 50 } }),
-        api.get('/connections/blocked', { params: { page: 1, per_page: 50 } }),
+        api.get('/connections/my', withSilentLoading({ params: { page: 1, per_page: 50 } })),
+        api.get('/connections/blocked', withSilentLoading({ params: { page: 1, per_page: 50 } })),
       ])
 
       const friendRows = friendsRes.data?.data || []
@@ -156,23 +178,32 @@ export const useMessageStore = defineStore('message', () => {
       sideFriends.value = []
       sideBlockedFriends.value = []
     } finally {
-      loadingSidebar.value = false
+      if (shouldShowSidebarLoader) {
+        loadingSidebar.value = false
+      }
     }
   }
 
-  const loadMessages = async (userId, page = 1, appendOlder = false) => {
-    loadingMessages.value = !appendOlder
-    clearFeedback()
+  const loadMessages = async (userId, page = 1, appendOlder = false, options = {}) => {
+    const { silent = false } = options
+
+    loadingMessages.value = !appendOlder && !silent
+    if (!silent) {
+      clearFeedback()
+    }
     try {
       const response = await api.get(`/messages/${userId}`, {
         params: { page, per_page: MESSAGES_PER_PAGE },
+        headers: { 'X-Skip-Loading': 'true' },
       })
       const chunk = response.data?.data || []
       messages.value = appendOlder ? [...chunk, ...messages.value] : chunk
       messagesPagination.value = normalizePagination(response.data, MESSAGES_PER_PAGE)
 
       if (!appendOlder || page === 1) {
-        await api.post(`/messages/${userId}/read`)
+        await api.post(`/messages/${userId}/read`, {}, {
+          headers: { 'X-Skip-Loading': 'true' },
+        })
       }
 
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
@@ -182,9 +213,42 @@ export const useMessageStore = defineStore('message', () => {
         messages.value = []
         messagesPagination.value = defaultPagination(MESSAGES_PER_PAGE)
       }
-      errorMessage.value = error.response?.data?.message || 'Failed to load messages.'
+      if (!silent) {
+        errorMessage.value = error.response?.data?.message || 'Failed to load messages.'
+      }
     } finally {
-      loadingMessages.value = false
+      if (!appendOlder) {
+        loadingMessages.value = false
+      }
+    }
+  }
+
+  const syncLatestMessages = async (userId) => {
+    const latestKnownId = messages.value.reduce((maxId, item) => Math.max(maxId, Number(item?.id || 0)), 0)
+
+    try {
+      const response = await api.get(`/messages/${userId}/sync`, {
+        params: { after_id: latestKnownId },
+        headers: { 'X-Skip-Loading': 'true' },
+      })
+
+      const incoming = Array.isArray(response.data?.data) ? response.data.data : []
+      if (!incoming.length) return
+
+      const existingIds = new Set(messages.value.map((item) => item.id))
+      const freshMessages = incoming.filter((item) => !existingIds.has(item.id))
+
+      if (!freshMessages.length) return
+
+      messages.value = [...messages.value, ...freshMessages]
+      if (selectedUser.value?.id) {
+        clearUnreadForContact(selectedUser.value.id)
+        markReadForContact(selectedUser.value.id)
+      }
+      scheduleContactsRefresh(contactsPagination.value.current_page, true)
+      window.dispatchEvent(new Event('messages:updated'))
+    } catch {
+      // keep the fast path silent; regular loads still surface errors
     }
   }
 
@@ -236,7 +300,7 @@ export const useMessageStore = defineStore('message', () => {
       if (hasContent) formData.append('content', content.trim())
       if (hasFile) formData.append('media_file', mediaFile)
 
-      const response = await api.post(`/messages/${selectedUser.value.id}`, formData)
+      const response = await api.post(`/messages/${selectedUser.value.id}`, formData, withSilentLoading())
 
       if (messagesPagination.value.current_page === 1) {
         messages.value = [...messages.value, response.data.data]
@@ -260,7 +324,7 @@ export const useMessageStore = defineStore('message', () => {
     clearFeedback()
     deletingMessageId.value = messageId
     try {
-      await api.delete(`/messages/item/${messageId}`)
+      await api.delete(`/messages/item/${messageId}`, withSilentLoading())
       messages.value = messages.value.filter((item) => item.id !== messageId)
       successMessage.value = 'Message deleted.'
       window.dispatchEvent(new Event('messages:updated'))
@@ -292,7 +356,7 @@ export const useMessageStore = defineStore('message', () => {
     savingEdit.value = true
     clearFeedback()
     try {
-      const response = await api.put(`/messages/item/${messageId}`, { content })
+      const response = await api.put(`/messages/item/${messageId}`, { content }, withSilentLoading())
       const updated = response.data?.data
       messages.value = messages.value.map((item) => (item.id === messageId ? updated : item))
       successMessage.value = 'Message updated.'
@@ -310,7 +374,7 @@ export const useMessageStore = defineStore('message', () => {
     clearFeedback()
     processingUserAction.value = true
     try {
-      await api.post(`/connections/user/${selectedUser.value.id}/block`)
+      await api.post(`/connections/user/${selectedUser.value.id}/block`, {}, withSilentLoading())
       await loadConnectionStatus(selectedUser.value.id)
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
       await loadSidebarConnections()
@@ -329,7 +393,7 @@ export const useMessageStore = defineStore('message', () => {
     clearFeedback()
     processingUserAction.value = true
     try {
-      await api.post(`/connections/user/${selectedUser.value.id}/unblock`)
+      await api.post(`/connections/user/${selectedUser.value.id}/unblock`, {}, withSilentLoading())
       await loadConnectionStatus(selectedUser.value.id)
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
       await loadSidebarConnections()
@@ -346,7 +410,7 @@ export const useMessageStore = defineStore('message', () => {
     clearFeedback()
     processingUserAction.value = true
     try {
-      await api.post(`/connections/user/${userId}/unblock`)
+      await api.post(`/connections/user/${userId}/unblock`, {}, withSilentLoading())
       await loadSidebarConnections()
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
       if (selectedUser.value?.id === userId) {
@@ -388,7 +452,7 @@ export const useMessageStore = defineStore('message', () => {
     lastReadTargetId = contactId
     lastReadMarkAt = now
     try {
-      await api.post(`/messages/${contactId}/read`)
+      await api.post(`/messages/${contactId}/read`, {}, withSilentLoading())
     } catch {
       // ignore read failures; will refresh later
     }
@@ -429,6 +493,43 @@ export const useMessageStore = defineStore('message', () => {
     messages.value = messages.value.filter((item) => item.id !== messageId)
   }
 
+  const startLiveRefresh = () => {
+    if (liveRefreshTimer) return
+
+    liveRefreshTimer = setInterval(() => {
+      const activeUserId = selectedUser.value?.id
+      if (!activeUserId) return
+      if (typeof document !== 'undefined' && document.hidden) return
+      if (loadingMessages.value || loadingOlder.value || sending.value || savingEdit.value || deletingMessageId.value) return
+      if (Date.now() - lastSyncAt < LIVE_REFRESH_INTERVAL_MS - 50) return
+
+      lastSyncAt = Date.now()
+      syncLatestMessages(activeUserId)
+    }, LIVE_REFRESH_INTERVAL_MS)
+  }
+
+  const stopLiveRefresh = () => {
+    if (!liveRefreshTimer) return
+    clearInterval(liveRefreshTimer)
+    liveRefreshTimer = null
+  }
+
+  const clearFallbackStartTimer = () => {
+    if (!fallbackStartTimer) return
+    clearTimeout(fallbackStartTimer)
+    fallbackStartTimer = null
+  }
+
+  const scheduleFallbackStart = () => {
+    clearFallbackStartTimer()
+    fallbackStartTimer = setTimeout(() => {
+      if (socketStatus.value !== 'connected') {
+        startLiveRefresh()
+      }
+      fallbackStartTimer = null
+    }, SOCKET_FALLBACK_DELAY_MS)
+  }
+
   const handleSocketPayload = (payload) => {
     if (!payload) return
     const eventName = payload?.event || payload?.type || payload?.name || payload?.action
@@ -457,12 +558,46 @@ export const useMessageStore = defineStore('message', () => {
     const echo = createEcho()
     if (!echo || !me.value?.id) {
       socketStatus.value = 'error'
+      startLiveRefresh()
       return
     }
 
     socket.value = echo
     echoChannel.value = echo.private(`user.${me.value.id}`)
-    socketStatus.value = 'connected'
+    scheduleFallbackStart()
+
+    const pusherConnection = echo.connector?.pusher?.connection
+    if (pusherConnection && typeof pusherConnection.bind === 'function') {
+      pusherConnection.bind('connected', () => {
+        socketStatus.value = 'connected'
+        stopLiveRefresh()
+      })
+
+      pusherConnection.bind('disconnected', () => {
+        socketStatus.value = 'disconnected'
+        startLiveRefresh()
+      })
+
+      pusherConnection.bind('unavailable', () => {
+        socketStatus.value = 'error'
+        startLiveRefresh()
+      })
+    }
+
+    if (typeof echoChannel.value?.subscribed === 'function') {
+      echoChannel.value.subscribed(() => {
+        socketStatus.value = 'connected'
+        clearFallbackStartTimer()
+        stopLiveRefresh()
+      })
+    }
+
+    if (typeof echoChannel.value?.error === 'function') {
+      echoChannel.value.error(() => {
+        socketStatus.value = 'error'
+        startLiveRefresh()
+      })
+    }
 
     echoChannel.value.listen('.MessageCreated', (payload) => {
       const message = extractMessage(payload)
@@ -481,6 +616,8 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   const disconnectSocket = () => {
+    clearFallbackStartTimer()
+    stopLiveRefresh()
     if (echoChannel.value) {
       echoChannel.value.stopListening('.MessageCreated')
       echoChannel.value.stopListening('.MessageUpdated')
@@ -510,7 +647,7 @@ export const useMessageStore = defineStore('message', () => {
         return
       }
 
-      const response = await api.get(`/users/${routeContactId}`)
+      const response = await api.get(`/users/${routeContactId}`, withSilentLoading())
       selectedUser.value = response.data?.data || null
       if (selectedUser.value?.id) {
         await loadConnectionStatus(selectedUser.value.id)
@@ -552,6 +689,7 @@ export const useMessageStore = defineStore('message', () => {
     loadConnectionStatus,
     loadSidebarConnections,
     loadMessages,
+    syncLatestMessages,
     selectContact,
     loadOlderMessages,
     sendMessage,
@@ -562,6 +700,8 @@ export const useMessageStore = defineStore('message', () => {
     blockSelectedUser,
     unblockSelectedUser,
     unblockUserFromSide,
+    startLiveRefresh,
+    stopLiveRefresh,
     connectSocket,
     disconnectSocket,
     initMessaging,

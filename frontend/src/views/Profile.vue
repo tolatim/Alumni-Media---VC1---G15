@@ -116,6 +116,52 @@
         </div>
       </div>
 
+      <div v-if="user && isOwnProfile" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Friends</h2>
+            <p class="mt-1 text-sm text-slate-500">Open a profile or jump straight into chat with your accepted connections.</p>
+          </div>
+          <RouterLink
+            to="/connection"
+            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Manage Friends
+          </RouterLink>
+        </div>
+
+        <div v-if="friendsLoading" class="mt-4 grid gap-3 md:grid-cols-2">
+          <div v-for="n in 4" :key="`friend-skeleton-${n}`" class="h-24 animate-pulse rounded-2xl bg-slate-100"></div>
+        </div>
+
+        <div v-else-if="friends.length" class="mt-4 grid gap-3 md:grid-cols-2">
+          <div
+            v-for="friend in friends"
+            :key="friend.id"
+            class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+          >
+            <RouterLink :to="{ name: 'Profile', params: { id: friend.id } }" class="flex min-w-0 items-center gap-3">
+              <img
+                :src="friend.profile?.avatar || fallbackAvatar"
+                class="h-12 w-12 rounded-2xl object-cover"
+              />
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-800">{{ friend.name }}</p>
+                <p class="truncate text-xs text-slate-500">{{ friend.profile?.headline || 'Friend' }}</p>
+              </div>
+            </RouterLink>
+            <RouterLink
+              :to="`/message/${friend.id}`"
+              class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+            >
+              Chat
+            </RouterLink>
+          </div>
+        </div>
+
+        <p v-else class="mt-4 text-sm text-slate-500">No friends yet. Connect with alumni to start chatting.</p>
+      </div>
+
 
 
       
@@ -321,6 +367,8 @@ const user = ref(null)
 const errorMessage = ref('')
 const loggedInUser = ref(null)
 const connectionStatus = ref('none')
+const friends = ref([])
+const friendsLoading = ref(false)
 
 const oldPassword = ref('')
 const newPassword = ref('')
@@ -490,6 +538,31 @@ const loadLoggedInUser = async () => {
   }
 }
 
+const loadFriends = async () => {
+  if (!loggedInUser.value?.id) {
+    friends.value = []
+    return
+  }
+
+  friendsLoading.value = true
+  try {
+    const response = await api.get('/connections/my', {
+      params: { page: 1, per_page: 50 },
+    })
+
+    const rows = response.data?.data || []
+    const meId = loggedInUser.value.id
+
+    friends.value = rows
+      .map((row) => (row.requester_id === meId ? row.addressee : row.requester))
+      .filter(Boolean)
+  } catch {
+    friends.value = []
+  } finally {
+    friendsLoading.value = false
+  }
+}
+
 const loadProfile = async (id) => {
   errorMessage.value = ''
 
@@ -574,6 +647,7 @@ watch(
 
 onMounted(async () => {
   await loadLoggedInUser()
+  await loadFriends()
   if (route.params.id) {
     await loadProfile(route.params.id)
     await loadConnectionStatus(route.params.id)

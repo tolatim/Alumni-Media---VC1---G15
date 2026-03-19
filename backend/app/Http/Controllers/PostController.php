@@ -7,10 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\MediaStorageService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -50,7 +50,7 @@ class PostController extends Controller
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $imageFile) {
-                $path = $imageFile->store('posts/images', 'public');
+                $path = MediaStorageService::storePostMedia($imageFile, (int) $actor->id, 'image');
                 $post->media()->create([
                     'file_path' => $path,
                     'type' => 'image'
@@ -60,7 +60,7 @@ class PostController extends Controller
 
         if ($request->hasFile('videos')) {
             foreach ($request->file('videos') as $videoFile) {
-                $path = $videoFile->store('posts/videos', 'public');
+                $path = MediaStorageService::storePostMedia($videoFile, (int) $actor->id, 'video');
                 $post->media()->create([
                     'file_path' => $path,
                     'type' => 'video'
@@ -164,7 +164,6 @@ class PostController extends Controller
                 $uploadedMedia[] = [
                     'file' => $imageFile,
                     'type' => 'image',
-                    'dir' => 'posts/images',
                 ];
             }
         }
@@ -173,7 +172,6 @@ class PostController extends Controller
                 $uploadedMedia[] = [
                     'file' => $videoFile,
                     'type' => 'video',
-                    'dir' => 'posts/videos',
                 ];
             }
         }
@@ -184,12 +182,10 @@ class PostController extends Controller
             $firstUploaded = array_shift($uploadedMedia);
 
             if ($firstUploaded) {
-                $newPath = $firstUploaded['file']->store($firstUploaded['dir'], 'public');
+                $newPath = MediaStorageService::storePostMedia($firstUploaded['file'], (int) $user->id, $firstUploaded['type']);
 
                 if ($firstExisting) {
-                    if ($firstExisting->file_path && Storage::disk('public')->exists($firstExisting->file_path)) {
-                        Storage::disk('public')->delete($firstExisting->file_path);
-                    }
+                    MediaStorageService::deletePublicFile($firstExisting->file_path);
 
                     $firstExisting->update([
                         'file_path' => $newPath,
@@ -204,7 +200,7 @@ class PostController extends Controller
             }
 
             foreach ($uploadedMedia as $item) {
-                $path = $item['file']->store($item['dir'], 'public');
+                $path = MediaStorageService::storePostMedia($item['file'], (int) $user->id, $item['type']);
                 $post->media()->create([
                     'file_path' => $path,
                     'type' => $item['type'],
@@ -235,9 +231,7 @@ class PostController extends Controller
         }
 
         foreach ($post->media as $media) {
-            if ($media->file_path && Storage::disk('public')->exists($media->file_path)) {
-                Storage::disk('public')->delete($media->file_path);
-            }
+            MediaStorageService::deletePublicFile($media->file_path);
         }
 
         $post->delete();

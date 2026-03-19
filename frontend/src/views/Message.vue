@@ -1,6 +1,5 @@
 <template>
   <Navbar />
-  <PageLoading />
   <main class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-6 md:py-10">
     <div class="mx-auto grid max-w-7xl gap-6 px-4 lg:grid-cols-[320px_1fr_280px] xl:grid-cols-[340px_1fr_300px]">
       <aside
@@ -371,7 +370,6 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
-import PageLoading from '@/components/ui/PageLoading.vue'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import { useMessageStore } from '@/stores/messageStore'
 
@@ -439,7 +437,7 @@ const scrollToBottom = async () => {
 
 const selectContact = async (contact) => {
   await messageStore.selectContact(contact)
-  await router.replace({ path: `/message/${contact.id}` })
+  window.history.replaceState(window.history.state, '', `/message/${contact.id}`)
   await scrollToBottom()
 }
 
@@ -447,7 +445,7 @@ const clearSelectedUser = () => {
   selectedUser.value = null
   messages.value = []
   messagesPagination.value = { ...messagesPagination.value, current_page: 1, last_page: 1, total: 0 }
-  router.replace({ path: '/message' })
+  window.history.replaceState(window.history.state, '', '/message')
 }
 
 const onFileChange = (event) => {

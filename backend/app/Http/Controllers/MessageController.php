@@ -9,9 +9,10 @@ use App\Models\Connection;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\MediaStorageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class MessageController extends Controller
 {
@@ -134,10 +135,10 @@ class MessageController extends Controller
         $mediaType = null;
 
         if ($request->hasFile('media_file')) {
-            $mime = $request->file('media_file')->getMimeType() ?: '';
+            $file = $request->file('media_file');
+            $mime = $file->getMimeType() ?: '';
             $mediaType = str_starts_with($mime, 'video/') ? 'video' : 'image';
-            $dir = $mediaType === 'video' ? 'messages/videos' : 'messages/images';
-            $mediaPath = $request->file('media_file')->store($dir, 'public');
+            $mediaPath = MediaStorageService::storeMessageMedia($file, $me->id, $targetId, $mediaType);
         }
 
         $message = Message::create([
@@ -157,7 +158,7 @@ class MessageController extends Controller
             'related_id' => $message->id,
         ]);
 
-        broadcast(new MessageCreated($message))->toOthers();
+        $this->safeBroadcast(new MessageCreated($message));
 
         return response()->json([
             'message' => 'Message sent successfully',
@@ -186,6 +187,36 @@ class MessageController extends Controller
         ]);
     }
 
+    public function sync(Request $request, $userId)
+    {
+        $me = $request->user();
+        $targetId = (int) $userId;
+        $afterId = max((int) $request->query('after_id', 0), 0);
+
+        $this->assertCanMessage($me->id, $targetId);
+
+        $messages = Message::query()
+            ->where('id', '>', $afterId)
+            ->where(function ($query) use ($me, $targetId) {
+                $query->where(function ($nested) use ($me, $targetId) {
+                    $nested->where('sender_id', $me->id)
+                        ->where('receiver_id', $targetId);
+                })->orWhere(function ($nested) use ($me, $targetId) {
+                    $nested->where('sender_id', $targetId)
+                        ->where('receiver_id', $me->id);
+                });
+            })
+            ->with(['sender', 'receiver'])
+            ->orderBy('id')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'message' => 'Message sync fetched successfully',
+            'data' => $messages,
+        ]);
+    }
+
     public function destroy(Request $request, $messageId)
     {
         $me = $request->user();
@@ -205,14 +236,7 @@ class MessageController extends Controller
         }
 
         if (!empty($message->media_path)) {
-            $path = $message->media_path;
-            if (Str::startsWith($path, '/storage/')) {
-                $path = Str::replaceFirst('/storage/', '', $path);
-            }
-
-            if (!Str::startsWith($path, ['http://', 'https://']) && Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
+            MediaStorageService::deletePublicFile($message->media_path);
         }
 
         $deletedId = $message->id;
@@ -221,7 +245,7 @@ class MessageController extends Controller
 
         $message->delete();
 
-        broadcast(new MessageDeleted($deletedId, $senderId, $receiverId))->toOthers();
+        $this->safeBroadcast(new MessageDeleted($deletedId, $senderId, $receiverId));
 
         return response()->json([
             'message' => 'Message deleted successfully',
@@ -268,7 +292,7 @@ class MessageController extends Controller
 
         $message = $message->fresh()->load(['sender', 'receiver']);
 
-        broadcast(new MessageUpdated($message))->toOthers();
+        $this->safeBroadcast(new MessageUpdated($message));
 
         return response()->json([
             'message' => 'Message updated successfully',
@@ -318,4 +342,17 @@ class MessageController extends Controller
             ], 403));
         }
     }
+
+    private function safeBroadcast(object $event): void
+    {
+        try {
+            broadcast($event)->toOthers();
+        } catch (Throwable $exception) {
+            Log::warning('Message broadcast failed.', [
+                'event' => class_basename($event),
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
 }

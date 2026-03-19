@@ -5,12 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\MediaStorageService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -463,7 +462,7 @@ class UserController extends Controller
 
         if (Schema::hasTable('posts')) {
             $query->with([
-                'posts' => function ($postQuery) use ($user) {
+                'posts' => function ($postQuery) {
                     $postQuery->latest();
                     if (Schema::hasTable('media'))    $postQuery->with('media');
 
@@ -557,13 +556,13 @@ class UserController extends Controller
         $coverPath  = $user->getRawOriginal('cover');
 
         if ($request->hasFile('avatar_file')) {
-            $this->deleteLocalPublicFile($user->getRawOriginal('avatar'));
-            $avatarPath = $request->file('avatar_file')->store('profiles/avatars', 'public');
+            MediaStorageService::deletePublicFile($user->getRawOriginal('avatar'));
+            $avatarPath = MediaStorageService::storeProfileAvatar($request->file('avatar_file'), $user->id);
         }
 
         if ($request->hasFile('cover_file')) {
-            $this->deleteLocalPublicFile($user->getRawOriginal('cover'));
-            $coverPath = $request->file('cover_file')->store('profiles/covers', 'public');
+            MediaStorageService::deletePublicFile($user->getRawOriginal('cover'));
+            $coverPath = MediaStorageService::storeProfileCover($request->file('cover_file'), $user->id);
         }
 
         $firstName = $validated['first_name'] ?? null;
@@ -616,17 +615,5 @@ class UserController extends Controller
         $user->update(['password' => $validated['new_password']]);
 
         return response()->json(['message' => 'Password changed successfully.']);
-    }
-
-    private function deleteLocalPublicFile(?string $value): void
-    {
-        if (!$value) return;
-        if (Str::startsWith($value, ['http://', 'https://'])) return;
-        if (Str::startsWith($value, '/storage/')) {
-            $value = Str::replaceFirst('/storage/', '', $value);
-        }
-        if (Storage::disk('public')->exists($value)) {
-            Storage::disk('public')->delete($value);
-        }
     }
 }

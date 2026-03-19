@@ -4,75 +4,128 @@ namespace App\Services;
 
 use App\Events\NewNotification;
 use App\Models\Notification;
+use App\Models\Post;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class NotificationService
 {
-    public static function send($userId, $title, $message, $type, $relatedId = null)
+    public static function send(int $userId, string $title, string $message, string $type, ?int $relatedId = null): Notification
     {
-        // Save to database
         $notification = Notification::create([
-            'user_id'    => $userId,
-            'title'      => $title,
-            'message'    => $message,
-            'type'       => $type,
+            'user_id' => $userId,
+            'title' => $title,
+            'message' => $message,
+            'type' => $type,
             'related_id' => $relatedId,
         ]);
 
-        // Broadcast real-time
-        broadcast(new NewNotification($userId, $title, $message, $type, $relatedId));
+        try {
+            broadcast(new NewNotification($userId, $title, $message, $type, $relatedId));
+        } catch (Throwable $exception) {
+            Log::warning('Notification broadcast failed.', [
+                'user_id' => $userId,
+                'type' => $type,
+                'related_id' => $relatedId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return $notification;
     }
 
-    public static function liked($postOwner, $liker, $post)
+    public static function liked(User $postOwner, User $liker, Post $post): ?Notification
     {
-        if ($postOwner->id === $liker->id) return;
-        self::send($postOwner->id, 'New Like',
-            $liker->name . ' liked your post', 'like', $post->id);
-    }
-
-    public static function commented($postOwner, $commenter, $post)
-    {
-        if ($postOwner->id === $commenter->id) return;
-        self::send($postOwner->id, 'New Comment',
-            $commenter->name . ' commented on your post', 'comment', $post->id);
-    }
-
-    public static function newPost($author, $post)
-    {
-        foreach ($author->followers as $follower) {
-            self::send($follower->id, 'New Post',
-                $author->name . ' published a new post', 'post', $post->id);
+        if ((int) $postOwner->id === (int) $liker->id) {
+            return null;
         }
+
+        return self::send(
+            $postOwner->id,
+            'New Like',
+            $liker->name . ' liked your post.',
+            'like',
+            $post->id
+        );
     }
 
-    public static function connectionRequest($receiver, $sender)
+    public static function commented(User $postOwner, User $commenter, Post $post): ?Notification
     {
-        self::send($receiver->id, 'Connection Request',
-            $sender->name . ' sent you a connection request', 'connect', $sender->id);
+        if ((int) $postOwner->id === (int) $commenter->id) {
+            return null;
+        }
+
+        return self::send(
+            $postOwner->id,
+            'New Comment',
+            $commenter->name . ' commented on your post.',
+            'comment',
+            $post->id
+        );
     }
 
-    public static function connectionAccepted($requester, $accepter)
+    public static function notifyPostCommented(Post $post, User $commenter): ?Notification
     {
-        self::send($requester->id, 'Connection Accepted',
-            $accepter->name . ' accepted your connection request', 'accept', $accepter->id);
+        $post->loadMissing('user');
+
+        if (!$post->user) {
+            return null;
+        }
+
+        return self::commented($post->user, $commenter, $post);
     }
 
-    public static function connectionRejected($requester, $rejecter)
+    public static function connectionRequest(User $receiver, User $sender): Notification
     {
-        self::send($requester->id, 'Connection Rejected',
-            $rejecter->name . ' rejected your connection request', 'reject', $rejecter->id);
+        return self::send(
+            $receiver->id,
+            'Connection Request',
+            $sender->name . ' sent you a connection request.',
+            'connect',
+            $sender->id
+        );
     }
 
-    public static function welcome($user)
+    public static function connectionAccepted(User $requester, User $accepter): Notification
     {
-        self::send($user->id, 'Welcome!',
-            'Welcome to Alumni Media, ' . $user->name . '!', 'system');
+        return self::send(
+            $requester->id,
+            'Connection Accepted',
+            $accepter->name . ' accepted your connection request.',
+            'accept',
+            $accepter->id
+        );
     }
 
-    public static function login($user)
+    public static function connectionRejected(User $requester, User $rejecter): Notification
     {
-        self::send($user->id, 'New Login',
-            'A new login to your account was detected', 'login');
+        return self::send(
+            $requester->id,
+            'Connection Rejected',
+            $rejecter->name . ' rejected your connection request.',
+            'reject',
+            $rejecter->id
+        );
+    }
+
+    public static function welcome(User $user): Notification
+    {
+        return self::send(
+            $user->id,
+            'Welcome!',
+            'Welcome to Alumni Media, ' . $user->name . '!',
+            'system'
+        );
+    }
+
+    public static function login(User $user): Notification
+    {
+        return self::send(
+            $user->id,
+            'New Login',
+            'A new login to your account was detected.',
+            'login'
+        );
     }
 }

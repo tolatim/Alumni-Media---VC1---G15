@@ -24,21 +24,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
 
-    Route::post('/messages/{message}/read', function (Request $request, Message $message) {
-        $user = $request->user();
-        if (!$message->read_at) {
-            $message->update(['read_at' => now()]);
-        }
-
-        return response()->json([
-            'message' => 'Message marked as read',
-            'unread_messages' => Message::query()
-                ->where('receiver_id', $user->id)
-                ->whereNull('read_at')
-                ->count(),
-            'unread_notifications' => $user->notifications()->whereNull('read_at')->count(),
-        ]);
-    });
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::get('/messages/{userId}', [MessageController::class, 'index']);
+    Route::get('/messages/{userId}/sync', [MessageController::class, 'sync']);
+    Route::post('/messages/{userId}', [MessageController::class, 'store']);
+    Route::post('/messages/{userId}/read', [MessageController::class, 'markRead']);
+    Route::put('/messages/item/{messageId}', [MessageController::class, 'update']);
+    Route::patch('/messages/item/{messageId}', [MessageController::class, 'update']);
+    Route::delete('/messages/item/{messageId}', [MessageController::class, 'destroy']);
 
     Route::get('/connections/my', [UserController::class, 'myConnections']);
     Route::get('/connections/blocked', [UserController::class, 'blockedConnections']);
