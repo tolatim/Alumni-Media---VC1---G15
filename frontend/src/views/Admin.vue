@@ -86,6 +86,11 @@ const userMessage = ref('')
 const userError = ref('')
 const reviewMessage = ref('')
 const reviewError = ref('')
+const adminProfile = ref({
+  name: 'Admin',
+  email: '',
+  avatar: null as string | null,
+})
 const userSearchQuery = ref('')
 const appearanceMode = ref<ThemeMode>('light')
 const appearanceLogoUrl = ref<string | null>(null)
@@ -272,6 +277,41 @@ const loadAdminAppearance = async () => {
     applyThemeMode(mode)
   } catch (error: any) {
     appearanceError.value = error?.response?.data?.message || 'Failed to load appearance settings.'
+  }
+}
+
+const loadAdminProfile = async () => {
+  try {
+    const rawUser = localStorage.getItem('user')
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser)
+      const localName = parsed?.name || `${parsed?.first_name || ''} ${parsed?.last_name || ''}`.trim()
+      adminProfile.value = {
+        name: localName || 'Admin',
+        email: parsed?.email || '',
+        avatar: parsed?.profile?.avatar || null,
+      }
+    }
+  } catch {
+    // Ignore local cache parse errors.
+  }
+
+  try {
+    const response = await api.get('/me', {
+      headers: {
+        'X-Skip-Loading': 'true',
+      },
+    })
+
+    const me = response?.data || {}
+    adminProfile.value = {
+      name: me?.name || `${me?.first_name || ''} ${me?.last_name || ''}`.trim() || 'Admin',
+      email: me?.email || '',
+      avatar: me?.profile?.avatar || null,
+    }
+    localStorage.setItem('user', JSON.stringify(me))
+  } catch {
+    // Keep cached data if request fails.
   }
 }
 
@@ -538,6 +578,7 @@ const connectAdminRealtime = () => {
 }
 
 onMounted(() => {
+  loadAdminProfile()
   loadAdminAppearance()
   loadReportedPosts()
   loadUsers(true)
@@ -563,7 +604,12 @@ onUnmounted(() => {
     <Sidebar :logo-url="appearanceLogoUrl" />
 
     <div class="flex-1 flex flex-col overflow-hidden">
-      <Topbar />
+      <Topbar
+        :admin-name="adminProfile.name"
+        :admin-email="adminProfile.email"
+        :admin-avatar="adminProfile.avatar"
+        :pending-reports="pendingReviewCount"
+      />
 
       <main class="h-full overflow-y-auto p-6 space-y-8">
         <div v-if="activeSection === 'dashboard'" class="grid grid-cols-1 gap-4 md:grid-cols-3">
