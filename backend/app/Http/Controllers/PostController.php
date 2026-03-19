@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Post;
 use App\Events\PostCreated;
+use App\Http\Controllers\Controller;
+use App\Models\Connection;
+use App\Models\Post;
+use App\Models\User;
+use App\Services\NotificationService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
@@ -18,10 +22,8 @@ class PostController extends Controller
             ->get();
     }
 
-    // store post
     public function store(Request $request)
     {
-        // Validate input
         $validated = $request->validate([
             'title' => 'nullable|string|max:255',
             'content' => 'nullable|string',
@@ -29,7 +31,8 @@ class PostController extends Controller
             'videos.*' => 'nullable|file|mimetypes:video/mp4,video/avi,video/mov|max:20480'
         ]);
 
-        // Ensure there is at least text or media
+        $actor = $request->user();
+
         $hasText = !empty(trim($validated['title'] ?? '')) || !empty(trim($validated['content'] ?? ''));
         $hasMedia = $request->hasFile('images') || $request->hasFile('videos');
 
@@ -39,14 +42,12 @@ class PostController extends Controller
             ], 422);
         }
 
-        // Create the post first
         $post = Post::create([
-            'user_id' => auth()->id(),
+            'user_id' => $actor?->id,
             'title' => $validated['title'] ?? null,
             'content' => $validated['content'] ?? null,
         ]);
 
-        // Upload images
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $imageFile) {
                 $path = $imageFile->store('posts/images', 'public');
@@ -57,7 +58,6 @@ class PostController extends Controller
             }
         }
 
-        // Upload videos
         if ($request->hasFile('videos')) {
             foreach ($request->file('videos') as $videoFile) {
                 $path = $videoFile->store('posts/videos', 'public');
@@ -68,7 +68,36 @@ class PostController extends Controller
             }
         }
 
-        // Return post with media
+        if ($actor && Schema::hasTable('connections')) {
+            $connections = Connection::query()
+                ->where('status', 'accepted')
+                ->where(function ($query) use ($actor) {
+                    $query->where('requester_id', $actor->id)
+                        ->orWhere('addressee_id', $actor->id);
+                })
+                ->get(['requester_id', 'addressee_id']);
+
+            $targetIds = $connections->map(
+                fn($connection) =>
+                (int) ($connection->requester_id === (int) $actor->id
+                    ? $connection->addressee_id
+                    : $connection->requester_id)
+            )->unique()->values()->all();
+
+            if (!empty($targetIds)) {
+                $users = User::whereIn('id', $targetIds)->get();
+                foreach ($users as $user) {
+                    NotificationService::send(
+                        $user->id,
+                        'New Post',
+                        $actor->first_name . ' ' . $actor->last_name . ' published a new post.',
+                        'post',
+                        $post->id
+                    );
+                }
+            }
+        }
+
         $post = $post->load('media', 'user.role')->loadCount(['likes', 'comments']);
         $post->setAttribute('liked_by_me', false);
 
@@ -76,11 +105,10 @@ class PostController extends Controller
 
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post
+            'post' => $post,
         ], 201);
     }
 
-    // show post
     public function show($id)
     {
         $post = Post::with(['user', 'media'])
@@ -90,7 +118,6 @@ class PostController extends Controller
         return response()->json($post);
     }
 
-    // update post
     public function update(Request $request, $id)
     {
         $user = $request->user();
@@ -159,7 +186,6 @@ class PostController extends Controller
             if ($firstUploaded) {
                 $newPath = $firstUploaded['file']->store($firstUploaded['dir'], 'public');
 
-                // Replace only the first old media item, keep others untouched.
                 if ($firstExisting) {
                     if ($firstExisting->file_path && Storage::disk('public')->exists($firstExisting->file_path)) {
                         Storage::disk('public')->delete($firstExisting->file_path);
@@ -177,7 +203,6 @@ class PostController extends Controller
                 }
             }
 
-            // Any extra selected files are added as new media.
             foreach ($uploadedMedia as $item) {
                 $path = $item['file']->store($item['dir'], 'public');
                 $post->media()->create([
@@ -193,12 +218,20 @@ class PostController extends Controller
         ]);
     }
 
-    // delete post
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
         $post = Post::with('media')->find($id);
         if (!$post) {
             return response()->json(['message' => 'Post not found'], 404);
+        }
+
+        if ((int) $post->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'You can delete only your own posts.'], 403);
         }
 
         foreach ($post->media as $media) {

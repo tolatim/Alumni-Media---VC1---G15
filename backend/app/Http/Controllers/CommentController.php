@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Post;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use App\Notifications\CommentNotification;
 
 class CommentController extends Controller
 {
@@ -16,15 +18,21 @@ class CommentController extends Controller
         }
 
         $comments = Comment::query()
-            ->with('user')
+            ->with([
+                'user',
+                'replies' => function ($query) {
+                    $query->with('user')->oldest();
+                },
+            ])
             ->where('post_id', $post->id)
+            ->whereNull('parent_id')
             ->latest()
             ->get();
 
         return response()->json([
             'message' => 'Comments fetched successfully',
             'data' => $comments,
-            'comments_count' => $comments->count(),
+            'comments_count' => $post->comments()->count(),
         ]);
     }
 
@@ -39,13 +47,30 @@ class CommentController extends Controller
 
         $validated = $request->validate([
             'content' => 'required|string|max:5000',
+            'parent_id' => 'nullable|integer|exists:comments,id',
         ]);
+
+        $parentId = $validated['parent_id'] ?? null;
+        if ($parentId) {
+            $parentComment = Comment::query()
+                ->where('id', $parentId)
+                ->where('post_id', $post->id)
+                ->first();
+
+            if (!$parentComment) {
+                return response()->json(['message' => 'Parent comment not found for this post.'], 422);
+            }
+        }
 
         $comment = Comment::create([
             'post_id' => $post->id,
             'user_id' => $user->id,
+            'parent_id' => $parentId,
             'content' => trim($validated['content']),
         ]);
+
+        // Trigger notification
+        NotificationService::notifyPostCommented($post, $user);
 
         return response()->json([
             'message' => 'Comment added successfully',

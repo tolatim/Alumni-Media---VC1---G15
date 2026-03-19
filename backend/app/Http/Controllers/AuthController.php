@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use App\Services\NotificationService;
+
 
 class AuthController extends Controller
 {
@@ -30,13 +32,15 @@ class AuthController extends Controller
             'password' => $validated['password'],
         ]);
 
-        // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
             'id' => $user->id,
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email' => $user->email
         ], 300);
+
+        NotificationService::welcome($user); // ✅ this is all you need
+
 
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -51,7 +55,10 @@ class AuthController extends Controller
     // Login
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
@@ -60,6 +67,10 @@ class AuthController extends Controller
         }
 
         $user = User::with(['role'])->findOrFail(Auth::id());
+        
+        // ✅ Connected to NotificationService
+        NotificationService::login($user);
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

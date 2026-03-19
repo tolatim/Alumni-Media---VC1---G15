@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Connection;
-use App\Models\Message;
-use App\Models\User;
 use App\Events\MessageCreated;
 use App\Events\MessageDeleted;
 use App\Events\MessageUpdated;
+use App\Models\Connection;
+use App\Models\Message;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -147,6 +148,14 @@ class MessageController extends Controller
             'media_type' => $mediaType,
             'status' => 'sent',
         ])->load(['sender', 'receiver']);
+
+        Notification::create([
+            'user_id' => $targetId,
+            'title' => 'New Message',
+            'message' => ($me->name ?: 'Someone') . ' sent you a message.',
+            'type' => 'message',
+            'related_id' => $message->id,
+        ]);
 
         broadcast(new MessageCreated($message))->toOthers();
 

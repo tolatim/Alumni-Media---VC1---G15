@@ -33,9 +33,15 @@
           </span>
         </RouterLink>
 
-        <RouterLink to="/notification" :class="navClass('/notification')">
+        <RouterLink to="/notification" :class="navClass('/notification')" class="relative">
           <i class="fa-solid fa-bell"></i>
           <span>Notification</span>
+          <span
+            v-if="notificationUnread > 0"
+            class="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-amber-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white"
+          >
+            {{ notificationUnread > 99 ? '99+' : notificationUnread }}
+          </span>
         </RouterLink>
 
         <RouterLink
@@ -150,9 +156,15 @@
                 {{ unreadCount > 99 ? '99+' : unreadCount }}
               </span>
             </RouterLink>
-            <RouterLink to="/notification" :class="navClass('/notification')" @click="menuOpen = false">
+            <RouterLink to="/notification" :class="navClass('/notification') + ' relative'" @click="menuOpen = false">
               <i class="fa-solid fa-bell"></i>
               <span>Notification</span>
+              <span
+                v-if="notificationUnread > 0"
+                class="absolute right-2 top-1 min-w-[18px] rounded-full bg-amber-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white"
+              >
+                {{ notificationUnread > 99 ? '99+' : notificationUnread }}
+              </span>
             </RouterLink>
           </div>
         </div>
@@ -163,17 +175,21 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
+import { useNotificationStore } from '@/stores/notifications'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import { createEcho } from '@/services/realtime'
 
 const route = useRoute()
+const notificationStore = useNotificationStore()
 const user = ref(null)
 const unreadCount = ref(0)
 const menuOpen = ref(false)
+const notificationUnread = computed(() => notificationStore.unreadCount)
 let unreadTimer = null
+let notificationTimer = null
 let realtimeRefreshTimer = null
 let realtimeChannel = null
 const handleMessagesUpdated = () => {
@@ -197,6 +213,9 @@ const fetchMe = async () => {
     })
     user.value = response.data
     localStorage.setItem('user', JSON.stringify(response.data))
+    createEcho()
+    notificationStore.connect(user.value?.id)
+    await notificationStore.fetchNotifications()
   } catch {
     user.value = null
   }
@@ -262,14 +281,17 @@ watch(
   async () => {
     menuOpen.value = false
     await fetchUnreadCount()
+    await notificationStore.refreshUnreadCount()
   }
 )
 
 onMounted(async () => {
   await fetchMe()
   await fetchUnreadCount()
+  await notificationStore.refreshUnreadCount()
   attachRealtime()
   unreadTimer = setInterval(fetchUnreadCount, 15000)
+  notificationTimer = setInterval(() => notificationStore.refreshUnreadCount(), 15000)
   window.addEventListener('messages:updated', handleMessagesUpdated)
 })
 
@@ -277,6 +299,10 @@ onUnmounted(() => {
   if (unreadTimer) {
     clearInterval(unreadTimer)
   }
+  if (notificationTimer) {
+    clearInterval(notificationTimer)
+  }
+  notificationStore.disconnect()
   detachRealtime()
   window.removeEventListener('messages:updated', handleMessagesUpdated)
 })

@@ -1,10 +1,16 @@
 {
-  "name": "backend-soketi",
   "private": true,
   "scripts": {
-    "ws": "soketi start --config soketi.config.json"
+    "dev": "vite",
+    "build": "vite build"
   },
   "devDependencies": {
-    "@soketi/soketi": "^1.6.1"
+    "axios": "^1.1.2",
+    "laravel-vite-plugin": "^0.7.2",
+    "vite": "^4.0.0"
+  },
+  "dependencies": {
+    "laravel-echo": "^2.3.1",
+    "pusher-js": "^8.4.2"
   }
 }
