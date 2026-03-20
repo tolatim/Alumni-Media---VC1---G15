@@ -9,18 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    "axios": "^1.13.5",
->>>>>>> ceb075d05884af2ffe878939ffb8262e93632624
-=======
     "apexcharts": "^5.10.4",
     "axios": "^1.13.5",
     "chart.js": "^4.5.1",
     "lucide-vue-next": "^0.577.0",
     "pinia": "^3.0.4",
->>>>>>> 89bf0267a14d34dc01c50557c3d9cc9bdf311082
     "vue": "^3.5.28",
     "vue-fullscreen": "^2.6.1",
     "vue-router": "^4.6.4",

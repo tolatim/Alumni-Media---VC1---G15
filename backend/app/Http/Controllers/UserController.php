@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -321,20 +321,11 @@ class UserController extends Controller
             'status' => 'pending',
         ]);
 
-        try {
-            Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post('http://localhost:3000/event', [
-                'type' => 'connection_request',
-                'data' => [
-                    'requester_id' => $me->id,
-                    'addressee_id' => $targetId,
-                    'status' => 'pending'
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('WebSocket event failed: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('connection_request', [
+            'requester_id' => $me->id,
+            'addressee_id' => $targetId,
+            'status' => 'pending',
+        ]);
 
         return response()->json([
             'message' => 'Connection request sent successfully',
@@ -360,20 +351,11 @@ class UserController extends Controller
 
         $connection->update(['status' => 'accepted']);
 
-        try {
-            Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post('http://localhost:3000/event', [
-                'type' => 'accept_request',
-                'data' => [
-                    'requester_id' => $connection->requester_id,
-                    'addressee_id' => $connection->addressee_id,
-                    'status' => 'accepted'
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('WebSocket event failed: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('accept_request', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+            'status' => 'accepted',
+        ]);
 
         return response()->json([
             'message' => 'Connection accepted successfully',
@@ -403,19 +385,10 @@ class UserController extends Controller
             ], 404);
         }
         
-        try {
-            Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post('http://localhost:3000/event', [
-                'type' => 'reject',
-                'data' => [
-                    'requester_id' => $connection->requester_id,
-                    'addressee_id' => $connection->addressee_id,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('WebSocket event failed: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('reject', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+        ]);
 
         $connection->delete();
 
@@ -446,19 +419,10 @@ class UserController extends Controller
                 'message' => 'Friend connection not found.',
             ], 404);
         }
-        try {
-            Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post('http://localhost:3000/event', [
-                'type' => 'unfriend',
-                'data' => [
-                    'requester_id' => $connection->requester_id,
-                    'addressee_id' => $connection->addressee_id,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('WebSocket event failed: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('unfriend', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+        ]);
         $connection->delete();
 
         return response()->json([
@@ -510,19 +474,10 @@ class UserController extends Controller
             ]);
         }
 
-        try {
-            Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post('http://localhost:3000/event', [
-                'type' => 'block',
-                'data' => [
-                    'blocker_id' => $connection->requester_id,
-                    'blocker_id' => $connection->addressee_id,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('WebSocket event failed: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('block', [
+            'blocker_id' => $connection->addressee_id,
+            'actor_id' => $connection->requester_id,
+        ]);
 
         return response()->json([
             'message' => 'User blocked successfully',
