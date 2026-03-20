@@ -14,12 +14,25 @@ use Illuminate\Support\Facades\Schema;
 
 class PostController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Post::with(['user', 'media'])
+        $perPage = min(max((int) $request->query('per_page', 12), 1), 50);
+
+        $posts = Post::query()
+            ->with(['user.role', 'media'])
             ->withCount(['likes', 'comments'])
             ->latest()
-            ->get();
+            ->paginate($perPage);
+
+        return response()->json([
+            'data' => $posts->items(),
+            'pagination' => [
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -85,7 +98,7 @@ class PostController extends Controller
             )->unique()->values()->all();
 
             if (!empty($targetIds)) {
-                $users = User::whereIn('id', $targetIds)->get();
+                $users = User::query()->whereIn('id', $targetIds)->get(['id']);
                 foreach ($users as $user) {
                     NotificationService::send(
                         $user->id,
@@ -111,7 +124,7 @@ class PostController extends Controller
 
     public function show($id)
     {
-        $post = Post::with(['user', 'media'])
+        $post = Post::with(['user.role', 'media'])
             ->withCount(['likes', 'comments'])
             ->findOrFail($id);
 

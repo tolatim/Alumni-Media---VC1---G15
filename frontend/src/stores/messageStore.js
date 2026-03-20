@@ -43,6 +43,8 @@ const extractMessage = (payload) => {
   }
 }
 
+const toMessageKey = (value) => String(value)
+
 export const useMessageStore = defineStore('message', () => {
   const me = ref(null)
   const contacts = ref([])
@@ -74,6 +76,8 @@ export const useMessageStore = defineStore('message', () => {
   const socket = shallowRef(null)
   const echoChannel = shallowRef(null)
   const socketStatus = ref('idle')
+  let hasBootstrapped = false
+  let bootstrapPromise = null
   let contactRefreshTimer = null
   let liveRefreshTimer = null
   let fallbackStartTimer = null
@@ -81,6 +85,91 @@ export const useMessageStore = defineStore('message', () => {
   let lastReadMarkAt = 0
   let lastReadTargetId = null
   let lastSyncAt = 0
+  let messageIds = new Set()
+  let latestMessageId = 0
+
+  const resetMessageState = () => {
+    messages.value = []
+    messagesPagination.value = defaultPagination(MESSAGES_PER_PAGE)
+    messageIds = new Set()
+    latestMessageId = 0
+  }
+
+  const replaceMessages = (nextMessages) => {
+    const nextList = Array.isArray(nextMessages) ? nextMessages : []
+    messages.value = nextList
+    messageIds = new Set()
+    latestMessageId = 0
+
+    for (const item of nextList) {
+      if (!item?.id) continue
+      messageIds.add(toMessageKey(item.id))
+      latestMessageId = Math.max(latestMessageId, Number(item.id) || 0)
+    }
+  }
+
+  const appendMessages = (nextMessages) => {
+    const incoming = Array.isArray(nextMessages) ? nextMessages : []
+    if (!incoming.length) return
+
+    const fresh = []
+    for (const item of incoming) {
+      const key = item?.id ? toMessageKey(item.id) : null
+      if (!key || messageIds.has(key)) continue
+      messageIds.add(key)
+      latestMessageId = Math.max(latestMessageId, Number(item.id) || 0)
+      fresh.push(item)
+    }
+
+    if (fresh.length) {
+      messages.value = [...messages.value, ...fresh]
+    }
+  }
+
+  const prependMessages = (nextMessages) => {
+    const incoming = Array.isArray(nextMessages) ? nextMessages : []
+    if (!incoming.length) return
+
+    const fresh = []
+    for (const item of incoming) {
+      const key = item?.id ? toMessageKey(item.id) : null
+      if (!key || messageIds.has(key)) continue
+      messageIds.add(key)
+      latestMessageId = Math.max(latestMessageId, Number(item.id) || 0)
+      fresh.push(item)
+    }
+
+    if (fresh.length) {
+      messages.value = [...fresh, ...messages.value]
+    }
+  }
+
+  const upsertMessage = (message) => {
+    if (!message?.id) return
+    const key = toMessageKey(message.id)
+
+    const existingIndex = messages.value.findIndex((item) => toMessageKey(item.id) === key)
+    if (existingIndex === -1) {
+      appendMessages([message])
+      return
+    }
+
+    const nextMessages = messages.value.slice()
+    nextMessages[existingIndex] = message
+    messages.value = nextMessages
+    messageIds.add(key)
+    latestMessageId = Math.max(latestMessageId, Number(message.id) || 0)
+  }
+
+  const removeMessage = (messageId) => {
+    const key = messageId ? toMessageKey(messageId) : null
+    if (!key || !messageIds.has(key)) return
+    messages.value = messages.value.filter((item) => toMessageKey(item.id) !== key)
+    messageIds.delete(key)
+    if (Number(messageId) === latestMessageId) {
+      latestMessageId = Number(messages.value.at(-1)?.id || 0)
+    }
+  }
 
   const clearFeedback = () => {
     errorMessage.value = ''
@@ -98,6 +187,23 @@ export const useMessageStore = defineStore('message', () => {
   const loadMe = async () => {
     const response = await api.get('/me', withSilentLoading())
     me.value = response.data
+  }
+
+  const bootstrapMessaging = async ({ force = false } = {}) => {
+    if (hasBootstrapped && !force) return
+    if (bootstrapPromise && !force) return bootstrapPromise
+
+    bootstrapPromise = (async () => {
+      await loadMe()
+      await Promise.all([loadContacts(1), loadSidebarConnections()])
+      hasBootstrapped = true
+    })()
+
+    try {
+      await bootstrapPromise
+    } finally {
+      bootstrapPromise = null
+    }
   }
 
   const loadContacts = async (page = 1, options = {}) => {
@@ -197,7 +303,11 @@ export const useMessageStore = defineStore('message', () => {
         headers: { 'X-Skip-Loading': 'true' },
       })
       const chunk = response.data?.data || []
-      messages.value = appendOlder ? [...chunk, ...messages.value] : chunk
+      if (appendOlder) {
+        prependMessages(chunk)
+      } else {
+        replaceMessages(chunk)
+      }
       messagesPagination.value = normalizePagination(response.data, MESSAGES_PER_PAGE)
 
       if (!appendOlder || page === 1) {
@@ -224,23 +334,16 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   const syncLatestMessages = async (userId) => {
-    const latestKnownId = messages.value.reduce((maxId, item) => Math.max(maxId, Number(item?.id || 0)), 0)
-
     try {
       const response = await api.get(`/messages/${userId}/sync`, {
-        params: { after_id: latestKnownId },
+        params: { after_id: latestMessageId },
         headers: { 'X-Skip-Loading': 'true' },
       })
 
       const incoming = Array.isArray(response.data?.data) ? response.data.data : []
       if (!incoming.length) return
 
-      const existingIds = new Set(messages.value.map((item) => item.id))
-      const freshMessages = incoming.filter((item) => !existingIds.has(item.id))
-
-      if (!freshMessages.length) return
-
-      messages.value = [...messages.value, ...freshMessages]
+      appendMessages(incoming)
       if (selectedUser.value?.id) {
         clearUnreadForContact(selectedUser.value.id)
         markReadForContact(selectedUser.value.id)
@@ -254,7 +357,7 @@ export const useMessageStore = defineStore('message', () => {
 
   const selectContact = async (contact) => {
     selectedUser.value = contact
-    messagesPagination.value = defaultPagination(MESSAGES_PER_PAGE)
+    resetMessageState()
     await loadConnectionStatus(contact.id)
     await loadMessages(contact.id, 1, false)
   }
@@ -303,9 +406,9 @@ export const useMessageStore = defineStore('message', () => {
       const response = await api.post(`/messages/${selectedUser.value.id}`, formData, withSilentLoading())
 
       if (messagesPagination.value.current_page === 1) {
-        messages.value = [...messages.value, response.data.data]
+        appendMessages([response.data.data])
       } else {
-        messagesPagination.value = defaultPagination(MESSAGES_PER_PAGE)
+        resetMessageState()
         await loadMessages(selectedUser.value.id, 1, false)
       }
 
@@ -325,7 +428,7 @@ export const useMessageStore = defineStore('message', () => {
     deletingMessageId.value = messageId
     try {
       await api.delete(`/messages/item/${messageId}`, withSilentLoading())
-      messages.value = messages.value.filter((item) => item.id !== messageId)
+      removeMessage(messageId)
       successMessage.value = 'Message deleted.'
       window.dispatchEvent(new Event('messages:updated'))
     } catch (error) {
@@ -358,7 +461,7 @@ export const useMessageStore = defineStore('message', () => {
     try {
       const response = await api.put(`/messages/item/${messageId}`, { content }, withSilentLoading())
       const updated = response.data?.data
-      messages.value = messages.value.map((item) => (item.id === messageId ? updated : item))
+      upsertMessage(updated)
       successMessage.value = 'Message updated.'
       cancelEdit()
     } catch (error) {
@@ -468,12 +571,9 @@ export const useMessageStore = defineStore('message', () => {
     if (!counterpartId) return
 
     const isActiveChat = selectedUser.value?.id && String(selectedUser.value.id) === String(counterpartId)
-    const exists = messages.value.some((item) => item.id === message.id)
 
     if (isActiveChat && messagesPagination.value.current_page === 1) {
-      if (!exists) {
-        messages.value = [...messages.value, message]
-      }
+      appendMessages([message])
       clearUnreadForContact(counterpartId)
       markReadForContact(counterpartId)
     } else if (!isActiveChat) {
@@ -485,12 +585,11 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   const handleUpdatedMessage = (message) => {
-    messages.value = messages.value.map((item) => (item.id === message.id ? message : item))
+    upsertMessage(message)
   }
 
   const handleDeletedMessage = (messageId) => {
-    if (!messageId) return
-    messages.value = messages.value.filter((item) => item.id !== messageId)
+    removeMessage(messageId)
   }
 
   const startLiveRefresh = () => {
@@ -637,10 +736,13 @@ export const useMessageStore = defineStore('message', () => {
 
   const initMessaging = async (routeContactId) => {
     try {
-      await loadMe()
-      await Promise.all([loadContacts(1), loadSidebarConnections()])
+      await bootstrapMessaging()
 
-      if (!routeContactId) return
+      if (!routeContactId) {
+        selectedUser.value = null
+        resetMessageState()
+        return
+      }
       const contact = contacts.value.find((item) => String(item.id) === String(routeContactId))
       if (contact) {
         await selectContact(contact)
@@ -650,6 +752,7 @@ export const useMessageStore = defineStore('message', () => {
       const response = await api.get(`/users/${routeContactId}`, withSilentLoading())
       selectedUser.value = response.data?.data || null
       if (selectedUser.value?.id) {
+        resetMessageState()
         await loadConnectionStatus(selectedUser.value.id)
         await loadMessages(selectedUser.value.id, 1, false)
       }

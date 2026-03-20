@@ -11,6 +11,7 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Services\MediaStorageService;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -39,7 +40,10 @@ class MessageController extends Controller
         $perPage = min(max((int) $request->query('per_page', 12), 1), 50);
 
         $connections = Connection::query()
-            ->with(['requester', 'addressee'])
+            ->with([
+                'requester:id,first_name,last_name,headline,avatar',
+                'addressee:id,first_name,last_name,headline,avatar',
+            ])
             ->where('status', 'accepted')
             ->where(function ($query) use ($me) {
                 $query->where('requester_id', $me->id)
@@ -86,14 +90,8 @@ class MessageController extends Controller
 
         $messages = Message::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query->where('sender_id', $me->id)
-                    ->where('receiver_id', $targetId);
+                $this->applyConversationFilter($query, $me->id, $targetId);
             })
-            ->orWhere(function ($query) use ($me, $targetId) {
-                $query->where('sender_id', $targetId)
-                    ->where('receiver_id', $me->id);
-            })
-            ->with(['sender', 'receiver'])
             ->latest()
             ->paginate($perPage);
 
@@ -148,7 +146,7 @@ class MessageController extends Controller
             'media_path' => $mediaPath,
             'media_type' => $mediaType,
             'status' => 'sent',
-        ])->load(['sender', 'receiver']);
+        ]);
 
         Notification::create([
             'user_id' => $targetId,
@@ -198,15 +196,8 @@ class MessageController extends Controller
         $messages = Message::query()
             ->where('id', '>', $afterId)
             ->where(function ($query) use ($me, $targetId) {
-                $query->where(function ($nested) use ($me, $targetId) {
-                    $nested->where('sender_id', $me->id)
-                        ->where('receiver_id', $targetId);
-                })->orWhere(function ($nested) use ($me, $targetId) {
-                    $nested->where('sender_id', $targetId)
-                        ->where('receiver_id', $me->id);
-                });
+                $this->applyConversationFilter($query, $me->id, $targetId);
             })
-            ->with(['sender', 'receiver'])
             ->orderBy('id')
             ->limit(50)
             ->get();
@@ -290,7 +281,7 @@ class MessageController extends Controller
             'status' => 'sent',
         ]);
 
-        $message = $message->fresh()->load(['sender', 'receiver']);
+        $message = $message->fresh();
 
         $this->safeBroadcast(new MessageUpdated($message));
 
@@ -316,12 +307,9 @@ class MessageController extends Controller
 
         $connection = Connection::query()
             ->where(function ($query) use ($meId, $targetId) {
-                $query->where(function ($q) use ($meId, $targetId) {
-                    $q->where('requester_id', $meId)->where('addressee_id', $targetId);
-                })->orWhere(function ($q) use ($meId, $targetId) {
-                    $q->where('requester_id', $targetId)->where('addressee_id', $meId);
-                });
+                $this->applyConversationFilter($query, $meId, $targetId, 'requester_id', 'addressee_id');
             })
+            ->select(['id', 'requester_id', 'addressee_id', 'status'])
             ->first();
 
         if (!$connection) {
@@ -353,6 +341,24 @@ class MessageController extends Controller
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function applyConversationFilter(
+        Builder $query,
+        int $firstUserId,
+        int $secondUserId,
+        string $leftColumn = 'sender_id',
+        string $rightColumn = 'receiver_id'
+    ): void {
+        $query
+            ->where(function ($nested) use ($firstUserId, $secondUserId, $leftColumn, $rightColumn) {
+                $nested->where($leftColumn, $firstUserId)
+                    ->where($rightColumn, $secondUserId);
+            })
+            ->orWhere(function ($nested) use ($firstUserId, $secondUserId, $leftColumn, $rightColumn) {
+                $nested->where($leftColumn, $secondUserId)
+                    ->where($rightColumn, $firstUserId);
+            });
     }
 
 }
