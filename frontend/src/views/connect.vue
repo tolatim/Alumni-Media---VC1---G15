@@ -1,30 +1,30 @@
 <template>
   <Navbar />
   <PageLoading />
-  <main class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(8,145,178,0.08),_transparent_35%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_45%,_#f8fafc_100%)] py-6 md:py-8">
+  <main class="min-h-screen bg-slate-50 py-6 md:py-8">
     <div class="mx-auto max-w-7xl px-4 sm:px-5">
-      <section class="rounded-[30px] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur sm:p-6">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div class="max-w-2xl">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-600">Build Your Circle</p>
-            <h1 class="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl">Connections that feel easy to manage</h1>
-            <p class="mt-2 text-sm leading-6 text-slate-500">
-              Keep up with friend requests, discover alumni you may know, and reach the people you already trust without extra clicks.
+      <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Connections</p>
+            <h1 class="mt-1 text-2xl font-semibold text-slate-900">Keep your network organized</h1>
+            <p class="mt-2 max-w-2xl text-sm text-slate-500">
+              Review incoming requests, discover alumni you may know, and keep close friends easy to reach.
             </p>
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
-            <div class="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">Friends</p>
-              <p class="mt-2 text-2xl font-semibold text-slate-900">{{ connectionsCount }}</p>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Friends</p>
+              <p class="mt-1 text-2xl font-semibold text-slate-900">{{ connectionsCount }}</p>
             </div>
-            <div class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">Requests</p>
-              <p class="mt-2 text-2xl font-semibold text-slate-900">{{ pendingPagination.total }}</p>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Requests</p>
+              <p class="mt-1 text-2xl font-semibold text-slate-900">{{ pendingPagination.total }}</p>
             </div>
-            <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Suggestions</p>
-              <p class="mt-2 text-2xl font-semibold text-slate-900">{{ suggestionsPagination.total }}</p>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Suggestions</p>
+              <p class="mt-1 text-2xl font-semibold text-slate-900">{{ suggestionsPagination.total }}</p>
             </div>
           </div>
         </div>
@@ -38,67 +38,64 @@
               class="rounded-full border px-4 py-2 text-xs font-semibold transition"
               :class="activeSection === section.id
                 ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'"
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
               @click="activeSection = section.id"
             >
               {{ section.label }}
             </button>
           </div>
 
-          <div class="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm lg:max-w-sm">
-            <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+          <div class="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 lg:max-w-sm">
+            <i class="fa-solid fa-magnifying-glass text-sm text-slate-400"></i>
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search people by name or headline..."
+              placeholder="Search by name or headline"
               class="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
             >
           </div>
         </div>
       </section>
 
-      <p v-if="errorMessage" class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+      <p v-if="errorMessage" class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
         {{ errorMessage }}
       </p>
 
-      <div class="mt-5 grid gap-5 xl:grid-cols-[1.15fr_1fr]">
+      <div class="mt-5 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <section class="space-y-5">
-          <section
-            v-if="showRequestsSection"
-            class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
-          >
+          <section v-if="showRequestsSection" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600">Requests</p>
-                <h2 class="mt-1 text-lg font-semibold text-slate-900">People waiting on you</h2>
+                <h2 class="text-lg font-semibold text-slate-900">Requests for you</h2>
+                <p class="mt-1 text-sm text-slate-500">Decide who should join your circle.</p>
               </div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ pendingPagination.total }}</span>
             </div>
 
             <div v-if="!filteredPendingRequests.length" class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
               <p class="text-sm font-semibold text-slate-700">No pending requests</p>
-              <p class="mt-1 text-xs text-slate-500">When someone sends you a request, it will appear here.</p>
+              <p class="mt-1 text-xs text-slate-500">New requests will show up here.</p>
             </div>
 
             <div v-else class="mt-4 space-y-3">
               <article
                 v-for="request in filteredPendingRequests"
                 :key="request.id"
-                class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+                class="rounded-2xl border border-slate-200 p-4"
               >
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <RouterLink :to="{ name: 'Profile', params: { id: request.requester?.id } }" class="flex min-w-0 items-center gap-3">
                     <img :src="request.requester?.profile?.avatar || fallbackAvatar" class="h-12 w-12 rounded-2xl object-cover">
                     <div class="min-w-0">
                       <p class="truncate text-sm font-semibold text-slate-900">{{ request.requester?.name || 'Unknown user' }}</p>
-                      <p class="truncate text-xs text-slate-500">{{ request.requester?.profile?.headline || 'Wants to connect with you' }}</p>
+                      <p class="truncate text-xs text-slate-500">{{ request.requester?.profile?.headline || 'Sent you a friend request' }}</p>
                     </div>
                   </RouterLink>
 
-                  <div class="flex flex-wrap gap-2 sm:justify-end">
+                  <div class="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      class="rounded-xl bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+                      class="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                       :disabled="isBusy('accept', request.id)"
                       @click="acceptRequest(request.id)"
                     >
@@ -106,11 +103,11 @@
                     </button>
                     <button
                       type="button"
-                      class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                      class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                       :disabled="isBusy('reject', request.id)"
                       @click="rejectRequest(request.id)"
                     >
-                      {{ isBusy('reject', request.id) ? 'Rejecting...' : 'Reject' }}
+                      {{ isBusy('reject', request.id) ? 'Rejecting...' : 'Decline' }}
                     </button>
                   </div>
                 </div>
@@ -136,28 +133,25 @@
             </div>
           </section>
 
-          <section
-            v-if="showSuggestionsSection"
-            class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
-          >
+          <section v-if="showSuggestionsSection" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-600">Suggestions</p>
-                <h2 class="mt-1 text-lg font-semibold text-slate-900">People you may want to know</h2>
+                <h2 class="text-lg font-semibold text-slate-900">Suggestions</h2>
+                <p class="mt-1 text-sm text-slate-500">A simple way to discover more alumni.</p>
               </div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ suggestionsPagination.total }}</span>
             </div>
 
             <div v-if="!filteredSuggestions.length" class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
-              <p class="text-sm font-semibold text-slate-700">No suggestions right now</p>
-              <p class="mt-1 text-xs text-slate-500">Try again later. New alumni suggestions will show up here.</p>
+              <p class="text-sm font-semibold text-slate-700">No suggestions found</p>
+              <p class="mt-1 text-xs text-slate-500">Try a different search or check back later.</p>
             </div>
 
             <div v-else class="mt-4 grid gap-3 md:grid-cols-2">
               <article
                 v-for="person in filteredSuggestions"
                 :key="person.id"
-                class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+                class="rounded-2xl border border-slate-200 p-4"
               >
                 <RouterLink :to="{ name: 'Profile', params: { id: person.id } }" class="flex items-center gap-3">
                   <img :src="person.profile?.avatar || fallbackAvatar" class="h-12 w-12 rounded-2xl object-cover">
@@ -166,13 +160,14 @@
                     <p class="truncate text-xs text-slate-500">{{ person.profile?.headline || 'Alumni member' }}</p>
                   </div>
                 </RouterLink>
-                <div class="mt-4 flex items-center justify-between gap-2">
+
+                <div class="mt-4 flex items-center justify-between gap-3">
                   <RouterLink :to="{ name: 'Profile', params: { id: person.id } }" class="text-xs font-semibold text-slate-500 hover:text-slate-700">
                     View profile
                   </RouterLink>
                   <button
                     type="button"
-                    class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                    class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                     :disabled="isBusy('send', person.id)"
                     @click="sendRequest(person.id)"
                   >
@@ -203,28 +198,25 @@
         </section>
 
         <aside class="space-y-5">
-          <section
-            v-if="showFriendsSection"
-            class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
-          >
+          <section v-if="showFriendsSection" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-600">Friends</p>
-                <h2 class="mt-1 text-lg font-semibold text-slate-900">Your trusted people</h2>
+                <h2 class="text-lg font-semibold text-slate-900">Your friends</h2>
+                <p class="mt-1 text-sm text-slate-500">People you already know and trust.</p>
               </div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ friendsPagination.total }}</span>
             </div>
 
             <div v-if="!filteredFriends.length" class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
               <p class="text-sm font-semibold text-slate-700">No friends match this search</p>
-              <p class="mt-1 text-xs text-slate-500">Try another keyword or explore new suggestions.</p>
+              <p class="mt-1 text-xs text-slate-500">Try another keyword.</p>
             </div>
 
             <div v-else class="mt-4 space-y-3">
               <article
                 v-for="friend in filteredFriends"
                 :key="friend.id"
-                class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
+                class="rounded-2xl border border-slate-200 p-4"
               >
                 <div class="flex flex-col gap-4">
                   <RouterLink :to="{ name: 'Profile', params: { id: friend.id } }" class="flex items-center gap-3">
@@ -238,13 +230,13 @@
                   <div class="flex flex-wrap gap-2">
                     <RouterLink
                       :to="{ name: 'MessageWithUser', params: { userId: friend.id } }"
-                      class="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                      class="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                     >
                       Message
                     </RouterLink>
                     <button
                       type="button"
-                      class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                      class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                       :disabled="isBusy('unfriend', friend.id)"
                       @click="unfriend(friend.id)"
                     >
@@ -252,7 +244,7 @@
                     </button>
                     <button
                       type="button"
-                      class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                      class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                       :disabled="isBusy('block', friend.id)"
                       @click="blockUser(friend.id)"
                     >
@@ -282,11 +274,10 @@
             </div>
           </section>
 
-          <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Friendly Tip</p>
-            <h3 class="mt-2 text-lg font-semibold text-slate-900">Good networking feels personal</h3>
+          <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-900">A simple networking tip</h3>
             <p class="mt-2 text-sm leading-6 text-slate-500">
-              Send connection requests to people you recognize, and follow up with a short message after they accept. A simple hello often works best.
+              People usually respond better to short, genuine messages. A small hello often feels more welcoming than a long introduction.
             </p>
           </section>
         </aside>
@@ -316,7 +307,7 @@ const PENDING_PER_PAGE = 6
 const SUGGESTIONS_PER_PAGE = 6
 
 const sections = [
-  { id: 'all', label: 'Everything' },
+  { id: 'all', label: 'All' },
   { id: 'requests', label: 'Requests' },
   { id: 'suggestions', label: 'Suggestions' },
   { id: 'friends', label: 'Friends' },
