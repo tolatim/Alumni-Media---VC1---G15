@@ -272,6 +272,29 @@
             </svg>
             <span>{{ commentsCount }}</span>
           </button>
+
+          <button
+            v-if="canReportPost"
+            type="button"
+            :disabled="reportSubmitting"
+            @click="handleReportPost"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-1 disabled:opacity-60"
+            aria-label="Report post"
+            title="Report post"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M5 4v16" />
+              <path d="M5 5h10l-2 4 2 4H5" />
+            </svg>
+            <span>{{ reportSubmitting ? 'Reporting...' : 'Report' }}</span>
+          </button>
         </div>
 
       </div>
@@ -570,6 +593,7 @@ const openPostActionsMenu = ref(false)
 const likeSubmitting = ref(false)
 const likedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
+const reportSubmitting = ref(false)
 
 const commentsOpen = ref(props.autoOpenComments ?? false)
 const commentsLoading = ref(false)
@@ -606,6 +630,13 @@ const canDeletePost = computed(() => {
   const currentUserId = Number(props.currentUser?.id)
   const ownerId = Number(props.post?.user_id ?? props.post?.user?.id)
   return Number.isFinite(currentUserId) && Number.isFinite(ownerId) && currentUserId === ownerId
+})
+
+const canReportPost = computed(() => {
+  const currentUserId = Number(props.currentUser?.id)
+  const ownerId = Number(props.post?.user_id ?? props.post?.user?.id)
+  if (!Number.isFinite(currentUserId) || !Number.isFinite(ownerId)) return false
+  return currentUserId !== ownerId
 })
 
 const isPostLiked = computed(() => {
@@ -709,6 +740,33 @@ const handleDeletePost = async () => {
   } catch (error) {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to delete post.'))
+  }
+}
+
+const handleReportPost = async () => {
+  const defaultReason = 'Inappropriate content'
+  const reasonInput = window.prompt(
+    'Why are you reporting this post? (e.g. spam, harassment, inappropriate content)',
+    defaultReason
+  )
+
+  if (reasonInput === null) return
+
+  const reason = reasonInput.trim()
+  if (!reason) {
+    alert('Please provide a reason for reporting.')
+    return
+  }
+
+  reportSubmitting.value = true
+  try {
+    const response = await api.post(`/posts/${props.post.id}/report`, { reason })
+    alert(response?.data?.message || 'Report submitted successfully.')
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to submit report.'))
+  } finally {
+    reportSubmitting.value = false
   }
 }
 

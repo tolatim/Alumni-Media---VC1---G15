@@ -72,6 +72,16 @@ npm install
 npm run dev
 ```
 
+### 4. Node js WebSocket setup (`websocket-server/`)
+
+```bash
+cd websocket-server
+npm init -y
+npm install ws
+npm install cors
+npm install express
+```
+
 members need to create file name .env in folder frontend
 then write this
 ```
@@ -97,6 +107,12 @@ npm run build            # Build Laravel frontend assets
 npm run dev              # Start Vue dev server
 npm run build            # Production build
 npm run preview          # Preview production build
+```
+
+### Websocket
+
+```bash
+node server.js           #Start server
 ```
 
 ## Current Status

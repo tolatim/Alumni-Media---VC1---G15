@@ -6,7 +6,7 @@
         <userLeftSideBar :user="currentUser" />
 
         <centerFeed
-          :posts="feedStore.posts"
+          :posts="posts"
           :current-user="currentUser"
           @post-created="prependPost"
           @refresh-posts="refreshPosts"
@@ -38,9 +38,8 @@ import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
-import { useFeedStore } from "@/store/feed";
 
-const feedStore = useFeedStore()
+const posts = ref([])
 
 const currentUser = ref(null);
 const suggestions = ref([]);
@@ -213,7 +212,6 @@ const refreshSuggestions = async () => {
 };
 
 onMounted(() => {
-  feedStore.loadFeedPage();
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
 
