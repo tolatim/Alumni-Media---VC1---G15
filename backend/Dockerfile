@@ -14,4 +14,4 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "php -r \"if (!file_exists('.env')) { if (file_exists('.env.docker')) { copy('.env.docker', '.env'); } else { copy('.env.example', '.env'); } }\" && if ! grep -q '^APP_KEY=base64:' .env; then php artisan key:generate --force --no-interaction; fi && php artisan config:clear && php artisan cache:clear && php artisan migrate --force --no-interaction && php artisan serve --host=0.0.0.0 --port=8000"]
+CMD ["sh", "-c", "php -r \"if (!file_exists('.env')) { if (file_exists('.env.docker')) { copy('.env.docker', '.env'); } else { copy('.env.example', '.env'); } }\" && if ! grep -q '^APP_KEY=base64:' .env; then php artisan key:generate --force --no-interaction; fi && php artisan config:clear && php artisan cache:clear && (php artisan storage:link || true) && php artisan migrate --force --no-interaction && php artisan serve --host=0.0.0.0 --port=8000"]
