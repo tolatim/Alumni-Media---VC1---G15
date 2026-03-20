@@ -3,6 +3,7 @@
 Thumbs.db
 .vscode/
 .idea/
+/node_modules/
 
 # Laravel backend
 /backend/.env
@@ -28,3 +29,10 @@ Thumbs.db
 /frontend/.eslintcache
 /frontend/*.tsbuildinfo
 /frontend/*.log
+/frontend/*.env
+
+# WebSocket server - ignore dependencies and logs
+
+/websocket-server/node_modules/        # ignore all node modules
+/websocket-server/package-log.json     # ignore npm log file
+# /websocket-server/package.json       # usually you want to track package.json, so leave it uncommented if you need it
