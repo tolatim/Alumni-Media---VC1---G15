@@ -517,7 +517,7 @@ class UserController extends Controller
                 'type' => 'block',
                 'data' => [
                     'blocker_id' => $connection->requester_id,
-                    'blocker_id' => $connection->addressee_id,
+                    'blocked_id' => $connection->addressee_id,
                 ]
             ]);
         } catch (\Exception $e) {

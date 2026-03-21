@@ -289,6 +289,7 @@
                   </div>
                 </article>
                 <p
+                
                   v-if="!friends.length"
                   class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500"
                 >
@@ -337,67 +338,61 @@
 </template>
 
 <script setup>
-import { computed, isProxy, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Navbar from "@/components/ui/nav.vue";
 import api from "@/services/api";
 import fallbackAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
 import { usePendingRequestsStore } from "@/stores/pendingRequests";
 import { useSuggestionsStore } from "@/stores/suggestions";
 import { useConnectionsStore } from "@/stores/connectionRows";
+import {
+  setConnectionHubUserId,
+  subscribeToConnectionEvents,
+} from "@/utils/connectionHub";
 
 const pendingStore = usePendingRequestsStore();
 const suggestionsStore = useSuggestionsStore();
 const connectionRowsStore = useConnectionsStore();
 
-const ws = new WebSocket("ws://localhost:8081");
-const current_user = JSON.parse(localStorage.getItem("user"));
-ws.onopen = () => {
-  console.log("connected");
-
-  ws.send(
-    JSON.stringify({
-      type: "auth",
-      user_id: current_user.id,
-    })
-  );
-};
-
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  if (message.type === "connection_request") {
-    pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
-  }
-  else if (message.type === "accept_request"){
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-  }
-  else if (message.type === "unfriend"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-  }
-  else if (message.type === "reject"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  }
-  else if (message.type === "block"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-    console.log("block", message.data)
-  }
-};
-
 const errorMessage = ref("");
+const currentUser = ref(null);
+let unsubscribeConnectionHub = null;
+
+const readCurrentUser = () => {
+  try {
+    const raw = localStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const resolveCurrentUser = async () => {
+  const storedUser = readCurrentUser();
+  if (storedUser?.id) {
+    currentUser.value = storedUser;
+    return storedUser;
+  }
+
+  try {
+    const response = await api.get("/me", {
+      headers: { "X-Skip-Loading": "true" },
+    });
+    currentUser.value = response.data || null;
+    if (currentUser.value) {
+      localStorage.setItem("user", JSON.stringify(currentUser.value));
+    }
+  } catch {
+    currentUser.value = null;
+  }
+
+  return currentUser.value;
+};
 
 const openFriendMenuId = ref(null);
 
 const friends = computed(() => {
-  let me = null;
-  try {
-    const meRaw = localStorage.getItem("user");
-    me = meRaw ? JSON.parse(meRaw) : null;
-  } catch {
-    me = null;
-  }
-
+  const me = currentUser.value || readCurrentUser();
   if (!me?.id) return [];
 
   return  connectionRowsStore.connectionRows
@@ -411,6 +406,43 @@ const friends = computed(() => {
 const connectionsCount = computed(
   () => connectionRowsStore.friendsPagination.total || friends.value.length
 );
+
+const handleConnectionEvent = async (message) => {
+  if (message.type === "connection_request") {
+    await Promise.all([
+      pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page),
+      suggestionsStore.loadSuggestions(
+        suggestionsStore.suggestionsPagination.current_page
+      ),
+    ]);
+    return;
+  }
+
+  if (message.type === "accept_request") {
+    await connectionRowsStore.loadMyConnections(
+      connectionRowsStore.friendsPagination.current_page
+    );
+    return;
+  }
+
+  if (message.type === "unfriend" || message.type === "block") {
+    await Promise.all([
+      suggestionsStore.loadSuggestions(
+        suggestionsStore.suggestionsPagination.current_page
+      ),
+      connectionRowsStore.loadMyConnections(
+        connectionRowsStore.friendsPagination.current_page
+      ),
+    ]);
+    return;
+  }
+
+  if (message.type === "reject") {
+    await suggestionsStore.loadSuggestions(
+      suggestionsStore.suggestionsPagination.current_page
+    );
+  }
+};
 
 const sendRequest = async (userId) => {
   try {
@@ -486,8 +518,18 @@ const onClickBlock = async (userId) => {
   openFriendMenuId.value = null;
 };
 onMounted(async () => {
+  const me = await resolveCurrentUser();
+  setConnectionHubUserId(me?.id ?? null);
+  unsubscribeConnectionHub = subscribeToConnectionEvents(handleConnectionEvent);
   await pendingStore.loadPendingRequests();
   await suggestionsStore.loadSuggestions();
   await connectionRowsStore.loadMyConnections();
+});
+
+onBeforeUnmount(() => {
+  if (unsubscribeConnectionHub) {
+    unsubscribeConnectionHub();
+    unsubscribeConnectionHub = null;
+  }
 });
 </script>

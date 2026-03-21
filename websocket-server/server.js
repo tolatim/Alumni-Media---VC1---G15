@@ -91,7 +91,7 @@ app.post('/event', (req, res) => {
         targetUser = clients[data.requester_id]
     }
     else if(type === 'block'){
-        targetUser = clients[data.blocker_id]
+        targetUser = clients[data.blocked_id]
     }
 
     if (targetUser && targetUser.readyState === WebSocket.OPEN) {
@@ -101,11 +101,11 @@ app.post('/event', (req, res) => {
             data: data
         }));
 
-        console.log(`Event sent to user ${data.addressee_id}`);
+        console.log(`Event sent to user ${data.blocked_id ?? data.addressee_id ?? 'unknown'}`);
 
     } else {
 
-        console.log(`User ${data.addressee_id} is offline`);
+        console.log(`User ${data.blocked_id ?? data.addressee_id ?? 'unknown'} is offline`);
 
     }
 
