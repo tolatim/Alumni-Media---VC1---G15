@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
@@ -67,11 +68,23 @@ class AuthController extends Controller
         }
 
         $user = User::with(['role'])->findOrFail(Auth::id());
-        
-        // ✅ Connected to NotificationService
+
+        if (method_exists($user, 'isSuspended') && $user->isSuspended()) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Your account is suspended',
+            ], 403);
+        }
+
         NotificationService::login($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        WebsocketNotifier::send('login', [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+        ]);
 
         return response()->json([
             'status' => 'Login successfully',

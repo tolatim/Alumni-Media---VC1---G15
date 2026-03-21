@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Services\MediaStorageService;
 use App\Services\NotificationService;
+use App\Support\WebsocketNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -287,6 +288,11 @@ class UserController extends Controller
         // ✅ Notify receiver
         $receiver = User::find($targetId);
         NotificationService::connectionRequest($receiver, $me);
+        WebsocketNotifier::send('connection_request', [
+            'requester_id' => $me->id,
+            'addressee_id' => $targetId,
+            'status' => 'pending',
+        ]);
 
         return response()->json([
             'message' => 'Connection request sent successfully',
@@ -316,6 +322,11 @@ class UserController extends Controller
         // ✅ Notify requester
         $requester = User::find($connection->requester_id);
         NotificationService::connectionAccepted($requester, $me);
+        WebsocketNotifier::send('accept_request', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+            'status' => 'accepted',
+        ]);
 
         return response()->json([
             'message' => 'Connection accepted successfully',
@@ -344,6 +355,11 @@ class UserController extends Controller
             return response()->json(['message' => 'Connection request not found.'], 404);
         }
 
+        WebsocketNotifier::send('reject', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+        ]);
+
         // ✅ Notify requester
         $requester = User::find($connection->requester_id);
         NotificationService::connectionRejected($requester, $me);
@@ -368,6 +384,11 @@ class UserController extends Controller
         if (!$connection) {
             return response()->json(['message' => 'Friend connection not found.'], 404);
         }
+
+        WebsocketNotifier::send('unfriend', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+        ]);
 
         $connection->delete();
 
@@ -407,6 +428,11 @@ class UserController extends Controller
                 'status'       => 'blocked',
             ]);
         }
+
+        WebsocketNotifier::send('block', [
+            'blocker_id' => $connection->addressee_id,
+            'actor_id' => $connection->requester_id,
+        ]);
 
         return response()->json([
             'message' => 'User blocked successfully',

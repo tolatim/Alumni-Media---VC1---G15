@@ -46,6 +46,17 @@
         </div>
 
         <div class="form-group">
+          <label for="registrationKey">Registration Key</label>
+          <input
+            id="registrationKey"
+            v-model="registrationKey"
+            placeholder="Enter key from admin"
+            required
+            :disabled="loading"
+          />
+        </div>
+
+        <div class="form-group">
           <label for="password">Password</label>
           <div class="password-field">
             <input
@@ -126,6 +137,7 @@ const last_name = ref("")
 const email = ref("")
 const password = ref("")
 const confirmPassword = ref("")
+const registrationKey = ref("")
 const error = ref("")
 const loading = ref(false);
 
@@ -149,6 +161,7 @@ async function register() {
       email: email.value,
       password: password.value,
       password_confirmation: confirmPassword.value,
+      registration_key: registrationKey.value,
     })
 
     // save token

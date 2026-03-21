@@ -1,23 +1,21 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminPostModerationController;
+use App\Http\Controllers\AdminReportModerationController;
+use App\Http\Controllers\AdminUserModerationController;
+use App\Http\Controllers\AppAppearanceController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
-use App\Models\Message;
-use App\Models\Notification;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-
-
-
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::get('/settings/appearance', [AppAppearanceController::class, 'showPublic']);
 Route::get('/users', [UserController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -61,6 +59,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::patch('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+    Route::post('/posts/{id}/report', [PostController::class, 'report']);
+    Route::get('/admin/reported-posts', [AdminPostModerationController::class, 'indexReportedPosts']);
+    Route::delete('/admin/reported-posts/{postId}', [AdminPostModerationController::class, 'deleteReportedPost']);
+    Route::get('/admin/users', [AdminUserModerationController::class, 'index']);
+    Route::post('/admin/users/{userId}/suspend', [AdminUserModerationController::class, 'suspend']);
+    Route::get('/admin/reports', [AdminReportModerationController::class, 'index']);
+    Route::post('/admin/reports/{reportId}/ignore', [AdminReportModerationController::class, 'ignore']);
+    Route::post('/admin/reports/{reportId}/delete-post', [AdminReportModerationController::class, 'deletePost']);
+    Route::post('/admin/reports/{reportId}/suspend-user', [AdminReportModerationController::class, 'suspendUser']);
+    Route::get('/admin/settings/appearance', [AppAppearanceController::class, 'showAdmin']);
+    Route::post('/admin/settings/appearance', [AppAppearanceController::class, 'update']);
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
     Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
     Route::post('/posts/{post}/comments', [CommentController::class, 'store']);

@@ -9,6 +9,7 @@ import Create from '@/views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
 import Notification from '@/views/Notification.vue'
+import Admin from '@/views/Admin.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -23,6 +24,36 @@ const routes = [
       return user?.id ? `/profile/${user.id}` : '/'
     },
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/users',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/posts',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/reports',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
   },
   {
     path: '/connection',

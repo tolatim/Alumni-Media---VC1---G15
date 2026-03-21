@@ -2,7 +2,16 @@
   <nav class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-5">
       <RouterLink to="/" class="flex items-center gap-3">
-        <span class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-sm">
+        <img
+          v-if="appLogoUrl"
+          :src="appLogoUrl"
+          alt="App logo"
+          class="h-10 w-10 rounded-xl border border-slate-200 object-cover shadow-sm"
+        >
+        <span
+          v-else
+          class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-sm"
+        >
           <i class="fa-solid fa-graduation-cap text-sm"></i>
         </span>
         <div>
@@ -181,10 +190,12 @@ import { useRoute } from 'vue-router'
 import { useNotificationStore } from '@/stores/notifications'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import { createEcho } from '@/services/realtime'
+import { fetchPublicAppearance } from '@/services/appearanceService'
 
 const route = useRoute()
 const notificationStore = useNotificationStore()
 const user = ref(null)
+const appLogoUrl = ref(null)
 const unreadCount = ref(0)
 const menuOpen = ref(false)
 const notificationUnread = computed(() => notificationStore.unreadCount)
@@ -286,6 +297,8 @@ watch(
 )
 
 onMounted(async () => {
+  const appearance = await fetchPublicAppearance()
+  appLogoUrl.value = appearance.logo_url || null
   await fetchMe()
   await fetchUnreadCount()
   await notificationStore.refreshUnreadCount()
