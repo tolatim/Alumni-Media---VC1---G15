@@ -29,6 +29,9 @@ services:
       - mysql-alumni-media
     networks:
       - laravel_network
+    entrypoint: >
+      sh -c "chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache &&
+            php-fpm"
 
   # Laravel Nginx Web Server
   laravel-webserver:
