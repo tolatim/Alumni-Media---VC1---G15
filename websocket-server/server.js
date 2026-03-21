@@ -7,8 +7,69 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const wss = new WebSocket.Server({ port: 8081 }, () => {
-    console.log('WebSocket server running on port 8081');
+
+app.post('/event', (req, res) => {
+
+    const { type, data = {}, audience } = req.body || {};
+
+    if (audience === 'admins') {
+        sendToAdmins({
+            type,
+            data,
+            audience: 'admins',
+        });
+
+        return res.json({
+            status: 'event processed',
+            delivered_to: 'admins',
+        });
+    }
+
+    let targetUser;
+
+    if(type === 'connection_request'){
+        targetUser = clients[data.addressee_id];
+    }
+    else if(type === 'accept_request'){
+        targetUser = clients[data.requester_id]
+    }
+    else if(type === 'unfriend'){
+        targetUser = clients[data.requester_id]
+    }
+    else if(type === 'reject'){
+        targetUser = clients[data.requester_id]
+    }
+    else if(type === 'block'){
+        targetUser = clients[data.blocker_id]
+    }
+
+    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
+
+        targetUser.send(JSON.stringify({
+            type: type,
+            data: data
+        }));
+
+        console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocker_id}`);
+
+    } else {
+
+        console.log('Target user is offline or not specified');
+
+    }
+
+    res.json({
+        status: 'event processed'
+    });
+
+});
+
+const server = app.listen(3000, () => {
+    console.log('Event server listening on port 3000');
+});
+
+const wss = new WebSocket.Server({ server, path: '/ws'  }, () => {
+    console.log('WebSocket server running on port 3000');
 });
 
 let clients = {};
@@ -76,62 +137,3 @@ wss.on('connection', (ws) => {
     });
 });
 
-app.post('/event', (req, res) => {
-
-    const { type, data = {}, audience } = req.body || {};
-
-    if (audience === 'admins') {
-        sendToAdmins({
-            type,
-            data,
-            audience: 'admins',
-        });
-
-        return res.json({
-            status: 'event processed',
-            delivered_to: 'admins',
-        });
-    }
-
-    let targetUser;
-
-    if(type === 'connection_request'){
-        targetUser = clients[data.addressee_id];
-    }
-    else if(type === 'accept_request'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'unfriend'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'reject'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'block'){
-        targetUser = clients[data.blocker_id]
-    }
-
-    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
-
-        targetUser.send(JSON.stringify({
-            type: type,
-            data: data
-        }));
-
-        console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocker_id}`);
-
-    } else {
-
-        console.log('Target user is offline or not specified');
-
-    }
-
-    res.json({
-        status: 'event processed'
-    });
-
-});
-
-app.listen(3000, () => {
-    console.log('Event server listening on port 3000');
-});
