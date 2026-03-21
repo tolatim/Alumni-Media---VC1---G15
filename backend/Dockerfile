@@ -1,17 +1,48 @@
-FROM php:8.2-cli
+# Use PHP 8.2 FPM as base image
+FROM php:8.2-fpm
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip libzip-dev libonig-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+
+# Get latest Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
 WORKDIR /var/www
 
-COPY . .
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+# Copy existing application directory contents
+COPY . /var/www
 
+# Install application dependencies
+RUN composer install
+
+# Change ownership of our applications
+RUN chown -R www-data:www-data /var/www
+
+# Set permissions for Laravel storage and bootstrap cache
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
+# Run the Artisan command to create the storage symlink
+RUN php artisan storage:link
+
+# Expose port 8000 and start php-fpm server
 EXPOSE 8000
 
-CMD ["sh", "-c", "php -r \"if (!file_exists('.env')) { if (file_exists('.env.docker')) { copy('.env.docker', '.env'); } else { copy('.env.example', '.env'); } }\" && if ! grep -q '^APP_KEY=base64:' .env; then php artisan key:generate --force --no-interaction; fi && php artisan config:clear && php artisan cache:clear && (php artisan storage:link || true) && php artisan migrate --force --no-interaction && php artisan serve --host=0.0.0.0 --port=8000"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]
