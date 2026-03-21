@@ -33,6 +33,7 @@ RUN composer install
 RUN chown -R www-data:www-data /var/www
 
 # Set permissions for Laravel storage and bootstrap cache
+RUN chown -R www-data:www-data storage bootstrap/cache
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
