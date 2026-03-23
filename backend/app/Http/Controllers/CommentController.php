@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Post;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
@@ -67,10 +68,18 @@ class CommentController extends Controller
             'content' => trim($validated['content']),
         ]);
 
+        $commentsCount = $post->comments()->count();
+        WebsocketNotifier::send('post_comment_updated', [
+            'post_id' => $post->id,
+            'comment_id' => $comment->id,
+            'comments_count' => $commentsCount,
+            'action' => $parentId ? 'reply_created' : 'comment_created',
+        ]);
+
         return response()->json([
             'message' => 'Comment added successfully',
             'comment' => $comment->load('user'),
-            'comments_count' => $post->comments()->count(),
+            'comments_count' => $commentsCount,
         ], 201);
     }
 
@@ -86,11 +95,20 @@ class CommentController extends Controller
         }
 
         $post = Post::find($comment->post_id);
+        $deletedCommentId = $comment->id;
         $comment->delete();
+
+        $commentsCount = $post ? $post->comments()->count() : 0;
+        WebsocketNotifier::send('post_comment_updated', [
+            'post_id' => $comment->post_id,
+            'comment_id' => $deletedCommentId,
+            'comments_count' => $commentsCount,
+            'action' => 'comment_deleted',
+        ]);
 
         return response()->json([
             'message' => 'Comment deleted successfully',
-            'comments_count' => $post ? $post->comments()->count() : 0,
+            'comments_count' => $commentsCount,
         ]);
     }
 
@@ -111,6 +129,14 @@ class CommentController extends Controller
 
         $comment->update([
             'content' => trim($validated['content']),
+        ]);
+
+        $post = Post::find($comment->post_id);
+        WebsocketNotifier::send('post_comment_updated', [
+            'post_id' => $comment->post_id,
+            'comment_id' => $comment->id,
+            'comments_count' => $post ? $post->comments()->count() : 0,
+            'action' => 'comment_updated',
         ]);
 
         return response()->json([

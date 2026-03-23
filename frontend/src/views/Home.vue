@@ -53,6 +53,26 @@ const posts = computed(() => feedStore.posts);
 const hasMorePosts = computed(() => feedStore.page < feedStore.lastPage);
 
 let unsubscribePostHub = null;
+let sharePostRefreshTimer = null;
+let homeRefreshTimer = null;
+const HOME_REFRESH_INTERVAL_MS = 3000;
+
+const queueSharePostRefresh = (postId) => {
+  const normalizedPostId = Number(postId);
+  if (!Number.isFinite(normalizedPostId)) return;
+
+  const isVisibleSharePost = posts.value.some(
+    (post) => Number(post?.id) === normalizedPostId && Number(post?.shared_post_id) > 0
+  );
+
+  if (!isVisibleSharePost) return;
+  if (sharePostRefreshTimer) return;
+
+  sharePostRefreshTimer = window.setTimeout(async () => {
+    sharePostRefreshTimer = null;
+    await refreshPosts();
+  }, 250);
+};
 
 const handlePostEvent = (payload) => {
   if (!payload) return;
@@ -60,6 +80,18 @@ const handlePostEvent = (payload) => {
     feedStore.addPost(payload.data.post);
   } else if (payload.type === "post_updated" && payload.data?.post) {
     feedStore.replacePost(payload.data.post);
+  } else if (payload.type === "post_like_updated") {
+    const postId = payload.data?.post_id || payload.data?.postId;
+    if (postId) {
+      feedStore.updatePostLike(postId, payload.data, currentUser.value?.id ?? null);
+      queueSharePostRefresh(postId);
+    }
+  } else if (payload.type === "post_comment_updated") {
+    const postId = payload.data?.post_id || payload.data?.postId;
+    if (postId) {
+      feedStore.updatePostComments(postId, payload.data);
+      queueSharePostRefresh(postId);
+    }
   } else if (payload.type === "post_deleted") {
     const postId = payload.data?.post_id || payload.data?.postId;
     if (postId) {
@@ -142,6 +174,20 @@ const refreshPosts = async () => {
   }
 };
 
+const stopHomeRefreshLoop = () => {
+  if (!homeRefreshTimer) return;
+  window.clearInterval(homeRefreshTimer);
+  homeRefreshTimer = null;
+};
+
+const startHomeRefreshLoop = () => {
+  stopHomeRefreshLoop();
+  homeRefreshTimer = window.setInterval(async () => {
+    if (document.visibilityState !== "visible") return;
+    await refreshPosts();
+  }, HOME_REFRESH_INTERVAL_MS);
+};
+
 const sendConnectionRequest = async (userId) => {
   try {
     await api.post("/connections/request", { user_id: userId });
@@ -193,10 +239,16 @@ onMounted(() => {
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
   unsubscribePostHub = subscribeToPostEvents(handlePostEvent);
+  startHomeRefreshLoop();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("scroll", onScroll);
+  stopHomeRefreshLoop();
+  if (sharePostRefreshTimer) {
+    window.clearTimeout(sharePostRefreshTimer);
+    sharePostRefreshTimer = null;
+  }
   if (unsubscribePostHub) {
     unsubscribePostHub();
     unsubscribePostHub = null;

@@ -59,6 +59,80 @@ export const useFeedStore = defineStore('feed', {
       })
     },
 
+    updatePostLike(postId, payload = {}, currentUserId = null) {
+      const normalizedPostId = Number(postId)
+      if (!Number.isFinite(normalizedPostId)) return
+
+      const normalizedLikesCount = Number(payload.likes_count ?? payload.likesCount)
+      const actorUserId = Number(payload.actor_user_id ?? payload.actorUserId)
+      const actorLiked = payload.liked
+
+      const applyLikeUpdate = (post) => {
+        if (!post) return post
+
+        const nextPost = { ...post }
+
+        if (Number.isFinite(normalizedLikesCount)) {
+          nextPost.likes_count = normalizedLikesCount
+        }
+
+        if (Number.isFinite(actorUserId) && Number(currentUserId) === actorUserId && typeof actorLiked === 'boolean') {
+          nextPost.liked_by_me = actorLiked
+        }
+
+        return nextPost
+      }
+
+      this.posts = this.posts.map((entry) => {
+        if (Number(entry.id) === normalizedPostId) {
+          return applyLikeUpdate(entry)
+        }
+
+        if (Number(entry.shared_post?.id) === normalizedPostId) {
+          return {
+            ...entry,
+            shared_post: applyLikeUpdate(entry.shared_post),
+          }
+        }
+
+        return entry
+      })
+    },
+
+    updatePostComments(postId, payload = {}) {
+      const normalizedPostId = Number(postId)
+      if (!Number.isFinite(normalizedPostId)) return
+
+      const normalizedCommentsCount = Number(payload.comments_count ?? payload.commentsCount)
+
+      const applyCommentUpdate = (post) => {
+        if (!post) return post
+
+        const nextPost = { ...post }
+
+        if (Number.isFinite(normalizedCommentsCount)) {
+          nextPost.comments_count = normalizedCommentsCount
+        }
+
+        return nextPost
+      }
+
+      this.posts = this.posts.map((entry) => {
+        if (Number(entry.id) === normalizedPostId) {
+          return applyCommentUpdate(entry)
+        }
+
+        if (Number(entry.shared_post?.id) === normalizedPostId) {
+          return {
+            ...entry,
+            shared_post: applyCommentUpdate(entry.shared_post),
+          }
+        }
+
+        return entry
+      })
+    },
+
     removePost(postId) {
       if (!postId) return
       this.posts = this.posts

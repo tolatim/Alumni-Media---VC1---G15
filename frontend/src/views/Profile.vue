@@ -200,6 +200,7 @@ import PostCard from '@/components/ui/PostCard.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
+import { setPostHubUserId, subscribeToPostEvents } from '@/utils/postHub'
 
 const route = useRoute()
 const user = ref(null)
@@ -247,8 +248,10 @@ const loadLoggedInUser = async () => {
   try {
     const response = await api.get('/me')
     loggedInUser.value = response.data
+    setPostHubUserId(loggedInUser.value?.id ?? null)
   } catch {
     loggedInUser.value = null
+    setPostHubUserId(null)
   }
 }
 
@@ -292,10 +295,115 @@ const loadConnectionStatus = async (id) => {
 }
 
 const commentsRefreshKey = ref(0)
+let unsubscribePostHub = null
 
 const refreshProfilePosts = async () => {
   if (!route.params.id) return
   await loadProfile(route.params.id)
+}
+
+const updateProfilePostLike = (postId, payload = {}) => {
+  const normalizedPostId = Number(postId)
+  if (!Number.isFinite(normalizedPostId) || !Array.isArray(user.value?.posts)) return
+
+  const normalizedLikesCount = Number(payload.likes_count ?? payload.likesCount)
+  const actorUserId = Number(payload.actor_user_id ?? payload.actorUserId)
+  const actorLiked = payload.liked
+
+  const applyLikeUpdate = (post) => {
+    if (!post) return post
+
+    const nextPost = { ...post }
+
+    if (Number.isFinite(normalizedLikesCount)) {
+      nextPost.likes_count = normalizedLikesCount
+    }
+
+    if (Number.isFinite(actorUserId) && Number(loggedInUser.value?.id) === actorUserId && typeof actorLiked === 'boolean') {
+      nextPost.liked_by_me = actorLiked
+    }
+
+    return nextPost
+  }
+
+  user.value = {
+    ...user.value,
+    posts: user.value.posts.map((post) => {
+      if (Number(post.id) === normalizedPostId) {
+        return applyLikeUpdate(post)
+      }
+
+      if (Number(post.shared_post?.id) === normalizedPostId) {
+        return {
+          ...post,
+          shared_post: applyLikeUpdate(post.shared_post),
+        }
+      }
+
+      return post
+    }),
+  }
+}
+
+const updateProfilePostComments = (postId, payload = {}) => {
+  const normalizedPostId = Number(postId)
+  if (!Number.isFinite(normalizedPostId) || !Array.isArray(user.value?.posts)) return
+
+  const normalizedCommentsCount = Number(payload.comments_count ?? payload.commentsCount)
+
+  const applyCommentUpdate = (post) => {
+    if (!post) return post
+
+    const nextPost = { ...post }
+
+    if (Number.isFinite(normalizedCommentsCount)) {
+      nextPost.comments_count = normalizedCommentsCount
+    }
+
+    return nextPost
+  }
+
+  user.value = {
+    ...user.value,
+    posts: user.value.posts.map((post) => {
+      if (Number(post.id) === normalizedPostId) {
+        return applyCommentUpdate(post)
+      }
+
+      if (Number(post.shared_post?.id) === normalizedPostId) {
+        return {
+          ...post,
+          shared_post: applyCommentUpdate(post.shared_post),
+        }
+      }
+
+      return post
+    }),
+  }
+}
+
+const handlePostEvent = (payload) => {
+  if (!payload) return
+
+  if (payload.type === 'post_like_updated') {
+    const postId = payload.data?.post_id || payload.data?.postId
+    if (postId) {
+      updateProfilePostLike(postId, payload.data)
+    }
+    return
+  }
+
+  if (payload.type === 'post_comment_updated') {
+    const postId = payload.data?.post_id || payload.data?.postId
+    if (postId) {
+      updateProfilePostComments(postId, payload.data)
+    }
+    return
+  }
+
+  if (payload.type === 'post_created' || payload.type === 'post_updated' || payload.type === 'post_deleted') {
+    refreshProfilePosts()
+  }
 }
 
 const refreshIntervalMs = 15000
@@ -370,6 +478,7 @@ watch(
 
 onMounted(async () => {
   await loadLoggedInUser()
+  unsubscribePostHub = subscribeToPostEvents(handlePostEvent)
   if (route.params.id) {
     await loadProfile(route.params.id)
     await loadConnectionStatus(route.params.id)
@@ -379,5 +488,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   stopProfileRefreshLoop()
+  if (unsubscribePostHub) {
+    unsubscribePostHub()
+    unsubscribePostHub = null
+  }
 })
 </script>

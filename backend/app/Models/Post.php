@@ -61,13 +61,18 @@ class Post extends Model
     public function scopeWithCardData(Builder $query, ?User $viewer = null, bool $includeSharedPost = true): Builder
     {
         $relations = ['user.role'];
+        $visibleAuthorIds = self::visibleAuthorIdsForViewer($viewer);
 
         if (Schema::hasTable('media')) {
             $relations[] = 'media';
         }
 
         if ($includeSharedPost && Schema::hasColumn('posts', 'shared_post_id')) {
-            $relations['sharedPost'] = function ($sharedPostQuery) use ($viewer) {
+            $relations['sharedPost'] = function ($sharedPostQuery) use ($viewer, $visibleAuthorIds) {
+                if (is_array($visibleAuthorIds)) {
+                    $sharedPostQuery->whereIn('user_id', $visibleAuthorIds);
+                }
+
                 $sharedPostQuery->withCardData($viewer, false);
             };
         }
@@ -101,5 +106,35 @@ class Post extends Model
         }
 
         return $query;
+    }
+
+    protected static function visibleAuthorIdsForViewer(?User $viewer): ?array
+    {
+        if (!$viewer) {
+            return null;
+        }
+
+        $visibleUserIds = [(int) $viewer->id];
+
+        if (!Schema::hasTable('connections')) {
+            return $visibleUserIds;
+        }
+
+        $friendIds = Connection::query()
+            ->where('status', 'accepted')
+            ->where(function ($connectionQuery) use ($viewer) {
+                $connectionQuery->where('requester_id', $viewer->id)
+                    ->orWhere('addressee_id', $viewer->id);
+            })
+            ->get()
+            ->map(function ($row) use ($viewer) {
+                return (int) ($row->requester_id === (int) $viewer->id
+                    ? $row->addressee_id
+                    : $row->requester_id);
+            })
+            ->values()
+            ->all();
+
+        return array_values(array_unique(array_merge($visibleUserIds, $friendIds)));
     }
 }

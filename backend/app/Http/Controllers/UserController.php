@@ -48,28 +48,16 @@ class UserController extends Controller
             ->latest();
 
         if ($user) {
-            $allowedUserIds = [(int) $user->id];
+            $query->whereIn('user_id', $this->getVisiblePostOwnerIds($user));
 
-            if (Schema::hasTable('connections')) {
-                $friendIds = Connection::query()
-                    ->where('status', 'accepted')
-                    ->where(function ($connectionQuery) use ($user) {
-                        $connectionQuery->where('requester_id', $user->id)
-                            ->orWhere('addressee_id', $user->id);
-                    })
-                    ->get()
-                    ->map(function ($row) use ($user) {
-                        return (int) ($row->requester_id === (int) $user->id
-                            ? $row->addressee_id
-                            : $row->requester_id);
-                    })
-                    ->values()
-                    ->all();
-
-                $allowedUserIds = array_values(array_unique(array_merge($allowedUserIds, $friendIds)));
+            if (Schema::hasColumn('posts', 'shared_post_id')) {
+                $query->where(function ($postQuery) use ($user) {
+                    $postQuery->where('user_id', '!=', $user->id)
+                        ->orWhereNotNull('shared_post_id');
+                });
+            } else {
+                $query->where('user_id', '!=', $user->id);
             }
-
-            $query->whereIn('user_id', $allowedUserIds);
         }
 
         $query->withCardData($user);
@@ -527,12 +515,18 @@ class UserController extends Controller
     public function show(Request $request, $id)
     {
         $authUser = $request->user();
+        $canViewPosts = $this->canViewPostsOf($authUser, (int) $id);
 
         $query = User::query()->with(['role']);
 
         if (Schema::hasTable('posts')) {
             $query->with([
-                'posts' => function ($postQuery) use ($authUser) {
+                'posts' => function ($postQuery) use ($authUser, $canViewPosts) {
+                    if (!$canViewPosts) {
+                        $postQuery->whereRaw('1 = 0');
+                        return;
+                    }
+
                     $postQuery
                         ->latest()
                         ->withCardData($authUser);
@@ -552,6 +546,41 @@ class UserController extends Controller
             'message' => 'User fetched successfully',
             'data' => $profileUser,
         ]);
+    }
+
+    private function getVisiblePostOwnerIds(User $user): array
+    {
+        $visibleUserIds = [(int) $user->id];
+
+        if (!Schema::hasTable('connections')) {
+            return $visibleUserIds;
+        }
+
+        $friendIds = Connection::query()
+            ->where('status', 'accepted')
+            ->where(function ($connectionQuery) use ($user) {
+                $connectionQuery->where('requester_id', $user->id)
+                    ->orWhere('addressee_id', $user->id);
+            })
+            ->get()
+            ->map(function ($row) use ($user) {
+                return (int) ($row->requester_id === (int) $user->id
+                    ? $row->addressee_id
+                    : $row->requester_id);
+            })
+            ->values()
+            ->all();
+
+        return array_values(array_unique(array_merge($visibleUserIds, $friendIds)));
+    }
+
+    private function canViewPostsOf(?User $viewer, int $profileUserId): bool
+    {
+        if (!$viewer) {
+            return false;
+        }
+
+        return in_array($profileUserId, $this->getVisiblePostOwnerIds($viewer), true);
     }
 
     public function suggestions(Request $request)

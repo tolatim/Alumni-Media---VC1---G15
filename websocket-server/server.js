@@ -11,7 +11,7 @@ const wss = new WebSocket.Server({ port: 8081 }, () => {
   console.log('WebSocket server running on port 8081');
 });
 
-const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted']);
+const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted', 'post_comment_updated', 'post_like_updated']);
 const clients = {};
 const adminClients = new Set();
 

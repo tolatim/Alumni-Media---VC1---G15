@@ -711,6 +711,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import { getLastEventForPost, notify, subscribe } from '@/utils/commentHub.js'
+import { dispatchPostEvent, subscribeToPostEvents } from '@/utils/postHub'
 
 const props = defineProps({
   post: {
@@ -766,6 +767,7 @@ const editingCommentId = ref(null)
 const editingCommentContent = ref('')
 const commentUpdating = ref(false)
 let commentHubUnsubscribe = null
+let postHubUnsubscribe = null
 
 const isMediaExpanded = ref(false)
 
@@ -787,6 +789,8 @@ const isSharePost = computed(() => Boolean(props.post?.shared_post_id || props.p
 const originalPost = computed(() => props.post?.shared_post || null)
 const originalPostId = computed(() => props.post?.shared_post_id ?? null)
 const shareListPostId = computed(() => originalPostId.value ?? props.post?.id ?? null)
+const engagementPost = computed(() => props.post ?? null)
+const engagementPostId = computed(() => props.post?.id ?? null)
 const shareTargetPostId = computed(() => {
   if (props.post?.shared_post_id) {
     return originalPost.value?.id ?? null
@@ -828,17 +832,17 @@ const canReportPost = computed(() => {
 
 const isPostLiked = computed(() => {
   if (likedByMeOverride.value !== null) return Boolean(likedByMeOverride.value)
-  return Boolean(props.post?.liked_by_me)
+  return Boolean(engagementPost.value?.liked_by_me)
 })
 
 const likesCount = computed(() => {
   if (likesCountOverride.value !== null) return toSafeCount(likesCountOverride.value)
-  return toSafeCount(props.post?.likes_count)
+  return toSafeCount(engagementPost.value?.likes_count)
 })
 
 const commentsCount = computed(() => {
   if (commentsCountOverride.value !== null) return toSafeCount(commentsCountOverride.value)
-  return toSafeCount(props.post?.comments_count)
+  return toSafeCount(engagementPost.value?.comments_count)
 })
 
 const formatDate = (value) => {
@@ -1019,11 +1023,24 @@ const toggleShareUsers = async () => {
 }
 
 const toggleLike = async () => {
+  if (!engagementPostId.value) return
+
   likeSubmitting.value = true
   try {
-    const response = await api.post(`/posts/${props.post.id}/like`)
+    const response = await api.post(`/posts/${engagementPostId.value}/like`)
     likedByMeOverride.value = Boolean(response.data?.liked)
     likesCountOverride.value = toSafeCount(response.data?.likes_count)
+    if (isSharePost.value) {
+      dispatchPostEvent({
+        type: 'post_like_updated',
+        data: {
+          post_id: engagementPostId.value,
+          likes_count: response.data?.likes_count,
+          actor_user_id: props.currentUser?.id ?? null,
+          liked: Boolean(response.data?.liked),
+        },
+      })
+    }
   } catch (error) {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to toggle like.'))
@@ -1037,9 +1054,11 @@ const setCommentsCount = (count) => {
 }
 
 const loadComments = async () => {
+  if (!engagementPostId.value) return
+
   commentsLoading.value = true
   try {
-    const response = await api.get(`/posts/${props.post.id}/comments`)
+    const response = await api.get(`/posts/${engagementPostId.value}/comments`)
     comments.value = (response.data?.data || []).map(normalizeComment)
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
   } catch (error) {
@@ -1051,7 +1070,7 @@ const loadComments = async () => {
 }
 
 const handleCommentNotification = async (payload) => {
-  if (!payload || String(payload.postId) !== String(props.post.id)) return
+  if (!payload || String(payload.postId) !== String(engagementPostId.value)) return
   if (payload.commentsCount !== undefined) {
     commentsCountOverride.value = toSafeCount(payload.commentsCount)
   }
@@ -1060,10 +1079,73 @@ const handleCommentNotification = async (payload) => {
   await loadComments()
 }
 
+const handleRealtimePostEvent = async (payload) => {
+  if (!payload) return
+  const eventPostId = payload.data?.post_id || payload.data?.postId
+  if (String(eventPostId) !== String(engagementPostId.value)) return
+
+  if (payload.type === 'post_like_updated') {
+    if (payload.data?.likes_count !== undefined) {
+      likesCountOverride.value = toSafeCount(payload.data.likes_count)
+    }
+
+    const actorUserId = Number(payload.data?.actor_user_id ?? payload.data?.actorUserId)
+    if (Number.isFinite(actorUserId) && Number(props.currentUser?.id) === actorUserId && typeof payload.data?.liked === 'boolean') {
+      likedByMeOverride.value = Boolean(payload.data.liked)
+    }
+
+    return
+  }
+
+  if (payload.type !== 'post_comment_updated') return
+
+  if (payload.data?.comments_count !== undefined) {
+    commentsCountOverride.value = toSafeCount(payload.data.comments_count)
+  }
+
+  if (!commentsOpen.value) return
+
+  comments.value = []
+  await loadComments()
+}
+
 watch(
   () => props.commentsRefreshKey,
   () => {
-    handleCommentNotification({ postId: props.post.id })
+    handleCommentNotification({ postId: engagementPostId.value })
+  }
+)
+
+watch(
+  () => engagementPostId.value,
+  () => {
+    likedByMeOverride.value = null
+    likesCountOverride.value = null
+    commentsCountOverride.value = null
+    comments.value = []
+  }
+)
+
+watch(
+  () => [engagementPost.value?.likes_count, engagementPost.value?.liked_by_me],
+  () => {
+    if (likeSubmitting.value) return
+    likedByMeOverride.value = null
+    likesCountOverride.value = null
+  }
+)
+
+watch(
+  () => engagementPost.value?.comments_count,
+  async (nextCount, previousCount) => {
+    if (commentSubmitting.value || commentUpdating.value) return
+    commentsCountOverride.value = null
+
+    if (!commentsOpen.value) return
+    if (previousCount === undefined || nextCount === previousCount) return
+
+    comments.value = []
+    await loadComments()
   }
 )
 
@@ -1075,16 +1157,18 @@ const toggleComments = async () => {
 }
 
 const submitComment = async () => {
+  if (!engagementPostId.value) return
+
   const content = String(commentDraft.value || '').trim()
   if (!content) return
 
   commentSubmitting.value = true
   try {
-    const response = await api.post(`/posts/${props.post.id}/comments`, { content })
+    const response = await api.post(`/posts/${engagementPostId.value}/comments`, { content })
     const createdComment = response.data?.comment
     if (createdComment) {
       comments.value = [normalizeComment(createdComment), ...comments.value]
-      notify({ postId: props.post.id, commentsCount: response.data?.comments_count })
+      notify({ postId: engagementPostId.value, commentsCount: response.data?.comments_count })
     }
     commentDraft.value = ''
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
@@ -1106,13 +1190,15 @@ const toggleReplyInput = (commentId) => {
 const isReplySubmitting = (commentId) => Boolean(replySubmittingByCommentId.value[commentId])
 
 const submitReply = async (comment) => {
+  if (!engagementPostId.value) return
+
   const commentId = comment.id
   const content = String(replyDraftByCommentId.value[commentId] || '').trim()
   if (!content) return
 
   replySubmittingByCommentId.value[commentId] = true
   try {
-    const response = await api.post(`/posts/${props.post.id}/comments`, {
+    const response = await api.post(`/posts/${engagementPostId.value}/comments`, {
       content,
       parent_id: commentId,
     })
@@ -1122,7 +1208,7 @@ const submitReply = async (comment) => {
         comment.replies = []
       }
       comment.replies = [...comment.replies, normalizeComment(createdReply)]
-      notify({ postId: props.post.id, commentsCount: response.data?.comments_count })
+      notify({ postId: engagementPostId.value, commentsCount: response.data?.comments_count })
     }
     replyDraftByCommentId.value[commentId] = ''
     replyOpenByCommentId.value[commentId] = false
@@ -1201,7 +1287,7 @@ const deleteComment = async (commentId) => {
     const response = await api.delete(`/comments/${commentId}`)
     removeCommentById(commentId)
     setCommentsCount(response.data?.comments_count ?? comments.value.length)
-    notify({ postId: props.post.id, commentsCount: response.data?.comments_count })
+    notify({ postId: engagementPostId.value, commentsCount: response.data?.comments_count })
   } catch (error) {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to delete comment.'))
@@ -1251,7 +1337,8 @@ onMounted(() => {
     loadComments()
   }
   commentHubUnsubscribe = subscribe(handleCommentNotification)
-  const lastEvent = getLastEventForPost(props.post.id)
+  postHubUnsubscribe = subscribeToPostEvents(handleRealtimePostEvent)
+  const lastEvent = getLastEventForPost(engagementPostId.value)
   if (lastEvent) {
     handleCommentNotification(lastEvent)
   }
@@ -1262,6 +1349,10 @@ onBeforeUnmount(() => {
   if (commentHubUnsubscribe) {
     commentHubUnsubscribe()
     commentHubUnsubscribe = null
+  }
+  if (postHubUnsubscribe) {
+    postHubUnsubscribe()
+    postHubUnsubscribe = null
   }
 })
 </script>
