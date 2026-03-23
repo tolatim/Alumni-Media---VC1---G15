@@ -38,6 +38,13 @@
           <span class="font-medium">Messages</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </RouterLink>
+        <RouterLink to="/saved" class="flex items-center justify-between rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+          <span class="inline-flex items-center gap-2 font-medium">
+            <i class="fa-solid fa-bookmark text-slate-700"></i>
+            Saved items
+          </span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </RouterLink>
       </div>
       <button
         type="button"

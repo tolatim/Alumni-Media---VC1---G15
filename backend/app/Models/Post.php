@@ -34,4 +34,15 @@ class Post extends Model
     {
         return $this->hasMany(Like::class);
     }
+    // add saved items
+
+    public function savedByUsers()
+    {
+        return $this->hasMany(SavedPost::class);
+    }
+
+    public function isSavedBy(int $userId): bool
+    {
+        return $this->savedByUsers()->where('user_id', $userId)->exists();
+    }
 }

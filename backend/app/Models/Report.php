@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\WebsocketNotifier;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,6 +26,21 @@ class Report extends Model
         'created_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Report $report): void {
+            WebsocketNotifier::send('admin_activity', [
+                'event' => 'report_submitted',
+                'report_id' => $report->id,
+                'reporter_id' => $report->user_id,
+                'target_type' => class_basename((string) $report->reportable_type),
+                'target_id' => $report->reportable_id,
+                'reason' => $report->reason,
+                'occurred_at' => optional($report->created_at)->toIso8601String() ?? now()->toIso8601String(),
+            ], 'admins');
+        });
+    }
 
     public function user()
     {

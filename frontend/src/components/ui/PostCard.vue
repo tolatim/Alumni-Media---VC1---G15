@@ -138,7 +138,19 @@
         </p>
       </template>
 
-      <div v-if="post.media?.length" class="space-y-2">
+      <div v-if="post.media?.length" class="space-y-2 relative">
+        <button
+          type="button"
+          @click.stop="toggleSave"
+          :aria-pressed="isSaved"
+          class="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white/90 text-slate-600 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-cyan-200 hover:text-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1"
+          :class="isSaved ? 'border-cyan-200 bg-cyan-50 text-cyan-700' : ''"
+          :title="isSaved ? 'Remove from saved' : 'Save post'"
+        >
+          <svg viewBox="0 0 24 24" class="h-4 w-4" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
         <template v-if="shouldCondenseMedia && !isMediaExpanded">
           <div
             v-if="post.media[0]"
@@ -274,6 +286,29 @@
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             <span>{{ commentsCount }}</span>
+          </button>
+
+          <button
+            v-if="canReportPost"
+            type="button"
+            :disabled="reportSubmitting"
+            @click="handleReportPost"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-1 disabled:opacity-60"
+            aria-label="Report post"
+            title="Report post"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M5 4v16" />
+              <path d="M5 5h10l-2 4 2 4H5" />
+            </svg>
+            <span>{{ reportSubmitting ? 'Reporting...' : 'Report' }}</span>
           </button>
         </div>
 
@@ -540,6 +575,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { useSavedPostStore } from '@/stores/savedPostStore'
 import { getLastEventForPost, notify, subscribe } from '@/utils/commentHub.js'
 
 const props = defineProps({
@@ -562,6 +598,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['deleted', 'refresh-posts'])
+const savedPostStore = useSavedPostStore()
+const isSaved = computed(() => savedPostStore.isSaved(props.post.id))
+const toggleSave = () => savedPostStore.toggleSave(props.post.id)
+
 
 const isEditing = ref(false)
 const editTitle = ref('')
@@ -573,6 +613,7 @@ const openPostActionsMenu = ref(false)
 const likeSubmitting = ref(false)
 const likedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
+const reportSubmitting = ref(false)
 
 const commentsOpen = ref(props.autoOpenComments ?? false)
 const commentsLoading = ref(false)
@@ -609,6 +650,13 @@ const canDeletePost = computed(() => {
   const currentUserId = Number(props.currentUser?.id)
   const ownerId = Number(props.post?.user_id ?? props.post?.user?.id)
   return Number.isFinite(currentUserId) && Number.isFinite(ownerId) && currentUserId === ownerId
+})
+
+const canReportPost = computed(() => {
+  const currentUserId = Number(props.currentUser?.id)
+  const ownerId = Number(props.post?.user_id ?? props.post?.user?.id)
+  if (!Number.isFinite(currentUserId) || !Number.isFinite(ownerId)) return false
+  return currentUserId !== ownerId
 })
 
 const isPostLiked = computed(() => {
@@ -712,6 +760,33 @@ const handleDeletePost = async () => {
   } catch (error) {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to delete post.'))
+  }
+}
+
+const handleReportPost = async () => {
+  const defaultReason = 'Inappropriate content'
+  const reasonInput = window.prompt(
+    'Why are you reporting this post? (e.g. spam, harassment, inappropriate content)',
+    defaultReason
+  )
+
+  if (reasonInput === null) return
+
+  const reason = reasonInput.trim()
+  if (!reason) {
+    alert('Please provide a reason for reporting.')
+    return
+  }
+
+  reportSubmitting.value = true
+  try {
+    const response = await api.post(`/posts/${props.post.id}/report`, { reason })
+    alert(response?.data?.message || 'Report submitted successfully.')
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to submit report.'))
+  } finally {
+    reportSubmitting.value = false
   }
 }
 

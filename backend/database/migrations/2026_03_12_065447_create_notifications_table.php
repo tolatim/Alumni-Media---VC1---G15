@@ -13,17 +13,17 @@ return new class extends Migration
         }
 
         Schema::create('notifications', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->unsignedBigInteger('notifiable_id')->nullable();
-            $table->string('notifiable_type')->nullable();
             $table->string('type');
-            $table->json('data')->nullable();
-            $table->timestamp('read_at')->nullable();
+            $table->text('data')->nullable();
+            $table->boolean('seen')->default(false);
             $table->timestamps();
         });
     }
-
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('notifications');

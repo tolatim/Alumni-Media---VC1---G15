@@ -36,6 +36,8 @@ class User extends Authenticatable
         'graduate_year',
         'current_job',
         'company',
+        'suspended_until',
+        'suspended_permanently',
     ];
 
     protected $hidden = [
@@ -46,6 +48,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'suspended_until' => 'datetime',
+        'suspended_permanently' => 'boolean',
     ];
 
     protected $appends = [
@@ -116,6 +120,30 @@ class User extends Authenticatable
         }
 
         return (string) ($this->attributes['name'] ?? '');
+    }
+
+    public function isSuspended(): bool
+    {
+        if ((bool) $this->suspended_permanently) {
+            return true;
+        }
+
+        if (!$this->suspended_until) {
+            return false;
+        }
+
+        return $this->suspended_until->isFuture();
+    }
+    // saved items
+
+    public function savedPosts()
+    {
+        return $this->hasMany(SavedPost::class);
+    }
+
+    public function hasSaved(int $postId): bool
+    {
+        return $this->savedPosts()->where('post_id', $postId)->exists();
     }
 
     public function getProfileAttribute(): array

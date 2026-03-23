@@ -9,6 +9,8 @@ import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
 import Notification from '@/views/Notification.vue'
+import Admin from '@/views/Admin.vue'
+import SavedItems from '@/views/SavedItems.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -22,6 +24,36 @@ const routes = [
       return user?.id ? `/profile/${user.id}` : '/'
     },
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/users',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/posts',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/reports',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
   },
   {
     path: '/connection',
@@ -48,6 +80,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/saved',
+    name: 'SavedItems',
+    component: SavedItems,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile/edit',
     name: 'EditProfile',
     component: EditProfile,
@@ -70,7 +108,7 @@ const routes = [
     component: Profile,
     name: 'Profile',
     meta: { requiresAuth: true },
-  }
+  },
 ]
 
 const router = createRouter({
@@ -91,7 +129,6 @@ router.beforeEach((to, from, next) => {
     user = null
   }
 
-  
   if (to.meta.requiresAuth && !token) {
     return next('/login')
   }
