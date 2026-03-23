@@ -6,10 +6,12 @@ use App\Models\AppSetting;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\WebsocketNotifier;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use App\Models\Notification;
+use Illuminate\Support\Facades\Http;
 
 
 class AuthController extends Controller
@@ -61,12 +63,9 @@ class AuthController extends Controller
 
         Notification::create([
             'user_id' => $user->id,
-            'notifiable_id' => $user->id,
-            'notifiable_type' => \App\Models\User::class,
-            'type' => 'login_success',
-            'data' => [
-                'message' => $user->name . ' logged in successfully.',
-            ],
+            'title'   => 'Welcome to Alumni Media!',
+            'message' => 'Your account has been successfully created.',
+            'type'    => 'register_success',
         ]);
 
 
@@ -126,10 +125,9 @@ class AuthController extends Controller
 
         Notification::create([
             'user_id' => $user->id,
-            'type' => 'register_success',
-            'data' => [
-                'message' => 'Welcome! Your account was created successfully.',
-            ],
+            'title'   => 'Login Successful!',
+            'message' => 'Welcome back, ' . $user->first_name . '!',
+            'type'    => 'login_success',
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;

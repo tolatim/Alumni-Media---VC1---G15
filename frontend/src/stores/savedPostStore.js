@@ -18,7 +18,8 @@ export const useSavedPostStore = defineStore("savedPost", {
     // ── existing (keep as-is, just fix the URL to match your routes) ──
     async loadSavedPosts() {
       const res = await axios.get("/api/saved-posts");
-      this.savedPosts = res.data; // your index() returns array of post_ids
+      const items = res.data?.data || res.data || [];
+      this.savedPosts = items.map(item => Number(item.post_id)).filter(Boolean);
     },
 
     async savePost(postId) {
@@ -29,7 +30,7 @@ export const useSavedPostStore = defineStore("savedPost", {
       this.savedPosts.push(id);
 
       try {
-        await axios.post(`/api/saved-posts/${id}`); // fixed URL to match your routes
+        await axios.post(`/api/saved-posts`, { post_id: id });
       } catch (err) {
         // rollback on failure
         this.savedPosts = this.savedPosts.filter(i => i !== id);
@@ -44,7 +45,7 @@ export const useSavedPostStore = defineStore("savedPost", {
       this.savedPosts = this.savedPosts.filter(i => i !== id);
 
       try {
-        await axios.delete(`/api/saved-posts/${id}`); // fixed URL to match your routes
+        await axios.delete(`/api/saved-posts/${id}`); // backend expects postId in URL
       } catch (err) {
         // rollback on failure
         await this.loadSavedPosts();
@@ -76,23 +77,25 @@ export const useSavedPostStore = defineStore("savedPost", {
         })
 
         // fired when save() broadcasts PostSaved event
-        .listen(".post.saved", ({ post_id }) => {
-          if (!this.savedPosts.includes(post_id)) {
-            this.savedPosts.push(post_id);
+        .listen(".post.saved", ({ saved_post }) => {
+          const pid = Number(saved_post?.post_id);
+          if (pid && !this.savedPosts.includes(pid)) {
+            this.savedPosts.push(pid);
           }
         })
 
         // fired when unsave() broadcasts PostUnsaved event
         .listen(".post.unsaved", ({ post_id }) => {
-          this.savedPosts = this.savedPosts.filter(id => id !== post_id);
+          const pid = Number(post_id);
+          this.savedPosts = this.savedPosts.filter(id => id !== pid);
         });
     },
 
-    unsubscribeFromSavedPosts() {
+    unsubscribeFromSavedPosts(userId) {
       const echo = createEcho();
       if (!echo) return;
 
-      echo.leave("user.*.saved-posts");
+      echo.leave(`private-user.${userId}.saved-posts`);
       this.wsStatus = "disconnected";
     },
 
@@ -102,8 +105,8 @@ export const useSavedPostStore = defineStore("savedPost", {
       this.subscribeToSavedPosts(userId);
     },
 
-    teardown() {
-      this.unsubscribeFromSavedPosts();
+    teardown(userId) {
+      this.unsubscribeFromSavedPosts(userId);
       this.savedPosts = [];
     },
   },
