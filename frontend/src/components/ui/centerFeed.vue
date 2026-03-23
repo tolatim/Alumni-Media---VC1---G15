@@ -1,5 +1,5 @@
 <template>
-  <div class="col-span-12 space-y-5 lg:col-span-6">
+  <div class="col-span-6 space-y-5">
     <div class="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
       <div class="flex items-center gap-3">
         <img :src="currentUser?.profile?.avatar || fallbackAvatar" class="h-11 w-11 rounded-full border border-slate-200 object-cover shadow-sm">

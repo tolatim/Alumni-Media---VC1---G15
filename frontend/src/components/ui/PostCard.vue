@@ -1,10 +1,7 @@
 <template>
   <article
-
-  :id="`post-${post.id}`"
-  class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
->
-
+    class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+  >
     <div class="border-b border-slate-100 px-5 pt-5 pb-4">
       <div class="flex items-start justify-between gap-3">
         <RouterLink

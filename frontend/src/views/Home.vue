@@ -38,10 +38,10 @@ import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
-import { createEcho } from "@/services/realtime";
+
+const posts = ref([])
 
 const currentUser = ref(null);
-const posts = ref([]);
 const suggestions = ref([]);
 const pendingRequests = ref([]);
 const errorMessage = ref("");
@@ -51,21 +51,6 @@ const feedLastPage = ref(1);
 const FEED_PER_PAGE = 8;
 
 const hasMorePosts = ref(true);
-
-const loadFeedPage = async (page = 1, append = false) => {
-  const response = await api.get("/feed", {
-    params: { page, per_page: FEED_PER_PAGE },
-  });
-
-  const items = response.data?.data || [];
-  const pagination = response.data?.pagination || {};
-
-  feedPage.value = Number(pagination.current_page || page);
-  feedLastPage.value = Number(pagination.last_page || page);
-  hasMorePosts.value = feedPage.value < feedLastPage.value;
-
-  posts.value = append ? [...posts.value, ...items] : items;
-};
 
 const loadHomeData = async () => {
   errorMessage.value = "";
@@ -157,26 +142,14 @@ const loadMorePosts = async () => {
   }
 };
 
-let scrollTicking = false;
-let lastScrollLoadAt = 0;
-
 const onScroll = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   const fullHeight = document.documentElement.scrollHeight;
-  if (scrollTicking) return;
-  scrollTicking = true;
 
-  window.requestAnimationFrame(() => {
-    if (scrollTop + viewportHeight >= fullHeight - 280) {
-      const now = Date.now();
-      if (now - lastScrollLoadAt > 400) {
-        lastScrollLoadAt = now;
-        loadMorePosts();
-      }
-    }
-    scrollTicking = false;
-  });
+  if (scrollTop + viewportHeight >= fullHeight - 280) {
+    loadMorePosts();
+  }
 };
 
 const prependPost = (newPost) => {
@@ -238,32 +211,13 @@ const refreshSuggestions = async () => {
   }
 };
 
-const attachFeedRealtime = () => {
-  const echo = createEcho();
-  if (!echo) return;
-
-  echo.channel('feed').listen('.PostCreated', (payload) => {
-    const post = payload?.post || payload;
-    if (!post?.id) return;
-    if (posts.value.some((item) => item.id === post.id)) return;
-    posts.value = [post, ...posts.value];
-  });
-};
-
-const detachFeedRealtime = () => {
-  if (typeof window !== 'undefined' && window.Echo) {
-    window.Echo.leave('feed');
-  }
-};
-
 onMounted(() => {
   loadHomeData();
-  attachFeedRealtime();
   window.addEventListener("scroll", onScroll, { passive: true });
+
 });
 
 onBeforeUnmount(() => {
-  detachFeedRealtime();
   window.removeEventListener("scroll", onScroll);
 });
 </script>

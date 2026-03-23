@@ -105,7 +105,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
-import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.webp'
+import defaultCover from '@/assets/images/3840x2160-white-solid-color-background.jpg'
 
 const router = useRouter()
 const loading = ref(false)

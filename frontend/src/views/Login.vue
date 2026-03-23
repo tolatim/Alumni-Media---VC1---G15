@@ -273,7 +273,6 @@ button.loading .spinner {
 import { ref } from "vue";
 import { loginUser } from "@/services/authService";
 import { useRouter } from "vue-router";
-import { createEcho } from "@/services/realtime";
 
 const router = useRouter();
 
@@ -301,7 +300,6 @@ async function login() {
 
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
-    createEcho();
 
     // Role may come as object ({ name: 'alumni' }) or string ('alumni')
     const roleName = typeof user.role === "string" ? user.role : user.role?.name;
