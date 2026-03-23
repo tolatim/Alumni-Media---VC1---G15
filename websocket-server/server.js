@@ -28,6 +28,33 @@ const sendToAdmins = (payload) => {
     deadSockets.forEach((ws) => adminClients.delete(ws));
 };
 
+const sendToRecipients = (recipients, payload) => {
+    const uniqueRecipients = [...new Set((Array.isArray(recipients) ? recipients : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0))];
+
+    let delivered = 0;
+
+    uniqueRecipients.forEach((recipientId) => {
+        const target = clients[recipientId];
+        if (target && target.readyState === WebSocket.OPEN) {
+            target.send(JSON.stringify(payload));
+            delivered += 1;
+        }
+    });
+
+    return delivered;
+};
+
+const resolveLegacyRecipient = (type, data) => {
+    if (type === 'connection_request') return data.addressee_id;
+    if (type === 'accept_request') return data.requester_id;
+    if (type === 'unfriend') return data.requester_id;
+    if (type === 'reject') return data.requester_id;
+    if (type === 'block') return data.blocker_id;
+    return null;
+};
+
 wss.on('connection', (ws) => {
     console.log("New client connected");
 
@@ -39,6 +66,9 @@ wss.on('connection', (ws) => {
             console.log("Received:", data);
 
             if (data.type === 'auth') {
+                if (ws.user_id && clients[ws.user_id] === ws) {
+                    delete clients[ws.user_id];
+                }
 
                 ws.user_id = data.user_id;
                 clients[data.user_id] = ws;
@@ -78,7 +108,7 @@ wss.on('connection', (ws) => {
 
 app.post('/event', (req, res) => {
 
-    const { type, data = {}, audience } = req.body || {};
+    const { type, data = {}, recipients, audience } = req.body || {};
 
     if (audience === 'admins') {
         sendToAdmins({
@@ -93,41 +123,24 @@ app.post('/event', (req, res) => {
         });
     }
 
-    let targetUser;
+    const targetRecipients = Array.isArray(recipients) && recipients.length
+        ? recipients
+        : [resolveLegacyRecipient(type, data)].filter(Boolean);
 
-    if(type === 'connection_request'){
-        targetUser = clients[data.addressee_id];
-    }
-    else if(type === 'accept_request'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'unfriend'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'reject'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'block'){
-        targetUser = clients[data.blocker_id]
-    }
+    const delivered = sendToRecipients(targetRecipients, {
+        type: type,
+        data: data
+    });
 
-    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
-
-        targetUser.send(JSON.stringify({
-            type: type,
-            data: data
-        }));
-
-        console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocker_id}`);
-
+    if (delivered > 0) {
+        console.log(`Event ${type} sent to ${delivered} recipient(s)`);
     } else {
-
-        console.log('Target user is offline or not specified');
-
+        console.log(`No connected recipients for ${type}`);
     }
 
     res.json({
-        status: 'event processed'
+        status: 'event processed',
+        delivered
     });
 
 });

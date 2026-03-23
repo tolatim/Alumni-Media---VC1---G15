@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import api from '@/services/api'
-import { createEcho, disconnectEcho } from '@/services/realtime'
+import { createMessageSocket } from '@/services/messageSocket'
 
 const CONTACTS_PER_PAGE = 12
 const MESSAGES_PER_PAGE = 20
-const LIVE_REFRESH_INTERVAL_MS = 900
-const SOCKET_FALLBACK_DELAY_MS = 1200
+const LIVE_REFRESH_INTERVAL_MS = 2000
+const SOCKET_FALLBACK_DELAY_MS = 700
 
 const defaultPagination = (perPage) => ({
   current_page: 1,
@@ -74,7 +74,6 @@ export const useMessageStore = defineStore('message', () => {
   const messagesPagination = ref(defaultPagination(MESSAGES_PER_PAGE))
 
   const socket = shallowRef(null)
-  const echoChannel = shallowRef(null)
   const socketStatus = ref('idle')
   let hasBootstrapped = false
   let bootstrapPromise = null
@@ -87,6 +86,11 @@ export const useMessageStore = defineStore('message', () => {
   let lastSyncAt = 0
   let messageIds = new Set()
   let latestMessageId = 0
+
+  const emitMessagesUpdated = () => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new Event('messages:updated'))
+  }
 
   const resetMessageState = () => {
     messages.value = []
@@ -317,7 +321,7 @@ export const useMessageStore = defineStore('message', () => {
       }
 
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
-      window.dispatchEvent(new Event('messages:updated'))
+      emitMessagesUpdated()
     } catch (error) {
       if (!appendOlder) {
         messages.value = []
@@ -349,7 +353,7 @@ export const useMessageStore = defineStore('message', () => {
         markReadForContact(selectedUser.value.id)
       }
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
-      window.dispatchEvent(new Event('messages:updated'))
+      emitMessagesUpdated()
     } catch {
       // keep the fast path silent; regular loads still surface errors
     }
@@ -412,7 +416,8 @@ export const useMessageStore = defineStore('message', () => {
         await loadMessages(selectedUser.value.id, 1, false)
       }
 
-      scheduleContactsRefresh(contactsPagination.value.current_page, true)
+      clearUnreadForContact(selectedUser.value.id)
+      touchContact(selectedUser.value.id)
       successMessage.value = 'Message sent.'
       return true
     } catch (error) {
@@ -430,7 +435,7 @@ export const useMessageStore = defineStore('message', () => {
       await api.delete(`/messages/item/${messageId}`, withSilentLoading())
       removeMessage(messageId)
       successMessage.value = 'Message deleted.'
-      window.dispatchEvent(new Event('messages:updated'))
+      emitMessagesUpdated()
     } catch (error) {
       errorMessage.value = error.response?.data?.message || 'Failed to delete message.'
     } finally {
@@ -482,7 +487,7 @@ export const useMessageStore = defineStore('message', () => {
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
       await loadSidebarConnections()
       successMessage.value = 'User blocked.'
-      window.dispatchEvent(new Event('messages:updated'))
+      emitMessagesUpdated()
     } catch (error) {
       errorMessage.value = error.response?.data?.message || 'Failed to block user.'
     } finally {
@@ -501,7 +506,7 @@ export const useMessageStore = defineStore('message', () => {
       scheduleContactsRefresh(contactsPagination.value.current_page, true)
       await loadSidebarConnections()
       successMessage.value = 'User unblocked.'
-      window.dispatchEvent(new Event('messages:updated'))
+      emitMessagesUpdated()
     } catch (error) {
       errorMessage.value = error.response?.data?.message || 'Failed to unblock user.'
     } finally {
@@ -520,7 +525,7 @@ export const useMessageStore = defineStore('message', () => {
         await loadConnectionStatus(userId)
       }
       successMessage.value = 'User unblocked.'
-      window.dispatchEvent(new Event('messages:updated'))
+      emitMessagesUpdated()
     } catch (error) {
       errorMessage.value = error.response?.data?.message || 'Failed to unblock user.'
     } finally {
@@ -533,6 +538,17 @@ export const useMessageStore = defineStore('message', () => {
     const existing = contacts.value.find((contact) => String(contact.id) === String(contactId))
     if (!existing) return null
     return existing
+  }
+
+  const touchContact = (contactId) => {
+    if (!contactId) return
+    const index = contacts.value.findIndex((contact) => String(contact.id) === String(contactId))
+    if (index <= 0) return
+
+    const nextContacts = contacts.value.slice()
+    const [contact] = nextContacts.splice(index, 1)
+    nextContacts.unshift(contact)
+    contacts.value = nextContacts
   }
 
   const bumpUnreadForContact = (contactId) => {
@@ -580,16 +596,23 @@ export const useMessageStore = defineStore('message', () => {
       bumpUnreadForContact(counterpartId)
     }
 
-    scheduleContactsRefresh(contactsPagination.value.current_page)
-    window.dispatchEvent(new Event('messages:updated'))
+    touchContact(counterpartId)
+    if (!ensureContactEntry(counterpartId)) {
+      scheduleContactsRefresh(contactsPagination.value.current_page, true)
+    }
+    emitMessagesUpdated()
   }
 
   const handleUpdatedMessage = (message) => {
     upsertMessage(message)
+    const counterpartId = message.sender_id === me.value?.id ? message.receiver_id : message.sender_id
+    touchContact(counterpartId)
+    emitMessagesUpdated()
   }
 
   const handleDeletedMessage = (messageId) => {
     removeMessage(messageId)
+    emitMessagesUpdated()
   }
 
   const startLiveRefresh = () => {
@@ -654,77 +677,47 @@ export const useMessageStore = defineStore('message', () => {
     if (socket.value) return
     socketStatus.value = 'connecting'
 
-    const echo = createEcho()
-    if (!echo || !me.value?.id) {
+    if (!me.value?.id) {
       socketStatus.value = 'error'
       startLiveRefresh()
       return
     }
 
-    socket.value = echo
-    echoChannel.value = echo.private(`user.${me.value.id}`)
-    scheduleFallbackStart()
-
-    const pusherConnection = echo.connector?.pusher?.connection
-    if (pusherConnection && typeof pusherConnection.bind === 'function') {
-      pusherConnection.bind('connected', () => {
-        socketStatus.value = 'connected'
-        stopLiveRefresh()
-      })
-
-      pusherConnection.bind('disconnected', () => {
-        socketStatus.value = 'disconnected'
-        startLiveRefresh()
-      })
-
-      pusherConnection.bind('unavailable', () => {
-        socketStatus.value = 'error'
-        startLiveRefresh()
-      })
-    }
-
-    if (typeof echoChannel.value?.subscribed === 'function') {
-      echoChannel.value.subscribed(() => {
+    const messageSocket = createMessageSocket({
+      getAuthToken: () => localStorage.getItem('token'),
+      getUserId: () => me.value?.id,
+      onOpen: () => {
         socketStatus.value = 'connected'
         clearFallbackStartTimer()
         stopLiveRefresh()
-      })
-    }
-
-    if (typeof echoChannel.value?.error === 'function') {
-      echoChannel.value.error(() => {
+      },
+      onClose: () => {
+        socketStatus.value = 'disconnected'
+        startLiveRefresh()
+      },
+      onError: () => {
         socketStatus.value = 'error'
         startLiveRefresh()
-      })
+      },
+      onMessage: handleSocketPayload,
+    })
+
+    if (!messageSocket) {
+      socketStatus.value = 'error'
+      startLiveRefresh()
+      return
     }
 
-    echoChannel.value.listen('.MessageCreated', (payload) => {
-      const message = extractMessage(payload)
-      if (message) handleIncomingMessage(message)
-    })
-
-    echoChannel.value.listen('.MessageUpdated', (payload) => {
-      const message = extractMessage(payload)
-      if (message) handleUpdatedMessage(message)
-    })
-
-    echoChannel.value.listen('.MessageDeleted', (payload) => {
-      const deletedId = payload?.message_id || payload?.id || payload?.data?.id
-      handleDeletedMessage(deletedId)
-    })
+    socket.value = messageSocket
+    scheduleFallbackStart()
+    socket.value.connect()
   }
 
   const disconnectSocket = () => {
     clearFallbackStartTimer()
     stopLiveRefresh()
-    if (echoChannel.value) {
-      echoChannel.value.stopListening('.MessageCreated')
-      echoChannel.value.stopListening('.MessageUpdated')
-      echoChannel.value.stopListening('.MessageDeleted')
-      echoChannel.value = null
-    }
     if (socket.value) {
-      disconnectEcho()
+      socket.value.disconnect()
       socket.value = null
       socketStatus.value = 'idle'
     }

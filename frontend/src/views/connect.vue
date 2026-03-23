@@ -1,6 +1,5 @@
 <template>
   <Navbar />
-  <PageLoading />
   <main class="min-h-screen bg-slate-50 py-6 md:py-8">
     <div class="mx-auto max-w-7xl px-4 sm:px-5">
       <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -289,7 +288,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import Navbar from '@/components/ui/nav.vue'
-import PageLoading from '@/components/ui/PageLoading.vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 

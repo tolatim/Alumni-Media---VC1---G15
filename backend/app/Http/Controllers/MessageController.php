@@ -7,9 +7,10 @@ use App\Events\MessageDeleted;
 use App\Events\MessageUpdated;
 use App\Models\Connection;
 use App\Models\Message;
-use App\Models\Notification;
 use App\Models\User;
 use App\Services\MediaStorageService;
+use App\Services\NotificationService;
+use App\Services\RealtimeEventService;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
@@ -148,15 +149,19 @@ class MessageController extends Controller
             'status' => 'sent',
         ]);
 
-        Notification::create([
-            'user_id' => $targetId,
-            'title' => 'New Message',
-            'message' => ($me->name ?: 'Someone') . ' sent you a message.',
-            'type' => 'message',
-            'related_id' => $message->id,
-        ]);
+        NotificationService::send(
+            $targetId,
+            'New Message',
+            ($me->name ?: 'Someone') . ' sent you a message.',
+            'message',
+            $me->id
+        );
 
         $this->safeBroadcast(new MessageCreated($message));
+        $this->dispatchRealtimeMessageEvent('message_created', [
+            'event' => 'MessageCreated',
+            'message' => $message,
+        ], [(int) $message->sender_id, (int) $message->receiver_id]);
 
         return response()->json([
             'message' => 'Message sent successfully',
@@ -237,6 +242,13 @@ class MessageController extends Controller
         $message->delete();
 
         $this->safeBroadcast(new MessageDeleted($deletedId, $senderId, $receiverId));
+        $this->dispatchRealtimeMessageEvent('message_deleted', [
+            'event' => 'MessageDeleted',
+            'message_id' => $deletedId,
+            'id' => $deletedId,
+            'sender_id' => $senderId,
+            'receiver_id' => $receiverId,
+        ], [$senderId, $receiverId]);
 
         return response()->json([
             'message' => 'Message deleted successfully',
@@ -284,6 +296,10 @@ class MessageController extends Controller
         $message = $message->fresh();
 
         $this->safeBroadcast(new MessageUpdated($message));
+        $this->dispatchRealtimeMessageEvent('message_updated', [
+            'event' => 'MessageUpdated',
+            'message' => $message,
+        ], [(int) $message->sender_id, (int) $message->receiver_id]);
 
         return response()->json([
             'message' => 'Message updated successfully',
@@ -341,6 +357,11 @@ class MessageController extends Controller
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function dispatchRealtimeMessageEvent(string $type, array $data, array $recipients): void
+    {
+        RealtimeEventService::dispatch($type, $data, $recipients);
     }
 
     private function applyConversationFilter(

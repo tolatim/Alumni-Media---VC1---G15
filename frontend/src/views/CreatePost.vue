@@ -1,6 +1,5 @@
 <template>
   <Navbar />
-  <PageLoading />
 
   <main class="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white py-8 px-4 sm:px-6">
     <div class="mx-auto max-w-7xl grid grid-cols-12 gap-6">
@@ -147,13 +146,11 @@
 <script>
 import axios from 'axios';
 import Navbar from '@/components/ui/nav.vue';
-import PageLoading from '@/components/ui/PageLoading.vue';
 import { createPost } from '@/services/authService';
 
 export default {
   components: {
-    Navbar,
-    PageLoading
+    Navbar
   },
 
   data() {

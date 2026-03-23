@@ -6,126 +6,161 @@ use App\Events\NewNotification;
 use App\Models\Notification;
 use App\Models\Post;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 class NotificationService
 {
-    public static function send(int $userId, string $title, string $message, string $type, ?int $relatedId = null): Notification
+    public static function welcome(User $user): ?Notification
     {
-        $notification = Notification::create([
-            'user_id' => $userId,
-            'title' => $title,
-            'message' => $message,
-            'type' => $type,
-            'related_id' => $relatedId,
-        ]);
-
-        try {
-            broadcast(new NewNotification($userId, $title, $message, $type, $relatedId));
-        } catch (Throwable $exception) {
-            Log::warning('Notification broadcast failed.', [
-                'user_id' => $userId,
-                'type' => $type,
-                'related_id' => $relatedId,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-
-        return $notification;
+        return self::send(
+            $user->id,
+            'Welcome',
+            'Welcome to Alumni Media.',
+            'system'
+        );
     }
 
-    public static function liked(User $postOwner, User $liker, Post $post): ?Notification
+    public static function login(User $user): ?Notification
     {
-        if ((int) $postOwner->id === (int) $liker->id) {
+        return self::send(
+            $user->id,
+            'Login',
+            'You logged in successfully.',
+            'login'
+        );
+    }
+
+    public static function liked(User $receiver, User $actor, Post $post): ?Notification
+    {
+        if ((int) $receiver->id === (int) $actor->id) {
             return null;
         }
 
         return self::send(
-            $postOwner->id,
+            $receiver->id,
             'New Like',
-            $liker->name . ' liked your post.',
+            trim($actor->first_name . ' ' . $actor->last_name) . ' liked your post.',
             'like',
             $post->id
         );
     }
 
-    public static function commented(User $postOwner, User $commenter, Post $post): ?Notification
+    public static function notifyPostCommented(Post $post, User $actor): ?Notification
     {
-        if ((int) $postOwner->id === (int) $commenter->id) {
+        $receiver = $post->user;
+        if (!$receiver || (int) $receiver->id === (int) $actor->id) {
             return null;
         }
 
         return self::send(
-            $postOwner->id,
+            $receiver->id,
             'New Comment',
-            $commenter->name . ' commented on your post.',
+            trim($actor->first_name . ' ' . $actor->last_name) . ' commented on your post.',
             'comment',
             $post->id
         );
     }
 
-    public static function notifyPostCommented(Post $post, User $commenter): ?Notification
+    public static function connectionRequest(?User $receiver, User $actor): ?Notification
     {
-        $post->loadMissing('user');
-
-        if (!$post->user) {
+        if (!$receiver || (int) $receiver->id === (int) $actor->id) {
             return null;
         }
 
-        return self::commented($post->user, $commenter, $post);
-    }
-
-    public static function connectionRequest(User $receiver, User $sender): Notification
-    {
         return self::send(
             $receiver->id,
             'Connection Request',
-            $sender->name . ' sent you a connection request.',
+            trim($actor->first_name . ' ' . $actor->last_name) . ' sent you a connection request.',
             'connect',
-            $sender->id
+            $actor->id
         );
     }
 
-    public static function connectionAccepted(User $requester, User $accepter): Notification
+    public static function connectionAccepted(?User $receiver, User $actor): ?Notification
     {
+        if (!$receiver || (int) $receiver->id === (int) $actor->id) {
+            return null;
+        }
+
         return self::send(
-            $requester->id,
+            $receiver->id,
             'Connection Accepted',
-            $accepter->name . ' accepted your connection request.',
+            trim($actor->first_name . ' ' . $actor->last_name) . ' accepted your connection request.',
             'accept',
-            $accepter->id
+            $actor->id
         );
     }
 
-    public static function connectionRejected(User $requester, User $rejecter): Notification
+    public static function connectionRejected(?User $receiver, User $actor): ?Notification
     {
+        if (!$receiver || (int) $receiver->id === (int) $actor->id) {
+            return null;
+        }
+
         return self::send(
-            $requester->id,
+            $receiver->id,
             'Connection Rejected',
-            $rejecter->name . ' rejected your connection request.',
+            trim($actor->first_name . ' ' . $actor->last_name) . ' rejected your connection request.',
             'reject',
-            $rejecter->id
+            $actor->id
         );
     }
 
-    public static function welcome(User $user): Notification
-    {
-        return self::send(
-            $user->id,
-            'Welcome!',
-            'Welcome to Alumni Media, ' . $user->name . '!',
-            'system'
-        );
+    public static function send(
+        int $userId,
+        string $title,
+        string $message,
+        string $type,
+        ?int $relatedId = null
+    ): ?Notification {
+        if (!self::canPersistNotifications()) {
+            return null;
+        }
+
+        try {
+            $notification = Notification::create([
+                'user_id' => $userId,
+                'title' => $title,
+                'message' => $message,
+                'type' => $type,
+                'related_id' => $relatedId,
+                'read_at' => null,
+            ]);
+
+            self::broadcast($notification);
+
+            return $notification;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
-    public static function login(User $user): Notification
+    private static function broadcast(Notification $notification): void
     {
-        return self::send(
-            $user->id,
-            'New Login',
-            'A new login to your account was detected.',
-            'login'
-        );
+        try {
+            broadcast(new NewNotification(
+                (int) $notification->user_id,
+                (string) $notification->title,
+                (string) $notification->message,
+                (string) $notification->type,
+                $notification->related_id ? (int) $notification->related_id : null
+            ))->toOthers();
+        } catch (Throwable) {
+            // Keep notifications non-blocking even if broadcast transport is unavailable.
+        }
+    }
+
+    private static function canPersistNotifications(): bool
+    {
+        return Schema::hasTable('notifications')
+            && Schema::hasColumns('notifications', [
+                'user_id',
+                'title',
+                'message',
+                'type',
+                'related_id',
+                'read_at',
+            ]);
     }
 }

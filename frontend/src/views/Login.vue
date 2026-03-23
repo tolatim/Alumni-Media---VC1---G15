@@ -1,5 +1,4 @@
 <template>
-  <PageLoading />
   <div class="login-container">
 
     <!-- Left Panel: Marketing / Banner -->
@@ -274,7 +273,6 @@ button.loading .spinner {
 import { ref } from "vue";
 import { loginUser } from "@/services/authService";
 import { useRouter } from "vue-router";
-import PageLoading from "@/components/ui/PageLoading.vue";
 import { createEcho } from "@/services/realtime";
 
 const router = useRouter();
