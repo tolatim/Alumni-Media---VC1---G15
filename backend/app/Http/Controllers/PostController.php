@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Connection;
 use App\Models\User;
+use App\Models\Report;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -75,43 +77,27 @@ class PostController extends Controller
             }
         }
 
-        if ($actor && Schema::hasTable('connections')) {
-            // Fetch all accepted connections for the actor
-            $connections = Connection::query()
-                ->where('status', 'accepted')
-                ->where(function ($query) use ($actor) {
-                    $query->where('requester_id', $actor->id)
-                        ->orWhere('addressee_id', $actor->id);
-                })
-                ->get(['requester_id', 'addressee_id']);
+        $postPayload = $post
+            ->fresh()
+            ->load('media', 'user.role')
+            ->loadCount(['likes', 'comments']);
 
-            // Map connections to target user IDs (the "other" user)
-            $targetIds = $connections->map(
-                fn($connection) =>
-                (int) ($connection->requester_id === (int) $actor->id
-                    ? $connection->addressee_id
-                    : $connection->requester_id)
-            )->unique()->values()->all();
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'post_created',
+                'data' => [
+                    'post' => $postPayload,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
 
-            // Notify all target users
-            if (!empty($targetIds)) {
-                $users = User::whereIn('id', $targetIds)->get();
-                foreach ($users as $user) {
-                    NotificationService::send(
-                        $user->id,
-                        'New Post',
-                        $actor->first_name . ' ' . $actor->last_name . ' published a new post.',
-                        'post',
-                        $post->id
-                    );
-                }
-            }
-        }  
-
-        // Return post with media
         return response()->json([
             'message' => 'Post created successfully!',
-            'post'    => $post->load('media', 'user')->loadCount(['likes', 'comments'])
+            'post' => $postPayload,
         ], 201);
     }  
 
@@ -222,9 +208,27 @@ class PostController extends Controller
             }
         }
 
+        $updatedPost = $post
+            ->fresh()
+            ->load('media', 'user.role')
+            ->loadCount(['likes', 'comments']);
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'post_updated',
+                'data' => [
+                    'post' => $updatedPost,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Post updated successfully',
-            'post' => $post->fresh()->load('media', 'user')->loadCount(['likes', 'comments']),
+            'post' => $updatedPost,
         ]);
     }
 
@@ -255,7 +259,22 @@ class PostController extends Controller
             }
         }
 
+        $deletedPostId = $post->id;
         $post->delete();
+
+        try {
+            Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post('http://localhost:3000/event', [
+                'type' => 'post_deleted',
+                'data' => [
+                    'post_id' => $deletedPostId,
+                    'user_id' => $user->id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('WebSocket event failed: ' . $e->getMessage());
+        }
 
         return response()->json(['message' => 'Post deleted successfully']);
     }

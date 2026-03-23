@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
@@ -294,15 +295,6 @@ class UserController extends Controller
             'status'       => 'pending',
         ]);
 
-<<<<<<<<< Temporary merge branch 1
-        $targetUser = User::find($targetId);
-
-        if ($targetUser) {
-            $targetUser->notify(new \App\Notifications\ConnectionNotification($me, $connection->id));
-        }
-
-
-=========
         try {
             Http::withHeaders([
                 'Content-Type' => 'application/json',
@@ -318,7 +310,6 @@ class UserController extends Controller
             \Log::error('WebSocket event failed: ' . $e->getMessage());
         }
 
->>>>>>>>> Temporary merge branch 2
         return response()->json([
             'message' => 'Connection request sent successfully',
             'data'    => $connection->load(['requester', 'addressee']),

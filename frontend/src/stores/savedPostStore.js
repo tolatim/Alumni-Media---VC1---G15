@@ -95,7 +95,7 @@ export const useSavedPostStore = defineStore("savedPost", {
       const echo = createEcho();
       if (!echo) return;
 
-      echo.leave(`private-user.${userId}.saved-posts`);
+      echo.leave(`user.${userId}.saved-posts`);
       this.wsStatus = "disconnected";
     },
 

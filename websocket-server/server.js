@@ -12,6 +12,7 @@ const wss = new WebSocket.Server({ port: 8081 }, () => {
 });
 
 let clients = {};
+<<<<<<< HEAD
 const adminClients = new Set();
 
 const sendToAdmins = (payload) => {
@@ -26,6 +27,20 @@ const sendToAdmins = (payload) => {
     });
 
     deadSockets.forEach((ws) => adminClients.delete(ws));
+=======
+const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted']);
+
+const broadcastToAllClients = (payload) => {
+    const message = JSON.stringify(payload);
+    let recipients = 0;
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+            recipients += 1;
+        }
+    });
+    return recipients;
+>>>>>>> cddd5d6dc290b3d20f582d43df9ff1520736e838
 };
 
 wss.on('connection', (ws) => {
@@ -78,6 +93,7 @@ wss.on('connection', (ws) => {
 
 app.post('/event', (req, res) => {
 
+<<<<<<< HEAD
     const { type, data = {}, audience } = req.body || {};
 
     if (audience === 'admins') {
@@ -90,6 +106,16 @@ app.post('/event', (req, res) => {
         return res.json({
             status: 'event processed',
             delivered_to: 'admins',
+=======
+    const { type, data } = req.body;
+    if (BROADCAST_EVENTS.has(type)) {
+        const recipients = broadcastToAllClients({ type, data });
+        console.log(`Broadcast event '${type}' to ${recipients} clients`);
+
+        return res.json({
+            status: 'event broadcasted',
+            recipients,
+>>>>>>> cddd5d6dc290b3d20f582d43df9ff1520736e838
         });
     }
 
