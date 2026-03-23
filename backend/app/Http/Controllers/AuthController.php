@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppSetting;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\WebsocketNotifier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use App\Services\NotificationService;
+
 
 class AuthController extends Controller
 {
@@ -20,32 +21,18 @@ class AuthController extends Controller
             'last_name' => 'required|string|max:100',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
-            'registration_key' => 'nullable|string|max:255',
         ]);
 
-        $configuredKey = trim((string) AppSetting::query()->where('key', 'registration_key')->value('value'));
-        $fallbackKey = trim((string) env('REGISTRATION_KEY', ''));
-        $effectiveRegistrationKey = $configuredKey !== '' ? $configuredKey : $fallbackKey;
+        $userRole = Role::firstOrCreate(['name' => 'user']);
 
-        if ($effectiveRegistrationKey !== '' && !hash_equals($effectiveRegistrationKey, (string) ($validated['registration_key'] ?? ''))) {
-            return response()->json([
-                'message' => 'Invalid registration key.',
-            ], 403);
-        }
-
-        // Assign default role
-        $userRole = Role::firstOrCreate(['name' => 'alumni']);
-
-        // Create the user
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'role_id' => $userRole->id,
             'email' => $validated['email'],
-            'password' => bcrypt($validated['password']), // Always hash passwords
+            'password' => $validated['password'],
         ]);
 
-        // Cache user data for 5 minutes
         Cache::put('user:' . $user->id, [
             'id' => $user->id,
             'first_name' => $user->first_name,
@@ -53,34 +40,19 @@ class AuthController extends Controller
             'email' => $user->email
         ], 300);
 
+        NotificationService::welcome($user); // ✅ this is all you need
+
+
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
-
-        // ----------------------------
-        // Send event to Node.js server
-        // ----------------------------
-        WebsocketNotifier::send('new_user', [
-            'id' => $user->id,
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-        ]);
-
-        WebsocketNotifier::send('admin_activity', [
-            'event' => 'user_registered',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'occurred_at' => now()->toIso8601String(),
-        ], 'admins');
 
         return response()->json([
             'message' => 'User created successfully',
             'token' => $token,
-            'user' => $user->load('role'),
+            'user' => $user,
         ], 201);
     }
+
     // Login
     public function login(Request $request)
     {
@@ -97,12 +69,14 @@ class AuthController extends Controller
 
         $user = User::with(['role'])->findOrFail(Auth::id());
 
-        if ($user->isSuspended()) {
+        if (method_exists($user, 'isSuspended') && $user->isSuspended()) {
             Auth::logout();
             return response()->json([
                 'message' => 'Your account is suspended',
             ], 403);
         }
+
+        NotificationService::login($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

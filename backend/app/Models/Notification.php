@@ -2,29 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
 {
-    use HasFactory;
-
-    public const UPDATED_AT = null;
-
     protected $fillable = [
         'user_id',
-        'notifiable_id',
-        'notifiable_type',
+        'title',
+        'message',
         'type',
-        'data',
+        'related_id',
         'read_at',
-        'created_at',
     ];
 
     protected $casts = [
-        'data' => 'array',
         'read_at' => 'datetime',
-        'created_at' => 'datetime',
     ];
 
     public function user()
@@ -32,8 +24,8 @@ class Notification extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function notifiable()
+    public function isRead(): bool
     {
-        return $this->morphTo();
+        return $this->read_at !== null;
     }
 }
