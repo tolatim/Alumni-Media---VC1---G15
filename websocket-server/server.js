@@ -7,10 +7,6 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const wss = new WebSocket.Server({ port: 8081 }, () => {
-    console.log('WebSocket server running on port 8081');
-});
-
 let clients = {};
 const adminClients = new Set();
 
@@ -55,59 +51,7 @@ const resolveLegacyRecipient = (type, data) => {
     return null;
 };
 
-wss.on('connection', (ws) => {
-    console.log("New client connected");
-
-    ws.on('message', (message) => {
-        try {
-
-            const data = JSON.parse(message.toString());
-
-            console.log("Received:", data);
-
-            if (data.type === 'auth') {
-                if (ws.user_id && clients[ws.user_id] === ws) {
-                    delete clients[ws.user_id];
-                }
-
-                ws.user_id = data.user_id;
-                clients[data.user_id] = ws;
-                const role = String(data.role || '').toLowerCase();
-                const channel = String(data.channel || '').toLowerCase();
-
-                if (role === 'admin' || channel === 'admin') {
-                    ws.isAdmin = true;
-                    adminClients.add(ws);
-                }
-
-                console.log("User authenticated:", data.user_id);
-
-            }
-
-        } catch (err) {
-            console.log('Invalid message', err);
-        }
-    });
-
-    ws.on('close', () => {
-
-        if (ws.user_id && clients[ws.user_id] === ws) {
-
-            delete clients[ws.user_id];
-
-            console.log(`User ${ws.user_id} disconnected`);
-
-        }
-
-        if (ws.isAdmin) {
-            adminClients.delete(ws);
-        }
-
-    });
-});
-
 app.post('/event', (req, res) => {
-
     const { type, data = {}, recipients, audience } = req.body || {};
 
     if (audience === 'admins') {
@@ -128,8 +72,8 @@ app.post('/event', (req, res) => {
         : [resolveLegacyRecipient(type, data)].filter(Boolean);
 
     const delivered = sendToRecipients(targetRecipients, {
-        type: type,
-        data: data
+        type,
+        data,
     });
 
     if (delivered > 0) {
@@ -140,11 +84,57 @@ app.post('/event', (req, res) => {
 
     res.json({
         status: 'event processed',
-        delivered
+        delivered,
     });
-
 });
 
-app.listen(3000, () => {
+const server = app.listen(3000, () => {
     console.log('Event server listening on port 3000');
+});
+
+const wss = new WebSocket.Server({ server, path: '/ws' }, () => {
+    console.log('WebSocket server running on port 3000');
+});
+
+wss.on('connection', (ws) => {
+    console.log('New client connected');
+
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message.toString());
+
+            console.log('Received:', data);
+
+            if (data.type === 'auth') {
+                if (ws.user_id && clients[ws.user_id] === ws) {
+                    delete clients[ws.user_id];
+                }
+
+                ws.user_id = data.user_id;
+                clients[data.user_id] = ws;
+                const role = String(data.role || '').toLowerCase();
+                const channel = String(data.channel || '').toLowerCase();
+
+                if (role === 'admin' || channel === 'admin') {
+                    ws.isAdmin = true;
+                    adminClients.add(ws);
+                }
+
+                console.log('User authenticated:', data.user_id);
+            }
+        } catch (err) {
+            console.log('Invalid message', err);
+        }
+    });
+
+    ws.on('close', () => {
+        if (ws.user_id && clients[ws.user_id] === ws) {
+            delete clients[ws.user_id];
+            console.log(`User ${ws.user_id} disconnected`);
+        }
+
+        if (ws.isAdmin) {
+            adminClients.delete(ws);
+        }
+    });
 });
