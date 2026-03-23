@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageCreated;
+use App\Events\MessageDeleted;
+use App\Events\MessageUpdated;
 use App\Models\Connection;
 use App\Models\Message;
-use App\Models\Notification;
 use App\Models\User;
+use App\Services\MediaStorageService;
+use App\Services\NotificationService;
+use App\Services\RealtimeEventService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class MessageController extends Controller
 {
@@ -35,7 +41,10 @@ class MessageController extends Controller
         $perPage = min(max((int) $request->query('per_page', 12), 1), 50);
 
         $connections = Connection::query()
-            ->with(['requester', 'addressee'])
+            ->with([
+                'requester:id,first_name,last_name,headline,avatar',
+                'addressee:id,first_name,last_name,headline,avatar',
+            ])
             ->where('status', 'accepted')
             ->where(function ($query) use ($me) {
                 $query->where('requester_id', $me->id)
@@ -82,14 +91,8 @@ class MessageController extends Controller
 
         $messages = Message::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query->where('sender_id', $me->id)
-                    ->where('receiver_id', $targetId);
+                $this->applyConversationFilter($query, $me->id, $targetId);
             })
-            ->orWhere(function ($query) use ($me, $targetId) {
-                $query->where('sender_id', $targetId)
-                    ->where('receiver_id', $me->id);
-            })
-            ->with(['sender', 'receiver'])
             ->latest()
             ->paginate($perPage);
 
@@ -131,10 +134,10 @@ class MessageController extends Controller
         $mediaType = null;
 
         if ($request->hasFile('media_file')) {
-            $mime = $request->file('media_file')->getMimeType() ?: '';
+            $file = $request->file('media_file');
+            $mime = $file->getMimeType() ?: '';
             $mediaType = str_starts_with($mime, 'video/') ? 'video' : 'image';
-            $dir = $mediaType === 'video' ? 'messages/videos' : 'messages/images';
-            $mediaPath = $request->file('media_file')->store($dir, 'public');
+            $mediaPath = MediaStorageService::storeMessageMedia($file, $me->id, $targetId, $mediaType);
         }
 
         $message = Message::create([
@@ -144,17 +147,21 @@ class MessageController extends Controller
             'media_path' => $mediaPath,
             'media_type' => $mediaType,
             'status' => 'sent',
-        ])->load(['sender', 'receiver']);
-
-        Notification::create([
-            'notifiable_id' => $targetId,
-            'notifiable_type' => User::class,
-            'type' => 'new_message',
-            'data' => [
-                'message' => ($me->first_name ?: 'Someone') . ' sent you a message.',
-                'link' => '/message',
-            ],
         ]);
+
+        NotificationService::send(
+            $targetId,
+            'New Message',
+            ($me->name ?: 'Someone') . ' sent you a message.',
+            'message',
+            $me->id
+        );
+
+        $this->safeBroadcast(new MessageCreated($message));
+        $this->dispatchRealtimeMessageEvent('message_created', [
+            'event' => 'MessageCreated',
+            'message' => $message,
+        ], [(int) $message->sender_id, (int) $message->receiver_id]);
 
         return response()->json([
             'message' => 'Message sent successfully',
@@ -183,6 +190,29 @@ class MessageController extends Controller
         ]);
     }
 
+    public function sync(Request $request, $userId)
+    {
+        $me = $request->user();
+        $targetId = (int) $userId;
+        $afterId = max((int) $request->query('after_id', 0), 0);
+
+        $this->assertCanMessage($me->id, $targetId);
+
+        $messages = Message::query()
+            ->where('id', '>', $afterId)
+            ->where(function ($query) use ($me, $targetId) {
+                $this->applyConversationFilter($query, $me->id, $targetId);
+            })
+            ->orderBy('id')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'message' => 'Message sync fetched successfully',
+            'data' => $messages,
+        ]);
+    }
+
     public function destroy(Request $request, $messageId)
     {
         $me = $request->user();
@@ -202,17 +232,23 @@ class MessageController extends Controller
         }
 
         if (!empty($message->media_path)) {
-            $path = $message->media_path;
-            if (Str::startsWith($path, '/storage/')) {
-                $path = Str::replaceFirst('/storage/', '', $path);
-            }
-
-            if (!Str::startsWith($path, ['http://', 'https://']) && Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
+            MediaStorageService::deletePublicFile($message->media_path);
         }
 
+        $deletedId = $message->id;
+        $senderId = (int) $message->sender_id;
+        $receiverId = (int) $message->receiver_id;
+
         $message->delete();
+
+        $this->safeBroadcast(new MessageDeleted($deletedId, $senderId, $receiverId));
+        $this->dispatchRealtimeMessageEvent('message_deleted', [
+            'event' => 'MessageDeleted',
+            'message_id' => $deletedId,
+            'id' => $deletedId,
+            'sender_id' => $senderId,
+            'receiver_id' => $receiverId,
+        ], [$senderId, $receiverId]);
 
         return response()->json([
             'message' => 'Message deleted successfully',
@@ -257,9 +293,17 @@ class MessageController extends Controller
             'status' => 'sent',
         ]);
 
+        $message = $message->fresh();
+
+        $this->safeBroadcast(new MessageUpdated($message));
+        $this->dispatchRealtimeMessageEvent('message_updated', [
+            'event' => 'MessageUpdated',
+            'message' => $message,
+        ], [(int) $message->sender_id, (int) $message->receiver_id]);
+
         return response()->json([
             'message' => 'Message updated successfully',
-            'data' => $message->fresh()->load(['sender', 'receiver']),
+            'data' => $message,
         ]);
     }
 
@@ -279,12 +323,9 @@ class MessageController extends Controller
 
         $connection = Connection::query()
             ->where(function ($query) use ($meId, $targetId) {
-                $query->where(function ($q) use ($meId, $targetId) {
-                    $q->where('requester_id', $meId)->where('addressee_id', $targetId);
-                })->orWhere(function ($q) use ($meId, $targetId) {
-                    $q->where('requester_id', $targetId)->where('addressee_id', $meId);
-                });
+                $this->applyConversationFilter($query, $meId, $targetId, 'requester_id', 'addressee_id');
             })
+            ->select(['id', 'requester_id', 'addressee_id', 'status'])
             ->first();
 
         if (!$connection) {
@@ -305,4 +346,40 @@ class MessageController extends Controller
             ], 403));
         }
     }
+
+    private function safeBroadcast(object $event): void
+    {
+        try {
+            broadcast($event)->toOthers();
+        } catch (Throwable $exception) {
+            Log::warning('Message broadcast failed.', [
+                'event' => class_basename($event),
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function dispatchRealtimeMessageEvent(string $type, array $data, array $recipients): void
+    {
+        RealtimeEventService::dispatch($type, $data, $recipients);
+    }
+
+    private function applyConversationFilter(
+        Builder $query,
+        int $firstUserId,
+        int $secondUserId,
+        string $leftColumn = 'sender_id',
+        string $rightColumn = 'receiver_id'
+    ): void {
+        $query
+            ->where(function ($nested) use ($firstUserId, $secondUserId, $leftColumn, $rightColumn) {
+                $nested->where($leftColumn, $firstUserId)
+                    ->where($rightColumn, $secondUserId);
+            })
+            ->orWhere(function ($nested) use ($firstUserId, $secondUserId, $leftColumn, $rightColumn) {
+                $nested->where($leftColumn, $secondUserId)
+                    ->where($rightColumn, $firstUserId);
+            });
+    }
+
 }

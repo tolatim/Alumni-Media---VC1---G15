@@ -10,17 +10,18 @@ use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
-use App\Http\Controllers\SavedPostController; // ✅ added
 use App\Http\Controllers\UserController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Models\Message;
 use App\Models\Notification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
-// ---------------- Authentication ----------------
+
+
+
+
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
-
 Route::get('/users', [UserController::class, 'index']);
 
 // ---------------- Protected Routes ----------------
@@ -30,58 +31,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
 
-    // --- Profile ---
-    Route::patch('/user/profile', [UserController::class, 'update']);
-    Route::put('/profile', [UserController::class, 'updateMyProfile']);
-    Route::post('/profile', [UserController::class, 'updateMyProfile']);
-    Route::post('/profile/change-password', [UserController::class, 'changePassword']);
-
-    // --- Users ---
-    Route::get('/users/suggestions', [UserController::class, 'suggestions']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::get('/profiles/{id}', [UserController::class, 'show']);
-
-    // --- Posts ---
-    Route::get('/posts', [PostController::class, 'index']);
-    Route::post('/posts', [PostController::class, 'store']);
-    Route::put('/posts/{id}', [PostController::class, 'update']);
-    Route::patch('/posts/{id}', [PostController::class, 'update']);
-    Route::delete('/posts/{id}', [PostController::class, 'destroy']);
-    Route::post('/posts/{id}/report', [PostController::class, 'report']);
-    Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
-    Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
-    Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
-    Route::put('/comments/{comment}', [CommentController::class, 'update']);
-    Route::patch('/comments/{comment}', [CommentController::class, 'update']);
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
-
-    // --- Messages ---
-    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
-    Route::get('/messages/contacts', [MessageController::class, 'contacts']);
-    Route::get('/messages/{userId}', [MessageController::class, 'index']);
-    Route::post('/messages/{userId}', [MessageController::class, 'store']);
-    Route::put('/messages/item/{messageId}', [MessageController::class, 'update']);
-    Route::delete('/messages/item/{messageId}', [MessageController::class, 'destroy']);
-    Route::post('/messages/{userId}/read', [MessageController::class, 'markRead']);
-    Route::patch('/messages/{message}/read', function (Request $request, Message $message) {
+    Route::post('/messages/{message}/read', function (Request $request, Message $message) {
         $user = $request->user();
-        abort_unless((int) $message->receiver_id === (int) $user->id, 403);
-
         if (!$message->read_at) {
             $message->update(['read_at' => now()]);
         }
 
-        Notification::query()
-            ->where('user_id', $user->id)
-            ->where('type', 'new_message')
-            ->where('notifiable_type', Message::class)
-            ->where('notifiable_id', $message->id)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
-
         return response()->json([
-            'message'              => 'Message marked as read',
-            'unread_messages'      => Message::query()
+            'message' => 'Message marked as read',
+            'unread_messages' => Message::query()
                 ->where('receiver_id', $user->id)
                 ->whereNull('read_at')
                 ->count(),

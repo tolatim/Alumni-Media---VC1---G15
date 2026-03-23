@@ -50,4 +50,5 @@ export const stopRouteLoading = () => {
   syncVisibleLoading()
 }
 
-export const isGlobalLoading = computed(() => visibleLoading.value)
+export const isPageLoading = computed(() => visibleLoading.value)
+export const isGlobalLoading = isPageLoading

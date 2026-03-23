@@ -110,6 +110,9 @@ const destinationFor = (item) => {
   if ((type === "like" || type === "comment" || type === "post") && item.related_id) {
     return { path: "/", query: { post: item.related_id } }
   }
+  if (type === "message" && item.related_id) {
+    return { name: "MessageWithUser", params: { userId: item.related_id } }
+  }
   if (type === "connect" || type === "accept" || type === "reject") {
     return "/connection"
   }
@@ -124,6 +127,7 @@ const iconFor = (item) => {
     case "accept":  return "fa-solid fa-user-check"
     case "reject":  return "fa-solid fa-user-xmark"
     case "post":    return "fa-solid fa-feather-pointed"
+    case "message": return "fa-solid fa-message"
     case "login":   return "fa-solid fa-right-to-bracket"
     case "system":  return "fa-solid fa-bell"
     default:        return "fa-solid fa-bell"
@@ -138,6 +142,7 @@ const labelFor = (item) => {
     case "accept":  return "Connection Accepted"
     case "reject":  return "Connection Rejected"
     case "post":    return "New Post"
+    case "message": return "Message"
     case "login":   return "Login"
     case "system":  return "System"
     default:        return "Notification"

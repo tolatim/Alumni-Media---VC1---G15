@@ -89,6 +89,36 @@ VITE_API_URL=http://127.0.0.1:8000/api
 ```
 Vite will print the local URL (commonly `http://localhost:5173`).
 
+## Docker Setup
+
+This repository now includes Docker support for:
+
+- `mysql` on `3307` (container internal port remains `3306`)
+- `backend` (Laravel API) on `8000`
+- `frontend` (Vue/Vite) on `5173`
+- `websocket-server` event/http on `3000` and ws on `8081`
+
+From the project root, run:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+
+Useful Docker commands:
+
+```bash
+docker compose down
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f websocket-server
+docker compose exec backend php artisan migrate
+```
+
 ## Useful Commands
 
 ### Backend
@@ -125,4 +155,3 @@ with:
 - Database schema notes
 - Environment variables
 - Deployment instructions
-

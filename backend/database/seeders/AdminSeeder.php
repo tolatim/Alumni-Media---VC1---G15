@@ -2,12 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
-
 class AdminSeeder extends Seeder
 {
     /**
@@ -15,15 +14,24 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        // Admin (role_id = 1)
         $admin = User::firstOrCreate(
             ['email' => 'admin@alumni.com'],
             [
                 'first_name' => 'super',
                 'last_name' => 'admin',
                 'password' => Hash::make('Admin123!'),
-                'role_id' => 1,
+                'role_id' => $adminRoleId,
             ]
+        );
+
+        $user = User::firstOrCreate(
+            ['email' => 'sothin3@gmail.com'],
+            [
+                'first_name' => 'Ke',
+                'last_name' => 'Sothin',
+                'password' => Hash::make('kesothin'),
+                'role_id' => $alumniRoleId,
+            ],
         );
 
         // User 1

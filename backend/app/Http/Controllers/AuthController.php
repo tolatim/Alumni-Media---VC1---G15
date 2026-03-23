@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppSetting;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\WebsocketNotifier;
@@ -10,9 +9,12 @@ use App\Services\NotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
-use App\Models\Notification;
-use Illuminate\Support\Facades\Http;
+<<<<<<<<< Temporary merge branch 1
+use App\Services\NotificationService;
 
+=========
+use Illuminate\Support\Facades\Http;
+>>>>>>>>> Temporary merge branch 2
 
 class AuthController extends Controller
 {
@@ -24,33 +26,16 @@ class AuthController extends Controller
             'last_name' => 'required|string|max:100',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
-            'registration_key' => 'required|string|max:255',
         ]);
 
-        $configuredKey = AppSetting::query()->where('key', 'registration_key')->value('value');
-
-        if (!$configuredKey) {
-            return response()->json([
-                'message' => 'Registration is currently closed. Please contact admin.',
-            ], 403);
-        }
-
-        if (!hash_equals((string) $configuredKey, (string) $validated['registration_key'])) {
-            return response()->json([
-                'message' => 'Invalid registration key.',
-            ], 403);
-        }
-
-        // Assign default role
         $userRole = Role::firstOrCreate(['name' => 'user']);
 
-        // Create the user
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'role_id' => $userRole->id,
             'email' => $validated['email'],
-            'password' => bcrypt($validated['password']), // Always hash passwords
+            'password' => $validated['password'],
         ]);
 
         Cache::put('user:' . $user->id, [
@@ -72,33 +57,6 @@ class AuthController extends Controller
 
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
-
-        // ----------------------------
-        // Send event to Node.js server
-        // ----------------------------
-        try {
-            Http::post('http://localhost:3000/event', [
-                'type' => 'new_user',
-                'data' => [
-                    'id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            // Optional: log errors if Node.js is not running
-            \Log::error('Failed to send new user event: ' . $e->getMessage());
-        }
-
-        WebsocketNotifier::send('admin_activity', [
-            'event' => 'user_registered',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'occurred_at' => now()->toIso8601String(),
-        ], 'admins');
 
         return response()->json([
             'message' => 'User created successfully',
@@ -122,17 +80,24 @@ class AuthController extends Controller
         }
 
         $user = User::with(['role'])->findOrFail(Auth::id());
+<<<<<<<<< Temporary merge branch 1
+        
+        // ✅ Connected to NotificationService
+        NotificationService::login($user);
+=========
 
-        Notification::create([
-            'user_id' => $user->id,
-            'title'   => 'Login Successful!',
-            'message' => 'Welcome back, ' . $user->first_name . '!',
-            'type'    => 'login_success',
-        ]);
+        if ($user->isSuspended()) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Your account is suspended',
+            ], 403);
+        }
+>>>>>>>>> Temporary merge branch 2
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        try {
+
+         try {
             Http::post('http://localhost:3000/event', [
                 'type' => 'login',
                 'data' => [

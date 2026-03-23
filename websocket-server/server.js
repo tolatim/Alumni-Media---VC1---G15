@@ -7,12 +7,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const wss = new WebSocket.Server({ port: 8081 }, () => {
-    console.log('WebSocket server running on port 8081');
-});
-
 let clients = {};
-<<<<<<< HEAD
 const adminClients = new Set();
 
 const sendToAdmins = (payload) => {
@@ -27,7 +22,6 @@ const sendToAdmins = (payload) => {
     });
 
     deadSockets.forEach((ws) => adminClients.delete(ws));
-=======
 const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted']);
 
 const broadcastToAllClients = (payload) => {
@@ -40,20 +34,93 @@ const broadcastToAllClients = (payload) => {
         }
     });
     return recipients;
->>>>>>> cddd5d6dc290b3d20f582d43df9ff1520736e838
 };
 
+const sendToRecipients = (recipients, payload) => {
+    const uniqueRecipients = [...new Set((Array.isArray(recipients) ? recipients : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0))];
+
+    let delivered = 0;
+
+    uniqueRecipients.forEach((recipientId) => {
+        const target = clients[recipientId];
+        if (target && target.readyState === WebSocket.OPEN) {
+            target.send(JSON.stringify(payload));
+            delivered += 1;
+        }
+    });
+
+    return delivered;
+};
+
+const resolveLegacyRecipient = (type, data) => {
+    if (type === 'connection_request') return data.addressee_id;
+    if (type === 'accept_request') return data.requester_id;
+    if (type === 'unfriend') return data.requester_id;
+    if (type === 'reject') return data.requester_id;
+    if (type === 'block') return data.blocker_id;
+    return null;
+};
+
+app.post('/event', (req, res) => {
+    const { type, data = {}, recipients, audience } = req.body || {};
+
+    if (audience === 'admins') {
+        sendToAdmins({
+            type,
+            data,
+            audience: 'admins',
+        });
+
+        return res.json({
+            status: 'event processed',
+            delivered_to: 'admins',
+        });
+    }
+
+    const targetRecipients = Array.isArray(recipients) && recipients.length
+        ? recipients
+        : [resolveLegacyRecipient(type, data)].filter(Boolean);
+
+    const delivered = sendToRecipients(targetRecipients, {
+        type,
+        data,
+    });
+
+    if (delivered > 0) {
+        console.log(`Event ${type} sent to ${delivered} recipient(s)`);
+    } else {
+        console.log(`No connected recipients for ${type}`);
+    }
+
+    res.json({
+        status: 'event processed',
+        delivered,
+    });
+});
+
+const server = app.listen(3000, () => {
+    console.log('Event server listening on port 3000');
+});
+
+const wss = new WebSocket.Server({ server, path: '/ws' }, () => {
+    console.log('WebSocket server running on port 3000');
+});
+
 wss.on('connection', (ws) => {
-    console.log("New client connected");
+    console.log('New client connected');
 
     ws.on('message', (message) => {
         try {
-
             const data = JSON.parse(message.toString());
 
-            console.log("Received:", data);
+            console.log('Received:', data);
 
             if (data.type === 'auth') {
+                if (ws.user_id && clients[ws.user_id] === ws) {
+                    delete clients[ws.user_id];
+                }
 
                 ws.user_id = data.user_id;
                 clients[data.user_id] = ws;
@@ -65,35 +132,27 @@ wss.on('connection', (ws) => {
                     adminClients.add(ws);
                 }
 
-                console.log("User authenticated:", data.user_id);
-
+                console.log('User authenticated:', data.user_id);
             }
-
         } catch (err) {
             console.log('Invalid message', err);
         }
     });
 
     ws.on('close', () => {
-
         if (ws.user_id && clients[ws.user_id] === ws) {
-
             delete clients[ws.user_id];
-
             console.log(`User ${ws.user_id} disconnected`);
-
         }
 
         if (ws.isAdmin) {
             adminClients.delete(ws);
         }
-
     });
 });
 
 app.post('/event', (req, res) => {
 
-<<<<<<< HEAD
     const { type, data = {}, audience } = req.body || {};
 
     if (audience === 'admins') {
@@ -106,16 +165,6 @@ app.post('/event', (req, res) => {
         return res.json({
             status: 'event processed',
             delivered_to: 'admins',
-=======
-    const { type, data } = req.body;
-    if (BROADCAST_EVENTS.has(type)) {
-        const recipients = broadcastToAllClients({ type, data });
-        console.log(`Broadcast event '${type}' to ${recipients} clients`);
-
-        return res.json({
-            status: 'event broadcasted',
-            recipients,
->>>>>>> cddd5d6dc290b3d20f582d43df9ff1520736e838
         });
     }
 

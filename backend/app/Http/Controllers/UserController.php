@@ -5,23 +5,35 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\MediaStorageService;
 use App\Services\NotificationService;
+use App\Support\WebsocketNotifier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::latest()->get();
+        $perPage = min(max((int) $request->query('per_page', 24), 1), 100);
+
+        $users = User::query()
+            ->latest('id')
+            ->paginate($perPage);
 
         return response()->json([
             'message' => 'Users fetched successfully',
-            'data'    => $users,
+            'data'    => $users->items(),
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+            ],
         ]);
     }
 
@@ -42,50 +54,24 @@ class UserController extends Controller
             ]);
         }
 
-        $user          = auth()->user();
-        $connectionIds = [];
+        $user = auth()->user();
+        $allowedUserIds = $user ? [(int) $user->id] : [];
 
         if ($user && Schema::hasTable('connections')) {
-            $connections = Connection::where('status', 'accepted')
-                ->where(function ($q) use ($user) {
-                    $q->where('requester_id', $user->id)
-                        ->orWhere('addressee_id', $user->id);
-                })
-                ->get();
-
-            foreach ($connections as $connection) {
-                $connectionIds[] = $connection->requester_id == $user->id
-                    ? $connection->addressee_id
-                    : $connection->requester_id;
-            }
+            $allowedUserIds = array_values(array_unique(array_merge(
+                $allowedUserIds,
+                $this->connectionPeerIds((int) $user->id, ['accepted'])
+            )));
         }
 
         $query = Post::query()
-            ->whereIn('user_id', $connectionIds)
             ->latest()
             ->with(['user.role']);
 
-        if ($user) {
-            $allowedUserIds = [(int) $user->id];
-
-            if (Schema::hasTable('connections')) {
-                $friendIds = Connection::query()
-                    ->where('status', 'accepted')
-                    ->where(function ($q) use ($user) {
-                        $q->where('requester_id', $user->id)
-                            ->orWhere('addressee_id', $user->id);
-                    })
-                    ->get()
-                    ->map(fn($row) => (int) ($row->requester_id === (int) $user->id
-                        ? $row->addressee_id
-                        : $row->requester_id))
-                    ->values()
-                    ->all();
-
-                $allowedUserIds = array_values(array_unique(array_merge($allowedUserIds, $friendIds)));
-            }
-
+        if (!empty($allowedUserIds)) {
             $query->whereIn('user_id', $allowedUserIds);
+        } else {
+            $query->whereRaw('1 = 0');
         }
 
         if (Schema::hasTable('media')) {
@@ -131,7 +117,7 @@ class UserController extends Controller
 
         $user    = $request->user();
         $pending = Connection::query()
-            ->with(['requester.role'])
+            ->with(['requester:id,first_name,last_name,headline,avatar,role_id', 'requester.role:id,name'])
             ->where('addressee_id', $user->id)
             ->where('status', 'pending')
             ->latest()
@@ -164,7 +150,12 @@ class UserController extends Controller
 
         $user        = $request->user();
         $connections = Connection::query()
-            ->with(['requester.role', 'addressee.role'])
+            ->with([
+                'requester:id,first_name,last_name,headline,avatar,role_id',
+                'requester.role:id,name',
+                'addressee:id,first_name,last_name,headline,avatar,role_id',
+                'addressee.role:id,name',
+            ])
             ->where('status', 'accepted')
             ->where(function ($query) use ($user) {
                 $query->where('requester_id', $user->id)
@@ -200,7 +191,12 @@ class UserController extends Controller
 
         $user    = $request->user();
         $blocked = Connection::query()
-            ->with(['requester.role', 'addressee.role'])
+            ->with([
+                'requester:id,first_name,last_name,headline,avatar,role_id',
+                'requester.role:id,name',
+                'addressee:id,first_name,last_name,headline,avatar,role_id',
+                'addressee.role:id,name',
+            ])
             ->where('status', 'blocked')
             ->where('requester_id', $user->id)
             ->latest()
@@ -239,11 +235,9 @@ class UserController extends Controller
 
         $connection = Connection::query()
             ->where(function ($q) use ($me, $targetId) {
-                $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
+                $this->applyConnectionPair($q, (int) $me->id, $targetId);
             })
-            ->orWhere(function ($q) use ($me, $targetId) {
-                $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
-            })
+            ->select(['id', 'requester_id', 'addressee_id', 'status'])
             ->first();
 
         $blockedByMe = (bool) ($connection && $connection->status === 'blocked' && (int) $connection->requester_id === (int) $me->id);
@@ -275,11 +269,9 @@ class UserController extends Controller
 
         $existing = Connection::query()
             ->where(function ($q) use ($me, $targetId) {
-                $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
+                $this->applyConnectionPair($q, (int) $me->id, $targetId);
             })
-            ->orWhere(function ($q) use ($me, $targetId) {
-                $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
-            })
+            ->select(['id', 'requester_id', 'addressee_id', 'status'])
             ->first();
 
         if ($existing) {
@@ -295,24 +287,16 @@ class UserController extends Controller
             'status'       => 'pending',
         ]);
 
-        try {
-            Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post('http://localhost:3000/event', [
-                'type' => 'connection_request',
-                'data' => [
-                    'requester_id' => $me->id,
-                    'addressee_id' => $targetId,
-                    'status' => 'pending'
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('WebSocket event failed: ' . $e->getMessage());
-        }
+        // ✅ Notify receiver
+        $receiver = User::find($targetId);
+        NotificationService::connectionRequest($receiver, $me);
 
         return response()->json([
             'message' => 'Connection request sent successfully',
-            'data'    => $connection->load(['requester', 'addressee']),
+            'data'    => $connection->load([
+                'requester:id,first_name,last_name,headline,avatar',
+                'addressee:id,first_name,last_name,headline,avatar',
+            ]),
         ], 201);
     }
 
@@ -335,10 +319,18 @@ class UserController extends Controller
         // ✅ Notify requester
         $requester = User::find($connection->requester_id);
         NotificationService::connectionAccepted($requester, $me);
+        WebsocketNotifier::send('accept_request', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+            'status' => 'accepted',
+        ]);
 
         return response()->json([
             'message' => 'Connection accepted successfully',
-            'data'    => $connection->fresh()->load(['requester', 'addressee']),
+            'data'    => $connection->fresh()->load([
+                'requester:id,first_name,last_name,headline,avatar',
+                'addressee:id,first_name,last_name,headline,avatar',
+            ]),
         ]);
     }
 
@@ -360,6 +352,11 @@ class UserController extends Controller
             return response()->json(['message' => 'Connection request not found.'], 404);
         }
 
+        WebsocketNotifier::send('reject', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+        ]);
+
         // ✅ Notify requester
         $requester = User::find($connection->requester_id);
         NotificationService::connectionRejected($requester, $me);
@@ -377,17 +374,18 @@ class UserController extends Controller
         $connection = Connection::query()
             ->where('status', 'accepted')
             ->where(function ($query) use ($me, $targetId) {
-                $query->where(function ($q) use ($me, $targetId) {
-                    $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
-                })->orWhere(function ($q) use ($me, $targetId) {
-                    $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
-                });
+                $this->applyConnectionPair($query, (int) $me->id, $targetId);
             })
             ->first();
 
         if (!$connection) {
             return response()->json(['message' => 'Friend connection not found.'], 404);
         }
+
+        WebsocketNotifier::send('unfriend', [
+            'requester_id' => $connection->requester_id,
+            'addressee_id' => $connection->addressee_id,
+        ]);
 
         $connection->delete();
 
@@ -409,12 +407,9 @@ class UserController extends Controller
 
         $connection = Connection::query()
             ->where(function ($query) use ($me, $targetId) {
-                $query->where(function ($q) use ($me, $targetId) {
-                    $q->where('requester_id', $me->id)->where('addressee_id', $targetId);
-                })->orWhere(function ($q) use ($me, $targetId) {
-                    $q->where('requester_id', $targetId)->where('addressee_id', $me->id);
-                });
+                $this->applyConnectionPair($query, (int) $me->id, $targetId);
             })
+            ->select(['id', 'requester_id', 'addressee_id', 'status'])
             ->first();
 
         if (!$connection) {
@@ -431,9 +426,17 @@ class UserController extends Controller
             ]);
         }
 
+        WebsocketNotifier::send('block', [
+            'blocker_id' => $connection->addressee_id,
+            'actor_id' => $connection->requester_id,
+        ]);
+
         return response()->json([
             'message' => 'User blocked successfully',
-            'data'    => $connection->fresh()->load(['requester', 'addressee']),
+            'data'    => $connection->fresh()->load([
+                'requester:id,first_name,last_name,headline,avatar',
+                'addressee:id,first_name,last_name,headline,avatar',
+            ]),
         ]);
     }
 
@@ -464,7 +467,10 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User unblocked successfully',
-            'data'    => $connection->fresh()->load(['requester', 'addressee']),
+            'data'    => $connection->fresh()->load([
+                'requester:id,first_name,last_name,headline,avatar',
+                'addressee:id,first_name,last_name,headline,avatar',
+            ]),
         ]);
     }
 
@@ -522,20 +528,9 @@ class UserController extends Controller
     {
         $perPage     = min(max((int) $request->query('per_page', 8), 1), 50);
         $me          = $request->user();
-        $excludedIds = [];
-
-        if (Schema::hasTable('connections')) {
-            $excludedIds = Connection::query()
-                ->where(function ($query) use ($me) {
-                    $query->where('requester_id', $me->id)
-                        ->orWhere('addressee_id', $me->id);
-                })
-                ->whereIn('status', ['pending', 'accepted', 'blocked'])
-                ->get()
-                ->map(fn($c) => (int) ($c->requester_id === $me->id ? $c->addressee_id : $c->requester_id))
-                ->values()
-                ->all();
-        }
+        $excludedIds = Schema::hasTable('connections')
+            ? $this->connectionPeerIds((int) $me->id, ['pending', 'accepted', 'blocked'])
+            : [];
 
         $suggestions = User::query()
             ->where('id', '!=', $me->id)
@@ -580,13 +575,13 @@ class UserController extends Controller
         $coverPath  = $user->getRawOriginal('cover');
 
         if ($request->hasFile('avatar_file')) {
-            $this->deleteLocalPublicFile($user->getRawOriginal('avatar'));
-            $avatarPath = $request->file('avatar_file')->store('profiles/avatars', 'public');
+            MediaStorageService::deletePublicFile($user->getRawOriginal('avatar'));
+            $avatarPath = MediaStorageService::storeProfileAvatar($request->file('avatar_file'), $user->id);
         }
 
         if ($request->hasFile('cover_file')) {
-            $this->deleteLocalPublicFile($user->getRawOriginal('cover'));
-            $coverPath = $request->file('cover_file')->store('profiles/covers', 'public');
+            MediaStorageService::deletePublicFile($user->getRawOriginal('cover'));
+            $coverPath = MediaStorageService::storeProfileCover($request->file('cover_file'), $user->id);
         }
 
         $firstName = $validated['first_name'] ?? null;
@@ -641,15 +636,33 @@ class UserController extends Controller
         return response()->json(['message' => 'Password changed successfully.']);
     }
 
-    private function deleteLocalPublicFile(?string $value): void
+    private function connectionPeerIds(int $userId, array $statuses): array
     {
-        if (!$value) return;
-        if (Str::startsWith($value, ['http://', 'https://'])) return;
-        if (Str::startsWith($value, '/storage/')) {
-            $value = Str::replaceFirst('/storage/', '', $value);
-        }
-        if (Storage::disk('public')->exists($value)) {
-            Storage::disk('public')->delete($value);
-        }
+        return Connection::query()
+            ->where(function ($query) use ($userId) {
+                $query->where('requester_id', $userId)
+                    ->orWhere('addressee_id', $userId);
+            })
+            ->whereIn('status', $statuses)
+            ->get(['requester_id', 'addressee_id'])
+            ->map(fn($row) => (int) ($row->requester_id === $userId
+                ? $row->addressee_id
+                : $row->requester_id))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function applyConnectionPair(Builder $query, int $meId, int $targetId): void
+    {
+        $query
+            ->where(function ($nested) use ($meId, $targetId) {
+                $nested->where('requester_id', $meId)
+                    ->where('addressee_id', $targetId);
+            })
+            ->orWhere(function ($nested) use ($meId, $targetId) {
+                $nested->where('requester_id', $targetId)
+                    ->where('addressee_id', $meId);
+            });
     }
 }
