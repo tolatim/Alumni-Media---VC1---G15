@@ -44,29 +44,8 @@ class UserController extends Controller
 
         $user = auth()->user();
 
-        $connectionIds = [];
-
-        if ($user && Schema::hasTable('connections')) {
-
-            $connections = Connection::where('status', 'accepted')
-                ->where(function ($q) use ($user) {
-                    $q->where('requester_id', $user->id)
-                        ->orWhere('addressee_id', $user->id);
-                })
-                ->get();
-
-            foreach ($connections as $connection) {
-                $connectionIds[] =
-                    $connection->requester_id == $user->id
-                    ? $connection->addressee_id
-                    : $connection->requester_id;
-            }
-        }
-
         $query = Post::query()
-            ->whereIn('user_id', $connectionIds)
-            ->latest()
-            ->with(['user.role']);
+            ->latest();
 
         if ($user) {
             $allowedUserIds = [(int) $user->id];
@@ -93,31 +72,7 @@ class UserController extends Controller
             $query->whereIn('user_id', $allowedUserIds);
         }
 
-        if (Schema::hasTable('media')) {
-            $query->with(['media']);
-        }
-
-        $countableRelations = [];
-
-        if (Schema::hasTable('likes')) {
-            $countableRelations[] = 'likes';
-        }
-
-        if (Schema::hasTable('comments')) {
-            $countableRelations[] = 'comments';
-        }
-
-        if (!empty($countableRelations)) {
-            $query->withCount($countableRelations);
-        }
-
-        if ($user && Schema::hasTable('likes')) {
-            $query->withExists([
-                'likes as liked_by_me' => function ($likeQuery) use ($user) {
-                    $likeQuery->where('user_id', $user->id);
-                },
-            ]);
-        }
+        $query->withCardData($user);
 
         $posts = $query->paginate($perPage);
 
@@ -578,30 +533,9 @@ class UserController extends Controller
         if (Schema::hasTable('posts')) {
             $query->with([
                 'posts' => function ($postQuery) use ($authUser) {
-                    $postQuery->latest();
-                    if (Schema::hasTable('media')) {
-                        $postQuery->with('media');
-                    }
-
-                    $countableRelations = [];
-                    if (Schema::hasTable('likes')) {
-                        $countableRelations[] = 'likes';
-                    }
-                    if (Schema::hasTable('comments')) {
-                        $countableRelations[] = 'comments';
-                    }
-
-                    if (!empty($countableRelations)) {
-                        $postQuery->withCount($countableRelations);
-                    }
-
-                    if ($authUser && Schema::hasTable('likes')) {
-                        $postQuery->withExists([
-                            'likes as liked_by_me' => function ($likeQuery) use ($authUser) {
-                                $likeQuery->where('user_id', $authUser->id);
-                            },
-                        ]);
-                    }
+                    $postQuery
+                        ->latest()
+                        ->withCardData($authUser);
                 },
             ]);
         }

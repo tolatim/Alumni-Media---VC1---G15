@@ -41,6 +41,7 @@ import api from "@/services/api";
 import { useFeedStore } from "@/stores/feed";
 import { subscribeToPostEvents, setPostHubUserId } from "@/utils/postHub";
 
+
 const feedStore = useFeedStore();
 const currentUser = ref(null);
 const suggestions = ref([]);

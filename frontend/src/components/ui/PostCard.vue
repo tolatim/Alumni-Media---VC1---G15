@@ -13,6 +13,9 @@
           <div>
             <h4 class="font-semibold text-slate-900">{{ post.user?.name || 'Unknown user' }}</h4>
             <p class="text-xs text-slate-500">{{ formatDate(post.created_at) }}</p>
+            <p v-if="isSharePost" class="text-xs font-medium text-cyan-700">
+              Shared {{ sharedAuthorLabel }}
+            </p>
           </div>
         </RouterLink>
         <div v-else class="flex items-center gap-3">
@@ -20,6 +23,9 @@
           <div>
             <h4 class="font-semibold text-slate-900">{{ post.user?.name || 'Unknown user' }}</h4>
             <p class="text-xs text-slate-500">{{ formatDate(post.created_at) }}</p>
+            <p v-if="isSharePost" class="text-xs font-medium text-cyan-700">
+              Shared {{ sharedAuthorLabel }}
+            </p>
           </div>
         </div>
 
@@ -80,6 +86,7 @@
     <div class="space-y-4 px-5 py-4">
       <template v-if="isEditing">
         <input
+          v-if="!isSharePost"
           v-model="editTitle"
           type="text"
           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
@@ -89,9 +96,9 @@
           v-model="editContent"
           rows="4"
           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-          placeholder="Post content"
+          :placeholder="isSharePost ? 'Write something about this shared post (optional)' : 'Post content'"
         ></textarea>
-        <label class="block">
+        <label v-if="!isSharePost" class="block">
           <span class="mb-1 block text-xs font-semibold text-slate-600">Update media (images/videos)</span>
           <input
             type="file"
@@ -225,6 +232,59 @@
           </div>
         </template>
       </div>
+
+      <div
+        v-if="isSharePost"
+        class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+      >
+        <template v-if="originalPost">
+          <div class="mb-3 flex items-center gap-3">
+            <img
+              :src="originalPost.user?.profile?.avatar || fallbackAvatar"
+              class="h-10 w-10 rounded-full border border-slate-200 object-cover"
+            >
+            <div>
+              <p class="font-semibold text-slate-900">{{ originalPost.user?.name || 'Unknown user' }}</p>
+              <p class="text-xs text-slate-500">{{ formatDate(originalPost.created_at) }}</p>
+            </div>
+          </div>
+
+          <h5 v-if="originalPost.title" class="text-base font-semibold text-slate-900 break-words">
+            {{ originalPost.title }}
+          </h5>
+          <p
+            v-if="originalPost.content"
+            class="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-slate-700"
+          >
+            {{ originalPost.content }}
+          </p>
+
+          <div v-if="originalPost.media?.length" class="mt-3 grid gap-2" :class="originalPost.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'">
+            <template
+              v-for="media in originalPost.media"
+              :key="media.id ?? media.file_path ?? media.media_url"
+            >
+              <img
+                v-if="isImageMedia(media)"
+                :src="getMediaSrc(media)"
+                alt="Shared post image"
+                class="h-full max-h-72 w-full rounded-lg border border-slate-200 object-cover"
+              >
+              <video
+                v-else-if="isVideoMedia(media)"
+                :src="getMediaSrc(media)"
+                class="h-full max-h-72 w-full rounded-lg border border-slate-200 bg-black object-cover"
+                controls
+                preload="metadata"
+              ></video>
+            </template>
+          </div>
+        </template>
+
+        <p v-else class="text-sm font-medium text-slate-500">
+          Original post is no longer available.
+        </p>
+      </div>
     </div>
 
     <div class="space-y-3 border-t border-slate-100 px-5 py-3">
@@ -272,12 +332,125 @@
             </svg>
             <span>{{ commentsCount }}</span>
           </button>
+
+          <button
+            v-if="canSharePost"
+            type="button"
+            :disabled="shareSubmitting"
+            @click="toggleShareComposer"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 disabled:opacity-60"
+            aria-label="Share post"
+            title="Share post"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="m4 12 8-8 8 8" />
+              <path d="M12 4v12" />
+              <path d="M5 20h14" />
+            </svg>
+            <span>{{ shareSubmitting ? 'Sharing...' : 'Share' }}</span>
+          </button>
+
+          <button
+            v-if="canReportPost"
+            type="button"
+            :disabled="reportSubmitting"
+            @click="handleReportPost"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-1 disabled:opacity-60"
+            aria-label="Report post"
+            title="Report post"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M5 4v16" />
+              <path d="M5 5h10l-2 4 2 4H5" />
+            </svg>
+            <span>{{ reportSubmitting ? 'Reporting...' : 'Report' }}</span>
+          </button>
         </div>
 
       </div>
-      <p class="text-xs font-medium text-slate-500">
-        {{ post.media?.length ? `${post.media.length} media` : 'Text post' }}
-      </p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs font-medium text-slate-500">
+          {{ postKindLabel }}
+        </p>
+        <button
+          type="button"
+          class="text-xs font-semibold text-cyan-700 transition hover:text-cyan-800"
+          @click="toggleShareUsers"
+        >
+          {{ shareCountLabel }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="shareComposerOpen" class="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+      <form class="space-y-3" @submit.prevent="submitShare">
+        <textarea
+          v-model="shareDraft"
+          rows="3"
+          placeholder="Write something about this post (optional)"
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+        ></textarea>
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            @click="closeShareComposer"
+            :disabled="shareSubmitting"
+            class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            :disabled="shareSubmitting"
+            class="inline-flex items-center rounded-lg border border-cyan-200 bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+          >
+            {{ shareSubmitting ? 'Sharing...' : 'Share now' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="shareUsersOpen" class="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+      <p v-if="shareUsersLoading" class="text-xs text-slate-500">Loading sharers...</p>
+      <p v-else-if="!shareUsers.length" class="text-xs text-slate-500">No one has shared this post yet.</p>
+      <div v-else class="space-y-2">
+        <div
+          v-for="shareItem in shareUsers"
+          :key="shareItem.id"
+          class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+        >
+          <img
+            :src="shareItem.user?.profile?.avatar || fallbackAvatar"
+            class="h-9 w-9 rounded-full border border-slate-200 object-cover"
+          >
+          <div class="min-w-0 flex-1">
+            <RouterLink
+              :to="`/profile/${shareItem.user?.id}`"
+              class="text-sm font-semibold text-slate-800 transition hover:text-cyan-700"
+            >
+              {{ shareItem.user?.name || 'Unknown user' }}
+            </RouterLink>
+            <p class="text-xs text-slate-500">{{ formatDate(shareItem.created_at) }}</p>
+            <p v-if="shareItem.content" class="mt-1 whitespace-pre-line break-words text-sm text-slate-700">
+              {{ shareItem.content }}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-if="commentsOpen" class="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
@@ -570,6 +743,13 @@ const openPostActionsMenu = ref(false)
 const likeSubmitting = ref(false)
 const likedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
+const reportSubmitting = ref(false)
+const shareSubmitting = ref(false)
+const shareComposerOpen = ref(false)
+const shareDraft = ref('')
+const shareUsersOpen = ref(false)
+const shareUsersLoading = ref(false)
+const shareUsers = ref([])
 
 const commentsOpen = ref(props.autoOpenComments ?? false)
 const commentsLoading = ref(false)
@@ -602,10 +782,48 @@ const authorId = computed(() => props.post?.user?.id ?? props.post?.user_id ?? n
 const shouldCondenseMedia = computed(() => Array.isArray(props.post?.media) && props.post.media.length > 4)
 const hiddenMediaCount = computed(() => Math.max((props.post?.media?.length || 0) - 4, 0))
 
+// Share helpers kept together so the share flow is easy to read.
+const isSharePost = computed(() => Boolean(props.post?.shared_post_id || props.post?.shared_post))
+const originalPost = computed(() => props.post?.shared_post || null)
+const originalPostId = computed(() => props.post?.shared_post_id ?? null)
+const shareListPostId = computed(() => originalPostId.value ?? props.post?.id ?? null)
+const shareTargetPostId = computed(() => {
+  if (props.post?.shared_post_id) {
+    return originalPost.value?.id ?? null
+  }
+
+  return props.post?.id ?? null
+})
+const sharedAuthorLabel = computed(() => `${originalPost.value?.user?.name || 'a user'}'s post`)
+const postKindLabel = computed(() => {
+  if (isSharePost.value) return 'Shared post'
+  if (props.post?.media?.length) return `${props.post.media.length} media`
+  return 'Text post'
+})
+const shareCount = computed(() => {
+  if (originalPost.value) {
+    return toSafeCount(originalPost.value?.shares_count)
+  }
+  return toSafeCount(props.post?.shares_count)
+})
+const shareCountLabel = computed(() => `${shareCount.value} ${shareCount.value === 1 ? 'share' : 'shares'}`)
+
 const canDeletePost = computed(() => {
   const currentUserId = Number(props.currentUser?.id)
   const ownerId = Number(props.post?.user_id ?? props.post?.user?.id)
   return Number.isFinite(currentUserId) && Number.isFinite(ownerId) && currentUserId === ownerId
+})
+
+const canSharePost = computed(() => {
+  const currentUserId = Number(props.currentUser?.id)
+  return Number.isFinite(currentUserId) && Number.isFinite(Number(shareTargetPostId.value))
+})
+
+const canReportPost = computed(() => {
+  const currentUserId = Number(props.currentUser?.id)
+  const ownerId = Number(props.post?.user_id ?? props.post?.user?.id)
+  if (!Number.isFinite(currentUserId) || !Number.isFinite(ownerId)) return false
+  return currentUserId !== ownerId
 })
 
 const isPostLiked = computed(() => {
@@ -650,7 +868,7 @@ const togglePostActionsMenu = () => {
 const handleStartEdit = () => {
   openPostActionsMenu.value = false
   isEditing.value = true
-  editTitle.value = props.post?.title || ''
+  editTitle.value = isSharePost.value ? '' : (props.post?.title || '')
   editContent.value = props.post?.content || ''
   editMediaFiles.value = []
 }
@@ -674,7 +892,7 @@ const saveEdit = async () => {
   const hasSelectedMedia = editMediaFiles.value.length > 0
   const hasExistingMedia = Array.isArray(props.post?.media) && props.post.media.length > 0
 
-  if (!titleValue && !contentValue && !hasSelectedMedia && !hasExistingMedia) {
+  if (!isSharePost.value && !titleValue && !contentValue && !hasSelectedMedia && !hasExistingMedia) {
     alert('Please add title, content, or at least one image/video.')
     return
   }
@@ -682,10 +900,14 @@ const saveEdit = async () => {
   isSavingEdit.value = true
   try {
     const formData = new FormData()
-    formData.append('title', titleValue)
+    if (!isSharePost.value) {
+      formData.append('title', titleValue)
+    }
     formData.append('content', contentValue)
-    editImageFiles.forEach((file) => formData.append('images[]', file))
-    editVideoFiles.forEach((file) => formData.append('videos[]', file))
+    if (!isSharePost.value) {
+      editImageFiles.forEach((file) => formData.append('images[]', file))
+      editVideoFiles.forEach((file) => formData.append('videos[]', file))
+    }
 
     await api.post(`/posts/${props.post.id}`, formData)
     cancelEdit()
@@ -710,6 +932,90 @@ const handleDeletePost = async () => {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to delete post.'))
   }
+}
+
+const handleReportPost = async () => {
+  const defaultReason = 'Inappropriate content'
+  const reasonInput = window.prompt(
+    'Why are you reporting this post? (e.g. spam, harassment, inappropriate content)',
+    defaultReason
+  )
+
+  if (reasonInput === null) return
+
+  const reason = reasonInput.trim()
+  if (!reason) {
+    alert('Please provide a reason for reporting.')
+    return
+  }
+
+  reportSubmitting.value = true
+  try {
+    const response = await api.post(`/posts/${props.post.id}/report`, { reason })
+    alert(response?.data?.message || 'Report submitted successfully.')
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to submit report.'))
+  } finally {
+    reportSubmitting.value = false
+  }
+}
+
+const closeShareComposer = () => {
+  shareComposerOpen.value = false
+  shareDraft.value = ''
+}
+
+const resetShareUsers = () => {
+  shareUsersOpen.value = false
+  shareUsers.value = []
+}
+
+const toggleShareComposer = () => {
+  shareComposerOpen.value = !shareComposerOpen.value
+  if (!shareComposerOpen.value) {
+    shareDraft.value = ''
+  }
+}
+
+const submitShare = async () => {
+  if (!shareTargetPostId.value) return
+
+  shareSubmitting.value = true
+  try {
+    await api.post(`/posts/${shareTargetPostId.value}/share`, {
+      content: shareDraft.value.trim(),
+    })
+    closeShareComposer()
+    resetShareUsers()
+    emit('refresh-posts')
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to share post.'))
+  } finally {
+    shareSubmitting.value = false
+  }
+}
+
+const loadShareUsers = async () => {
+  if (!shareListPostId.value) return
+
+  shareUsersLoading.value = true
+  try {
+    const response = await api.get(`/posts/${shareListPostId.value}/shares`)
+    shareUsers.value = response.data?.data || []
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to load sharers.'))
+  } finally {
+    shareUsersLoading.value = false
+  }
+}
+
+const toggleShareUsers = async () => {
+  shareUsersOpen.value = !shareUsersOpen.value
+  if (!shareUsersOpen.value) return
+  await loadShareUsers()
 }
 
 const toggleLike = async () => {

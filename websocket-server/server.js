@@ -8,113 +8,132 @@ app.use(cors());
 app.use(bodyParser.json());
 
 const wss = new WebSocket.Server({ port: 8081 }, () => {
-    console.log('WebSocket server running on port 8081');
+  console.log('WebSocket server running on port 8081');
 });
 
-let clients = {};
 const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted']);
+const clients = {};
+const adminClients = new Set();
 
 const broadcastToAllClients = (payload) => {
-    const message = JSON.stringify(payload);
-    let recipients = 0;
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
-            recipients += 1;
-        }
-    });
-    return recipients;
+  const message = JSON.stringify(payload);
+  let recipients = 0;
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+      recipients += 1;
+    }
+  });
+
+  return recipients;
+};
+
+const sendToAdmins = (payload) => {
+  const deadSockets = [];
+
+  adminClients.forEach((ws) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(payload));
+      return;
+    }
+
+    deadSockets.push(ws);
+  });
+
+  deadSockets.forEach((ws) => adminClients.delete(ws));
+};
+
+const getTargetUserSocket = (type, data = {}) => {
+  if (type === 'connection_request') return clients[data.addressee_id];
+  if (type === 'accept_request') return clients[data.requester_id];
+  if (type === 'unfriend') return clients[data.requester_id];
+  if (type === 'reject') return clients[data.requester_id];
+  if (type === 'block') return clients[data.blocked_id];
+  return null;
 };
 
 wss.on('connection', (ws) => {
-    console.log("New client connected");
+  console.log('New client connected');
 
-    ws.on('message', (message) => {
-        try {
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      console.log('Received:', data);
 
-            const data = JSON.parse(message.toString());
+      if (data.type !== 'auth') {
+        return;
+      }
 
-            console.log("Received:", data);
+      ws.user_id = data.user_id;
+      clients[data.user_id] = ws;
 
-            if (data.type === 'auth') {
+      const role = String(data.role || '').toLowerCase();
+      const channel = String(data.channel || '').toLowerCase();
 
-                ws.user_id = data.user_id;
-                clients[data.user_id] = ws;
+      if (role === 'admin' || channel === 'admin') {
+        ws.isAdmin = true;
+        adminClients.add(ws);
+      }
 
-                console.log("User authenticated:", data.user_id);
+      console.log('User authenticated:', data.user_id);
+    } catch (error) {
+      console.log('Invalid message', error);
+    }
+  });
 
-            }
+  ws.on('close', () => {
+    if (ws.user_id && clients[ws.user_id] === ws) {
+      delete clients[ws.user_id];
+      console.log(`User ${ws.user_id} disconnected`);
+    }
 
-        } catch (err) {
-            console.log('Invalid message', err);
-        }
-    });
-
-    ws.on('close', () => {
-
-        if (ws.user_id) {
-
-            delete clients[ws.user_id];
-
-            console.log(`User ${ws.user_id} disconnected`);
-
-        }
-
-    });
+    if (ws.isAdmin) {
+      adminClients.delete(ws);
+    }
+  });
 });
 
 app.post('/event', (req, res) => {
+  const { type, data = {}, audience } = req.body || {};
 
-    const { type, data } = req.body;
-    if (BROADCAST_EVENTS.has(type)) {
-        const recipients = broadcastToAllClients({ type, data });
-        console.log(`Broadcast event '${type}' to ${recipients} clients`);
+  if (BROADCAST_EVENTS.has(type)) {
+    const recipients = broadcastToAllClients({ type, data });
+    console.log(`Broadcast event '${type}' to ${recipients} clients`);
 
-        return res.json({
-            status: 'event broadcasted',
-            recipients,
-        });
-    }
+    return res.json({
+      status: 'event broadcasted',
+      recipients,
+    });
+  }
 
-    let targetUser;
-
-    if(type === 'connection_request'){
-        targetUser = clients[data.addressee_id];
-    }
-    else if(type === 'accept_request'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'unfriend'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'reject'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'block'){
-        targetUser = clients[data.blocked_id]
-    }
-
-    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
-
-        targetUser.send(JSON.stringify({
-            type: type,
-            data: data
-        }));
-
-        console.log(`Event sent to user ${data.blocked_id ?? data.addressee_id ?? 'unknown'}`);
-
-    } else {
-
-        console.log(`User ${data.blocked_id ?? data.addressee_id ?? 'unknown'} is offline`);
-
-    }
-
-    res.json({
-        status: 'event processed'
+  if (audience === 'admins') {
+    sendToAdmins({
+      type,
+      data,
+      audience: 'admins',
     });
 
+    return res.json({
+      status: 'event processed',
+      delivered_to: 'admins',
+    });
+  }
+
+  const targetUser = getTargetUserSocket(type, data);
+
+  if (targetUser && targetUser.readyState === WebSocket.OPEN) {
+    targetUser.send(JSON.stringify({ type, data }));
+    console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocked_id || 'unknown'}`);
+  } else {
+    console.log('Target user is offline or not specified');
+  }
+
+  return res.json({
+    status: 'event processed',
+  });
 });
 
 app.listen(3000, () => {
-    console.log('Event server listening on port 3000');
+  console.log('Event server listening on port 3000');
 });

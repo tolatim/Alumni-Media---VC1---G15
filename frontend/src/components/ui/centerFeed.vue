@@ -73,7 +73,19 @@ const filteredPosts = computed(() => {
   return visiblePosts.filter((post) => {
     const title = (post?.title || '').toLowerCase()
     const content = (post?.content || '').toLowerCase()
-    return title.includes(query) || content.includes(query)
+    const sharedTitle = (post?.shared_post?.title || '').toLowerCase()
+    const sharedContent = (post?.shared_post?.content || '').toLowerCase()
+    const authorName = (post?.user?.name || '').toLowerCase()
+    const sharedAuthorName = (post?.shared_post?.user?.name || '').toLowerCase()
+
+    return (
+      title.includes(query)
+      || content.includes(query)
+      || sharedTitle.includes(query)
+      || sharedContent.includes(query)
+      || authorName.includes(query)
+      || sharedAuthorName.includes(query)
+    )
   })
 })
 

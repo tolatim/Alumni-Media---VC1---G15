@@ -43,12 +43,36 @@ export const useFeedStore = defineStore('feed', {
 
     replacePost(post) {
       if (!post?.id) return
-      this.posts = this.posts.map((entry) => (entry.id === post.id ? post : entry))
+      this.posts = this.posts.map((entry) => {
+        if (entry.id === post.id) {
+          return post
+        }
+
+        if (entry.shared_post?.id === post.id) {
+          return {
+            ...entry,
+            shared_post: post,
+          }
+        }
+
+        return entry
+      })
     },
 
     removePost(postId) {
       if (!postId) return
-      this.posts = this.posts.filter((entry) => entry.id !== postId)
+      this.posts = this.posts
+        .filter((entry) => entry.id !== postId)
+        .map((entry) => {
+          if (entry.shared_post?.id === postId) {
+            return {
+              ...entry,
+              shared_post: null,
+            }
+          }
+
+          return entry
+        })
     },
   },
 })

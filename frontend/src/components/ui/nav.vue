@@ -2,7 +2,16 @@
   <nav class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
       <RouterLink to="/" class="flex items-center gap-3">
-        <span class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-sm">
+        <img
+          v-if="appLogoUrl"
+          :src="appLogoUrl"
+          alt="App logo"
+          class="h-10 w-10 rounded-xl border border-slate-200 object-cover shadow-sm"
+        >
+        <span
+          v-else
+          class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-sm"
+        >
           <i class="fa-solid fa-graduation-cap text-sm"></i>
         </span>
         <div>
@@ -59,9 +68,11 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { fetchPublicAppearance } from '@/services/appearanceService'
 
 const route = useRoute()
 const user = ref(null)
+const appLogoUrl = ref(null)
 const unreadCount = ref(0)
 let unreadTimer = null
 const handleMessagesUpdated = () => {
@@ -111,6 +122,8 @@ watch(
 )
 
 onMounted(async () => {
+  const appearance = await fetchPublicAppearance()
+  appLogoUrl.value = appearance.logo_url || null
   await fetchMe()
   await fetchUnreadCount()
   unreadTimer = setInterval(fetchUnreadCount, 15000)
