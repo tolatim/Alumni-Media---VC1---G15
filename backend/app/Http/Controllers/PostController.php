@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\Connection;
+use App\Models\User;
+use App\Services\NotificationService;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 
@@ -91,19 +95,25 @@ class PostController extends Controller
 
             // Notify all target users
             if (!empty($targetIds)) {
-                User::query()
-                    ->whereIn('id', $targetIds)
-                    ->get()
-                    ->each(fn($user) => $user->notify(new \App\Notifications\NewPostNotification($actor, $post->id)));
+                $users = User::whereIn('id', $targetIds)->get();
+                foreach ($users as $user) {
+                    NotificationService::send(
+                        $user->id,
+                        'New Post',
+                        $actor->first_name . ' ' . $actor->last_name . ' published a new post.',
+                        'post',
+                        $post->id
+                    );
+                }
             }
-        }
+        }  
 
         // Return post with media
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments'])
+            'post'    => $post->load('media', 'user')->loadCount(['likes', 'comments'])
         ], 201);
-    }
+    }  
 
     // show post
     public function show($id)

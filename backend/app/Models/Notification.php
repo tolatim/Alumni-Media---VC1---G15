@@ -2,20 +2,30 @@
 
 namespace App\Models;
 
-use Illuminate\Notifications\DatabaseNotification;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Model;
 
-class Notification extends DatabaseNotification
+class Notification extends Model
 {
-    public $incrementing = false;   // UUID is not auto-increment
-    protected $keyType = 'string';  // UUID is string
+    protected $fillable = [
+        'user_id',
+        'title',
+        'message',
+        'type',
+        'related_id',
+        'read_at',
+    ];
 
-    protected static function booted()
+    protected $casts = [
+        'read_at' => 'datetime',
+    ];
+
+    public function user()
     {
-        static::creating(function ($model) {
-            if (!$model->id) {
-                $model->id = (string) Str::uuid(); // auto-generate UUID
-            }
-        });
+        return $this->belongsTo(User::class);
+    }
+
+    public function isRead(): bool
+    {
+        return $this->read_at !== null;
     }
 }

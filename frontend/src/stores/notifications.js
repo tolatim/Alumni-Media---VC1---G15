@@ -58,36 +58,38 @@ export const useNotificationStore = defineStore("notifications", {
 
     connect(userId) {
       if (!userId || !window.Echo) return;
-      if (this.subscribed && this.channelName === `App.Models.User.${userId}`) {
+      if (this.subscribed && this.channelName === `notifications.${userId}`) {
         return;
       }
       if (this.channelName) this.disconnect();
 
-      this.channelName = `App.Models.User.${userId}`;
+      this.channelName = `notifications.${userId}`;
       this.subscribed = true;
 
-      window.Echo.private(this.channelName).notification((notification) => {
-        const id = notification.id ?? `rt-${Date.now()}`;
-        const exists = this.items.some((item) => item.id === id);
-        if (exists) return;
+      window.Echo.private(this.channelName)
+        .listen('.new.notification', (notification) => {
+          const id = notification.id ?? `rt-${Date.now()}`;
+          const exists = this.items.some((item) => item.id === id);
+          if (exists) return;
 
-        this.items.unshift({
-          id,
-          data: notification,
-          read_at: null,
-          created_at: new Date().toISOString()
+          this.items.unshift({
+            id,
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+            related_id: notification.related_id,
+            read_at: null,
+            created_at: new Date().toISOString()
+          });
+          this.unreadCount += 1;
         });
-        this.unreadCount += 1;
-      });
     },
 
     disconnect() {
       if (!this.channelName || !window.Echo) return;
-      window.Echo.leave(`private-${this.channelName}`);
+      window.Echo.leave(this.channelName);
       this.channelName = null;
       this.subscribed = false;
     }
   }
 });
-
-

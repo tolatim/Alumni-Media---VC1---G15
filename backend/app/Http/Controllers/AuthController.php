@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppSetting;
-use App\Models\Notification;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\WebsocketNotifier;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Request;
+use App\Models\Notification;
+
 
 class AuthController extends Controller
 {
@@ -58,6 +58,7 @@ class AuthController extends Controller
             'email' => $user->email
         ], 300);
 
+
         Notification::create([
             'user_id' => $user->id,
             'notifiable_id' => $user->id,
@@ -67,6 +68,8 @@ class AuthController extends Controller
                 'message' => $user->name . ' logged in successfully.',
             ],
         ]);
+
+
 
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -121,18 +124,11 @@ class AuthController extends Controller
 
         $user = User::with(['role'])->findOrFail(Auth::id());
 
-        if ($user->isSuspended()) {
-            Auth::logout();
-            return response()->json([
-                'message' => 'Your account is suspended',
-            ], 403);
-        }
-
         Notification::create([
             'user_id' => $user->id,
-            'type' => 'login_success',
+            'type' => 'register_success',
             'data' => [
-                'message' => 'Welcome back! Login successful.',
+                'message' => 'Welcome! Your account was created successfully.',
             ],
         ]);
 

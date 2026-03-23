@@ -1,13 +1,13 @@
 <template>
   <div class="login-container">
-
     <!-- Left Panel: Marketing / Banner -->
     <div class="left-panel">
       <div class="overlay">
         <h1>Reconnect with Excellence</h1>
         <p>
-          Join over 2,000 PNC alumni. Unlock exclusive industry insights, meaningful networking, 
-          and career opportunities built for our global Cambodian tech community.
+          Join over 2,000 PNC alumni. Unlock exclusive industry insights,
+          meaningful networking, and career opportunities built for our global
+          Cambodian tech community.
         </p>
       </div>
     </div>
@@ -20,18 +20,40 @@
 
         <form @submit.prevent="login">
           <label for="email">Email Address</label>
-          <input id="email" type="email" v-model="email" placeholder="yourname@alumni.pnc" required :disabled="loading">
+          <input
+            id="email"
+            type="email"
+            v-model="email"
+            placeholder="yourname@alumni.pnc"
+            required
+            :disabled="loading"
+          />
 
           <label for="password">Password</label>
-          <input id="password" type="password" v-model="password" placeholder="••••••••" required :disabled="loading">
+          <input
+            id="password"
+            type="password"
+            v-model="password"
+            placeholder="••••••••"
+            required
+            :disabled="loading"
+          />
 
           <div class="forgot-link">
-            <RouterLink to="/forgot-password" class="text-sm text-blue-600 hover:underline">Forgot password?</RouterLink>
+            <RouterLink
+              to="/forgot-password"
+              class="text-sm text-blue-600 hover:underline"
+              >Forgot password?</RouterLink
+            >
           </div>
 
           <p id="error-message" class="error-text">{{ error }}</p>
 
-          <button type="submit" :class="{ loading: loading }" :disabled="loading">
+          <button
+            type="submit"
+            :class="{ loading: loading }"
+            :disabled="loading"
+          >
             <span class="spinner"></span>
             <span>{{ loading ? "Signing in..." : "Sign In →" }}</span>
           </button>
@@ -43,25 +65,85 @@
         </div>
       </div>
     </div>
-
   </div>
 </template>
+
+<script setup>
+import { ref } from "vue";
+import { loginUser } from "@/services/authService";
+import { useRouter } from "vue-router";
+import { useNotificationStore } from "@/stores/notifications";
+
+const router = useRouter();
+const notificationStore = useNotificationStore();
+
+const email = ref("");
+const password = ref("");
+const error = ref("");
+const loading = ref(false);
+
+async function login() {
+  error.value = "";
+  loading.value = true;
+
+  try {
+    const res = await loginUser({
+      email: email.value,
+      password: password.value,
+    })
+
+    const token = res?.data?.token
+    const user = res?.data?.user;
+
+    if (!token || !user) {
+      throw new Error("Invalid login response");
+    }
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // ✅ Update Echo token
+    if (window.Echo) {
+      window.Echo.connector.options.auth = {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      };
+    }
+
+    // ✅ Connect to notification channel
+    notificationStore.connect(user.id);
+
+    const roleName =
+      typeof user.role === "string" ? user.role : user.role?.name;
+    const target = roleName === "admin" ? "/admin" : "/";
+    const resolved = router.resolve(target);
+    await router.push(resolved.matched.length ? target : "/");
+  } catch (err) {
+    error.value =
+      err.response?.data?.message ||
+      err.message ||
+      "Login failed. Please try again.";
+  } finally {
+    loading.value = false;
+  }
+}
+</script>
 
 <style scoped>
 .login-container {
   display: flex;
   height: 100vh;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   overflow: hidden;
   background: #f8fafc;
 }
 
-/* ── Left Panel ──────────────────────────────────────── */
 .left-panel {
   flex: 1;
   position: relative;
-  background: url('https://images.globalgiving.org/pfil/66543/pict_original.jpg?w=460&h=306&auto=compress,enhance&fit=crop&crop=faces,center&format=auto&dpr=2') 
-              center/cover no-repeat;
+  background: url("https://images.globalgiving.org/pfil/66543/pict_original.jpg?w=460&h=306&auto=compress,enhance&fit=crop&crop=faces,center&format=auto&dpr=2")
+    center/cover no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,10 +153,15 @@
 }
 
 .left-panel::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.65) 0%, rgba(59, 130, 246, 0.45) 50%, rgba(99, 102, 241, 0.35) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.65) 0%,
+    rgba(59, 130, 246, 0.45) 50%,
+    rgba(99, 102, 241, 0.35) 100%
+  );
   z-index: 1;
 }
 
@@ -83,16 +170,6 @@
   z-index: 2;
   max-width: 480px;
   text-align: left;
-}
-
-.logo-container {
-  margin-bottom: 2.5rem;
-}
-
-.pnc-logo {
-  height: 64px;
-  width: auto;
-  filter: brightness(1.1) drop-shadow(0 2px 8px rgba(0,0,0,0.3));
 }
 
 .overlay h1 {
@@ -113,7 +190,6 @@
   font-weight: 400;
 }
 
-/* ── Right Panel ─────────────────────────────────────── */
 .right-panel {
   flex: 1;
   background: white;
@@ -223,7 +299,7 @@ button:disabled {
 .spinner {
   width: 20px;
   height: 20px;
-  border: 3px solid rgba(255,255,255,0.3);
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -235,7 +311,9 @@ button.loading .spinner {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .new-user {
@@ -256,60 +334,28 @@ button.loading .spinner {
   text-decoration: underline;
 }
 
-/* Responsive adjustments */
 @media (max-width: 1024px) {
-  .left-panel { padding: 4rem 2rem; }
-  .login-card { padding: 2.5rem 2rem; max-width: 380px; }
+  .left-panel {
+    padding: 4rem 2rem;
+  }
+  .login-card {
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+  }
 }
 
 @media (max-width: 768px) {
-  .login-container { flex-direction: column; }
-  .left-panel { flex: none; height: 45vh; padding: 3rem 1.5rem; }
-  .right-panel { flex: none; padding: 2rem 1rem; }
-}
-</style>
-
-<script setup>
-import { ref } from "vue";
-import { loginUser } from "@/services/authService";
-import { useRouter } from "vue-router";
-
-const router = useRouter();
-
-const email = ref("");
-const password = ref("");
-const error = ref("");
-const loading = ref(false); // ✅ IMPORTANT
-
-async function login() {
-  error.value = "";
-  loading.value = true;
-
-  try {
-    const res = await loginUser({
-      email: email.value,
-      password: password.value,
-    });
-
-    const token = res?.data?.token;
-    const user = res?.data?.user;
-
-    if (!token || !user) {
-      throw new Error("Invalid login response");
-    }
-
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
-
-    // Role may come as object ({ name: 'alumni' }) or string ('alumni')
-    const roleName = typeof user.role === "string" ? user.role : user.role?.name;
-    const target = roleName === "admin" ? "/admin" : "/";
-    const resolved = router.resolve(target);
-    await router.push(resolved.matched.length ? target : "/");
-  } catch (err) {
-    error.value = err.response?.data?.message || err.message || "Login failed. Please try again.";
-  } finally {
-    loading.value = false;
+  .login-container {
+    flex-direction: column;
+  }
+  .left-panel {
+    flex: none;
+    height: 45vh;
+    padding: 3rem 1.5rem;
+  }
+  .right-panel {
+    flex: none;
+    padding: 2rem 1rem;
   }
 }
-</script>
+</style>

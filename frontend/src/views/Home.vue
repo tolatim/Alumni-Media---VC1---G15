@@ -33,13 +33,13 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, nextTick, computed } from "vue";
-import { useRoute } from "vue-router";
 import Navbar from "@/components/ui/nav.vue";
 import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
 import { useUserStore } from "@/stores/user";
+import { useRoute } from "vue-router";
 
 const userStore = useUserStore();
 const route = useRoute();
@@ -82,8 +82,7 @@ const loadFeedPage = async (page = 1, append = false) => {
 
 const loadHomeData = async () => {
   errorMessage.value = "";
-  await userStore.fetchUser();
-
+  userStore.fetchUser();
   const [feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
     api.get("/feed", { params: { page: 1, per_page: FEED_PER_PAGE } }),
     api.get("/users/suggestions"),

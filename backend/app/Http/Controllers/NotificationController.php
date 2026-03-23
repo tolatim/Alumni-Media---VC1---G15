@@ -3,86 +3,68 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notification;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
+    // GET /api/notifications
     public function index(Request $request)
     {
-        $user = $request->user();
-
-        $notifications = Notification::where('notifiable_type', User::class)
-            ->where('notifiable_id', $user->id)
-            ->orderByDesc('created_at')
-            ->get();
+        $notifications = Notification::where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
         return response()->json([
-            'message' => 'Notifications fetched successfully',
-            'data' => $notifications,
+            'data'       => $notifications->items(),
+            'pagination' => [
+                'current_page' => $notifications->currentPage(),
+                'last_page'    => $notifications->lastPage(),
+                'per_page'     => $notifications->perPage(),
+                'total'        => $notifications->total(),
+            ],
         ]);
     }
 
-    public function markAsRead(Request $request, string $id)
-    {
-        $user = $request->user();
-        $notification = Notification::findOrFail($id);
-
-        abort_unless(
-            $notification->notifiable_type === User::class &&
-            (int) $notification->notifiable_id === (int) $user->id,
-            403
-        );
-
-        if (!$notification->read_at) {
-            $notification->update(['read_at' => now()]);
-        }
-
-        return response()->json([
-            'message' => 'Notification marked as read',
-            'data' => $notification,
-        ]);
-    }
-
-    public function destroy(Request $request, string $id)
-    {
-        $user = $request->user();
-        $notification = Notification::findOrFail($id);
-
-        abort_unless(
-            $notification->notifiable_type === User::class &&
-            (int) $notification->notifiable_id === (int) $user->id,
-            403
-        );
-
-        $notification->delete();
-
-        return response()->json(['message' => 'Notification deleted successfully']);
-    }
-
+    // GET /api/notifications/unread-count
     public function unreadCount(Request $request)
     {
-        $user = $request->user();
-
-        $count = Notification::where('notifiable_type', User::class)
-            ->where('notifiable_id', $user->id)
+        $count = Notification::where('user_id', $request->user()->id)
             ->whereNull('read_at')
             ->count();
 
         return response()->json([
-            'message' => 'Unread notification count fetched successfully',
-            'data' => ['count' => $count],
+            'data' => ['count' => $count]
         ]);
     }
 
-    public function createNotification(User $user, string $type, string $message)
+    // POST /api/notifications/{id}/read
+    public function markAsRead(Request $request, $id)
     {
-        return Notification::create([
-            'user_id' => $user->id,
-            'notifiable_id' => $user->id,
-            'notifiable_type' => User::class,
-            'type' => $type,
-            'data' => json_encode(['message' => $message]),
-        ]);
+        $notification = Notification::where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        $notification->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'Marked as read']);
+    }
+
+    // POST /api/notifications/read-all
+    public function markAllAsRead(Request $request)
+    {
+        Notification::where('user_id', $request->user()->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'All marked as read']);
+    }
+
+    // DELETE /api/notifications/{id}
+    public function destroy(Request $request, $id)
+    {
+        Notification::where('user_id', $request->user()->id)
+            ->findOrFail($id)
+            ->delete();
+
+        return response()->json(['message' => 'Deleted']);
     }
 }

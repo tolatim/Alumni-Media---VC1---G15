@@ -139,18 +139,6 @@
       </template>
 
       <div v-if="post.media?.length" class="space-y-2 relative">
-        <button
-          type="button"
-          @click.stop="toggleSave"
-          :aria-pressed="isSaved"
-          class="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white/90 text-slate-600 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-cyan-200 hover:text-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1"
-          :class="isSaved ? 'border-cyan-200 bg-cyan-50 text-cyan-700' : ''"
-          :title="isSaved ? 'Remove from saved' : 'Save post'"
-        >
-          <svg viewBox="0 0 24 24" class="h-4 w-4" :fill="isSaved ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
         <template v-if="shouldCondenseMedia && !isMediaExpanded">
           <div
             v-if="post.media[0]"
@@ -311,6 +299,7 @@
             <span>{{ reportSubmitting ? 'Reporting...' : 'Report' }}</span>
           </button>
         </div>
+        <SavePostButton :post-id="post.id" />
 
       </div>
       <p class="text-xs font-medium text-slate-500">
@@ -575,8 +564,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
-import { useSavedPostStore } from '@/stores/savedPostStore'
 import { getLastEventForPost, notify, subscribe } from '@/utils/commentHub.js'
+import SavePostButton from '@/components/ui/SavePostButton.vue'
 
 const props = defineProps({
   post: {
@@ -598,9 +587,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['deleted', 'refresh-posts'])
-const savedPostStore = useSavedPostStore()
-const isSaved = computed(() => savedPostStore.isSaved(props.post.id))
-const toggleSave = () => savedPostStore.toggleSave(props.post.id)
 
 
 const isEditing = ref(false)
