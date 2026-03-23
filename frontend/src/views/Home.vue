@@ -38,7 +38,7 @@ import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
-import { useFeedStore } from "@/store/feed";
+import { useFeedStore } from "@/stores/feed";
 
 const feedStore = useFeedStore()
 
