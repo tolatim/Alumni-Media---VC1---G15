@@ -34,9 +34,10 @@ export const createMessageSocket = ({
   }
 
   const scheduleReconnect = () => {
+    if (manuallyDisconnected) return
     clearReconnect()
     reconnectAttempts += 1
-    const delay = Math.min(5000, 400 * Math.pow(2, reconnectAttempts - 1))
+    const delay = Math.min(15000, 1000 * Math.pow(2, reconnectAttempts - 1))
     reconnectTimer = setTimeout(connect, delay)
   }
 
@@ -51,6 +52,7 @@ export const createMessageSocket = ({
   const connect = () => {
     const wsUrl = resolveWsUrl()
     if (!wsUrl) return
+
     if (!getAuthToken?.() || !getUserId?.()) return
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
 
@@ -76,9 +78,11 @@ export const createMessageSocket = ({
     })
 
     socket.addEventListener('close', () => {
+      const wasManual = manuallyDisconnected
       socket = null
+
       if (onClose) onClose()
-      if (!manuallyDisconnected) {
+      if (!wasManual) {
         scheduleReconnect()
       }
     })
@@ -93,6 +97,7 @@ export const createMessageSocket = ({
     clearReconnect()
     if (socket) {
       socket.close()
+      socket = null
     }
   }
 
