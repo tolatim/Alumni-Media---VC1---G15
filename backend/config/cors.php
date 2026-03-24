@@ -19,14 +19,19 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
+    'allowed_origins' => array_values(array_unique(array_merge([
+        // Vite dev server
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:5175',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
-    ],
+
+        // Dockerized frontend (see docker-compose.yml)
+        'http://localhost:4000',
+        'http://127.0.0.1:4000',
+    ], array_filter(array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))))))),
 
     'allowed_origins_patterns' => [],
 
