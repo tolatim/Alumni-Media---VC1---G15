@@ -19,11 +19,23 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $perPage = min(max((int) $request->query('per_page', 24), 1), 100);
+        $perPage = min(max((int) $request->query('per_page', 24), 1), 200);
+        $search = trim((string) ($request->query('search', $request->query('q', ''))));
 
-        $users = User::query()
-            ->latest('id')
-            ->paginate($perPage);
+        $query = User::query()->latest('id');
+
+        if ($search !== '') {
+            $escaped = addcslashes($search, '%_\\');
+            $like = '%' . $escaped . '%';
+
+            $query->where(function (Builder $q) use ($like) {
+                $q->where('first_name', 'like', $like)
+                    ->orWhere('last_name', 'like', $like)
+                    ->orWhere('email', 'like', $like);
+            });
+        }
+
+        $users = $query->paginate($perPage);
 
         return response()->json([
             'message' => 'Users fetched successfully',

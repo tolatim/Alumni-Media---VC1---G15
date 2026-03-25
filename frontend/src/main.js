@@ -14,4 +14,4 @@ createApp(App)
   .use(router)
   .mount('#app')
 
-createEcho()
+await createEcho()

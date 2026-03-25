@@ -1,6 +1,3 @@
-import Echo from 'laravel-echo'
-import Pusher from 'pusher-js'
-
 let echoInstance = null
 
 const getApiRoot = () => {
@@ -8,7 +5,7 @@ const getApiRoot = () => {
   return apiUrl.replace(/\/api\/?$/, '')
 }
 
-export const createEcho = () => {
+export const createEcho = async () => {
   const token = localStorage.getItem('token')
 
   if (echoInstance) {
@@ -26,7 +23,24 @@ export const createEcho = () => {
 
   if (!token) return null
 
-  window.Pusher = Pusher
+  let Echo = null
+  let Pusher = null
+
+  try {
+    // Use @vite-ignore so Vite doesn't try to resolve optional deps at build time.
+    const echoModule = await import(/* @vite-ignore */ 'laravel-echo')
+    Echo = echoModule?.default || echoModule
+
+    const pusherModule = await import(/* @vite-ignore */ 'pusher-js')
+    Pusher = pusherModule?.default || pusherModule
+  } catch (error) {
+    console.warn('[realtime] Optional deps missing (laravel-echo / pusher-js). Skipping Echo init.', error)
+    return null
+  }
+
+  if (typeof window !== 'undefined') {
+    window.Pusher = Pusher
+  }
 
   echoInstance = new Echo({
     broadcaster: 'pusher',

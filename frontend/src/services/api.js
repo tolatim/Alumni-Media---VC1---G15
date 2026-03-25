@@ -1,5 +1,10 @@
 import axios from "axios"
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const defaultApiHost =
+  typeof window !== "undefined" && window.location?.hostname
+    ? window.location.hostname
+    : "localhost";
+const baseURL =
+  import.meta.env.VITE_API_URL || `http://${defaultApiHost}:8000/api`;
 import { startApiLoading, stopApiLoading } from './loadingService'
 
 
@@ -40,6 +45,16 @@ api.interceptors.response.use(response => {
   if (error.config?.__trackLoading) {
     stopApiLoading()
   }
+
+  const status = error?.response?.status
+  if (status === 401) {
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login"
+    }
+  }
+
   return Promise.reject(error)
 })
 export default api
