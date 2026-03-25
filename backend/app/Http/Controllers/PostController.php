@@ -1,21 +1,17 @@
 <?php
 
 namespace App\Http\Controllers;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Post;
-<<<<<<<<< Temporary merge branch 1
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\MediaStorageService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-=========
-use App\Models\Report;
->>>>>>>>> Temporary merge branch 2
 use Illuminate\Support\Facades\Storage;
 
 
