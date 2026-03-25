@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-let clients = {};
+const clients = {};
 const adminClients = new Set();
 
 const sendToAdmins = (payload) => {
@@ -22,6 +22,8 @@ const sendToAdmins = (payload) => {
     });
 
     deadSockets.forEach((ws) => adminClients.delete(ws));
+};
+
 const BROADCAST_EVENTS = new Set(['post_created', 'post_updated', 'post_deleted']);
 
 const broadcastToAllClients = (payload) => {
@@ -76,6 +78,16 @@ app.post('/event', (req, res) => {
         return res.json({
             status: 'event processed',
             delivered_to: 'admins',
+        });
+    }
+
+    if (BROADCAST_EVENTS.has(type) || audience === 'all') {
+        const delivered = broadcastToAllClients({ type, data });
+        console.log(`Broadcast ${type} to ${delivered} client(s)`);
+        return res.json({
+            status: 'event processed',
+            delivered_to: 'all_clients',
+            delivered,
         });
     }
 
@@ -149,64 +161,4 @@ wss.on('connection', (ws) => {
             adminClients.delete(ws);
         }
     });
-});
-
-app.post('/event', (req, res) => {
-
-    const { type, data = {}, audience } = req.body || {};
-
-    if (audience === 'admins') {
-        sendToAdmins({
-            type,
-            data,
-            audience: 'admins',
-        });
-
-        return res.json({
-            status: 'event processed',
-            delivered_to: 'admins',
-        });
-    }
-
-    let targetUser;
-
-    if(type === 'connection_request'){
-        targetUser = clients[data.addressee_id];
-    }
-    else if(type === 'accept_request'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'unfriend'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'reject'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'block'){
-        targetUser = clients[data.blocker_id]
-    }
-
-    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
-
-        targetUser.send(JSON.stringify({
-            type: type,
-            data: data
-        }));
-
-        console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocker_id}`);
-
-    } else {
-
-        console.log('Target user is offline or not specified');
-
-    }
-
-    res.json({
-        status: 'event processed'
-    });
-
-});
-
-app.listen(3000, () => {
-    console.log('Event server listening on port 3000');
 });
