@@ -35,9 +35,11 @@ return new class extends Migration
             ->whereNull('title')
             ->update(['title' => DB::raw('type')]);
 
-        DB::table('notifications')
-            ->whereNull('message')
-            ->update(['message' => DB::raw("COALESCE(data, '')")]);
+        if (Schema::hasColumn('notifications', 'data')) {
+            DB::table('notifications')
+                ->whereNull('message')
+                ->update(['message' => DB::raw("COALESCE(data, '')")]);
+        }
 
         $this->addIndexIfMissing('notifications', ['user_id', 'read_at'], 'notifications_user_read_at_index');
         $this->addIndexIfMissing('notifications', ['user_id', 'created_at'], 'notifications_user_created_at_index');
@@ -73,6 +75,10 @@ return new class extends Migration
 
     private function hasIndex(string $tableName, string $indexName): bool
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return false;
+        }
+
         return DB::table('information_schema.statistics')
             ->where('table_schema', DB::getDatabaseName())
             ->where('table_name', $tableName)
