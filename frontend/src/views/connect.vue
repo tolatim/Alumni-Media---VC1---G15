@@ -2,492 +2,898 @@
   <div>
     <Navbar />
 
-    <main class="min-h-screen py-6 md:py-8">
-      <div class="mx-auto max-w-7xl px-4 sm:px-5">
-        <div class="grid grid-cols-12 gap-5">
-          <aside class="col-span-12 space-y-5 lg:col-span-3">
-            <section
-              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <h3
-                class="mb-4 text-sm font-bold uppercase tracking-[0.1em] text-slate-500"
-              >
-                Manage Network
-              </h3>
-              <div class="space-y-2 text-sm">
-                <div
-                  class="flex items-center justify-between rounded-xl bg-cyan-50 px-3 py-2 text-cyan-800 ring-1 ring-cyan-100"
-                >
-                  <span class="font-semibold">My Connections</span>
-                  <span
-                    class="rounded-full bg-white px-2 py-0.5 text-xs font-bold"
-                    >{{ connectionsCount }}</span
-                  >
+    <main class="connections-page">
+      <div class="page-container">
+
+        <!-- ─── Page Header ──────────────────────────────────────── -->
+        <div class="page-header">
+          <div class="page-header-text">
+            <h1 class="page-title">My Network</h1>
+            <p class="page-sub">Manage your connections, requests and discover new people</p>
+          </div>
+        </div>
+
+        <!-- ─── Grid ─────────────────────────────────────────────── -->
+        <div class="connections-grid">
+
+          <!-- LEFT: Manage Network sidebar -->
+          <aside class="col-left">
+            <div class="side-card">
+              <p class="side-label">Manage Network</p>
+              <nav class="manage-nav">
+                <div class="manage-item manage-item--active">
+                  <div class="manage-item-icon">
+                    <svg viewBox="0 0 18 18" fill="none" width="15" height="15">
+                      <circle cx="6.5" cy="5.5" r="3" stroke="currentColor" stroke-width="1.4"/>
+                      <circle cx="13" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                      <path d="M1 16c0-3.038 2.462-4.5 5.5-4.5S12 12.962 12 16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                      <path d="M13 10c1.657 0 3 1.119 3 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <span class="manage-item-label">My Connections</span>
+                  <span class="manage-item-count">{{ connectionsCount }}</span>
                 </div>
-                <div
-                  class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-slate-600"
-                >
-                  <span class="font-medium">Events</span>
-                  <span class="text-xs">0</span>
+                <div class="manage-item">
+                  <div class="manage-item-icon">
+                    <svg viewBox="0 0 18 18" fill="none" width="15" height="15">
+                      <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.4"/>
+                      <path d="M2 7h14" stroke="currentColor" stroke-width="1.4"/>
+                      <path d="M6 2v2M12 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <span class="manage-item-label">Events</span>
+                  <span class="manage-item-count manage-item-count--muted">0</span>
                 </div>
-                <div
-                  class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-slate-600"
-                >
-                  <span class="font-medium">Groups</span>
-                  <span class="text-xs">0</span>
+                <div class="manage-item">
+                  <div class="manage-item-icon">
+                    <svg viewBox="0 0 18 18" fill="none" width="15" height="15">
+                      <path d="M3 6h12M3 9h8M3 12h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                      <rect x="1" y="2" width="16" height="14" rx="3" stroke="currentColor" stroke-width="1.4"/>
+                    </svg>
+                  </div>
+                  <span class="manage-item-label">Groups</span>
+                  <span class="manage-item-count manage-item-count--muted">0</span>
                 </div>
-              </div>
-            </section>
+              </nav>
+            </div>
           </aside>
 
-          <section class="col-span-12 space-y-5 lg:col-span-6">
-            <section
-              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-base font-bold text-slate-900">
-                  Requests For You
-                </h3>
-                <span
-                  class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600"
-                  >{{ pendingStore.pendingPagination.total }}</span
-                >
+          <!-- CENTER: Requests + Suggestions -->
+          <section class="col-center">
+
+            <!-- Requests For You -->
+            <div class="content-card">
+              <div class="card-header">
+                <div class="card-title-wrap">
+                  <h2 class="card-title">Requests For You</h2>
+                  <span class="count-pill">{{ pendingStore.pendingPagination.total }}</span>
+                </div>
               </div>
-              <div class="space-y-3">
+
+              <TransitionGroup name="slide-out" tag="div" class="items-list">
                 <article
                   v-for="request in pendingStore.pendingRequests"
                   :key="request.id"
-                  class="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                  class="person-row"
                 >
-                  <div class="flex items-center justify-between gap-4">
-                    <RouterLink
-                      :to="{
-                        name: 'Profile',
-                        params: { id: request.requester?.id },
-                      }"
-                      class="flex min-w-0 items-center gap-3"
-                    >
+                  <RouterLink
+                    :to="{ name: 'Profile', params: { id: request.requester?.id } }"
+                    class="person-link"
+                  >
+                    <div class="person-avatar-wrap">
                       <img
-                        :src="
-                          request.requester?.profile?.avatar || fallbackAvatar
-                        "
-                        class="h-11 w-11 rounded-xl object-cover"
+                        v-if="request.requester?.profile?.avatar"
+                        :src="request.requester.profile.avatar"
+                        class="person-avatar-img"
+                        alt=""
                       />
-                      <div class="min-w-0">
-                        <p
-                          class="truncate text-sm font-semibold text-slate-800"
-                        >
-                          {{ request.requester?.name || "Unknown user" }}
-                        </p>
-                        <p class="truncate text-xs text-slate-500">
-                          Sent you a friend request
-                        </p>
+                      <div v-else class="person-avatar-fallback">
+                        {{ (request.requester?.name || '?')[0].toUpperCase() }}
                       </div>
-                    </RouterLink>
-                    <div class="flex gap-2">
-                      <button
-                        @click="acceptRequest(request.id)"
-                        class="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-700"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        @click="rejectRequest(request.id)"
-                        class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                      >
-                        Reject
-                      </button>
                     </div>
+                    <div class="person-info">
+                      <p class="person-name">{{ request.requester?.name || 'Unknown user' }}</p>
+                      <p class="person-sub">Sent you a connection request</p>
+                    </div>
+                  </RouterLink>
+                  <div class="person-actions">
+                    <button class="btn-primary" @click="acceptRequest(request.id)">
+                      <svg viewBox="0 0 14 14" fill="none" width="12" height="12">
+                        <path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      Accept
+                    </button>
+                    <button class="btn-ghost-danger" @click="rejectRequest(request.id)">
+                      <svg viewBox="0 0 14 14" fill="none" width="11" height="11">
+                        <path d="M3 3l8 8M11 3L3 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                      </svg>
+                    </button>
                   </div>
                 </article>
-                <p
-                  v-if="!pendingStore.pendingRequests.length"
-                  class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500"
-                >
-                  No request yet.
-                </p>
+              </TransitionGroup>
+
+              <div v-if="!pendingStore.pendingRequests.length" class="empty-row">
+                <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                  <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M4 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <path d="M14 5l2 2 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                No pending requests
               </div>
-              <div
-                v-if="pendingStore.pendingPagination.last_page > 1"
-                class="mt-4 flex items-center justify-between"
-              >
+
+              <div v-if="pendingStore.pendingPagination.last_page > 1" class="pagination">
                 <button
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                  class="page-btn"
                   :disabled="pendingStore.pendingPagination.current_page <= 1"
-                  @click="
-                    pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page - 1)
-                  "
+                  @click="pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page - 1)"
                 >
+                  <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   Prev
                 </button>
-                <p class="text-xs text-slate-500">
-                  Page {{ pendingStore.pendingPagination.current_page }} /
-                  {{ pendingStore.pendingPagination.last_page }}
-                </p>
+                <span class="page-info">
+                  {{ pendingStore.pendingPagination.current_page }} / {{ pendingStore.pendingPagination.last_page }}
+                </span>
                 <button
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
-                  :disabled="
-                    pendingStore.pendingPagination.current_page >=
-                    pendingStore.pendingPagination.last_page
-                  "
-                  @click="
-                    pendingStore.loadPendingRequests(
-                      pendingStore.pendingPagination.current_page + 1
-                    )
-                  "
+                  class="page-btn"
+                  :disabled="pendingStore.pendingPagination.current_page >= pendingStore.pendingPagination.last_page"
+                  @click="pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page + 1)"
                 >
                   Next
+                  <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
               </div>
-            </section>
+            </div>
 
-            <section
-              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-base font-bold text-slate-900">
-                  Suggested Friends
-                </h3>
-                <!-- <span
-                class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600"
-                >{{ suggestionsPagination.total }}</span
-              > -->
+            <!-- Suggested Friends -->
+            <div class="content-card">
+              <div class="card-header">
+                <div class="card-title-wrap">
+                  <h2 class="card-title">People You May Know</h2>
+                </div>
               </div>
-              <div class="space-y-3">
+
+              <div class="items-list">
                 <div
                   v-for="person in suggestionsStore.suggestions"
                   :key="person.id"
-                  class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-3"
+                  class="person-row"
                 >
                   <RouterLink
                     :to="{ name: 'Profile', params: { id: person.id } }"
-                    class="flex min-w-0 items-center gap-3"
+                    class="person-link"
                   >
-                    <img
-                      :src="person.profile?.avatar || fallbackAvatar"
-                      class="h-10 w-10 rounded-xl object-cover"
-                    />
-                    <div class="min-w-0">
-                      <p class="truncate text-sm font-semibold text-slate-800">
-                        {{ person.name }}
-                      </p>
-                      <p class="truncate text-xs text-slate-500">
-                        {{ person.profile?.headline || "Alumni member" }}
-                      </p>
+                    <div class="person-avatar-wrap">
+                      <img
+                        v-if="person.profile?.avatar"
+                        :src="person.profile.avatar"
+                        class="person-avatar-img"
+                        alt=""
+                      />
+                      <div v-else class="person-avatar-fallback person-avatar-fallback--alt">
+                        {{ (person.name || '?')[0].toUpperCase() }}
+                      </div>
+                    </div>
+                    <div class="person-info">
+                      <p class="person-name">{{ person.name }}</p>
+                      <p class="person-sub">{{ person.profile?.headline || 'Alumni member' }}</p>
                     </div>
                   </RouterLink>
-                  <button
-                    @click="sendRequest(person.id)"
-                    class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                  >
+                  <button class="btn-connect" @click="sendRequest(person.id)">
+                    <svg viewBox="0 0 14 14" fill="none" width="11" height="11">
+                      <path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
                     Connect
                   </button>
                 </div>
-                <p
-                  v-if="!suggestionsStore.suggestions.length"
-                  class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500"
-                >
-                  No suggestion right now.
-                </p>
               </div>
-              <div
-                v-if="suggestionsStore.suggestionsPagination.last_page > 1"
-                class="mt-4 flex items-center justify-between"
-              >
+
+              <div v-if="!suggestionsStore.suggestions.length" class="empty-row">
+                <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                  <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
+                  <circle cx="14" cy="7" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M1 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <path d="M14 12c1.657 0 3 1.119 3 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                No suggestions right now
+              </div>
+
+              <div v-if="suggestionsStore.suggestionsPagination.last_page > 1" class="pagination">
                 <button
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                  class="page-btn"
                   :disabled="suggestionsStore.suggestionsPagination.current_page <= 1"
-                  @click="
-                    loadSuggestions(suggestionsStore.suggestionsPagination.current_page - 1)
-                  "
+                  @click="loadSuggestions(suggestionsStore.suggestionsPagination.current_page - 1)"
                 >
+                  <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   Prev
                 </button>
-                <p class="text-xs text-slate-500">
-                  Page {{ suggestionsStore.suggestionsPagination.current_page }} /
-                  {{ suggestionsStore.suggestionsPagination.last_page }}
-                </p>
+                <span class="page-info">
+                  {{ suggestionsStore.suggestionsPagination.current_page }} / {{ suggestionsStore.suggestionsPagination.last_page }}
+                </span>
                 <button
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
-                  :disabled="
-                    suggestionsStore.suggestionsPagination.current_page >=
-                    suggestionsStore.suggestionsPagination.last_page
-                  "
-                  @click="
-                    loadSuggestions(suggestionsStore.suggestionsPagination.current_page + 1)
-                  "
+                  class="page-btn"
+                  :disabled="suggestionsStore.suggestionsPagination.current_page >= suggestionsStore.suggestionsPagination.last_page"
+                  @click="loadSuggestions(suggestionsStore.suggestionsPagination.current_page + 1)"
                 >
                   Next
+                  <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
               </div>
-            </section>
+            </div>
+
           </section>
 
-          <aside class="col-span-12 lg:col-span-3">
-            <section
-              class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-base font-bold text-slate-900">My Friends</h3>
-                <span
-                  class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600"
-                  >{{ connectionRowsStore.friendsPagination.total }}</span
-                >
+          <!-- RIGHT: My Friends -->
+          <aside class="col-right">
+            <div class="content-card">
+              <div class="card-header">
+                <div class="card-title-wrap">
+                  <h2 class="card-title">My Friends</h2>
+                  <span class="count-pill">{{ connectionRowsStore.friendsPagination.total }}</span>
+                </div>
               </div>
-              <div class="space-y-3">
+
+              <div class="items-list">
                 <article
                   v-for="friend in friends"
                   :key="friend.id"
-                  class="relative rounded-xl border border-slate-200 bg-slate-50 p-3"
+                  class="person-row person-row--friend"
                 >
-                  <div class="flex items-center justify-between gap-2">
-                    <RouterLink
-                      :to="{ name: 'Profile', params: { id: friend.id } }"
-                      class="flex min-w-0 items-center gap-3"
-                    >
+                  <RouterLink
+                    :to="{ name: 'Profile', params: { id: friend.id } }"
+                    class="person-link"
+                  >
+                    <div class="person-avatar-wrap">
                       <img
-                        :src="friend.profile?.avatar || fallbackAvatar"
-                        class="h-10 w-10 rounded-xl object-cover"
+                        v-if="friend.profile?.avatar"
+                        :src="friend.profile.avatar"
+                        class="person-avatar-img"
+                        alt=""
                       />
-                      <div class="min-w-0">
-                        <p
-                          class="truncate text-sm font-semibold text-slate-800"
-                        >
-                          {{ friend.name }}
-                        </p>
-                        <p class="truncate text-xs text-slate-500">
-                          {{ friend.profile?.headline || "Connected" }}
-                        </p>
+                      <div v-else class="person-avatar-fallback person-avatar-fallback--friend">
+                        {{ (friend.name || '?')[0].toUpperCase() }}
                       </div>
-                    </RouterLink>
+                    </div>
+                    <div class="person-info">
+                      <p class="person-name">{{ friend.name }}</p>
+                      <p class="person-sub">{{ friend.profile?.headline || 'Connected' }}</p>
+                    </div>
+                  </RouterLink>
 
+                  <!-- Context menu trigger -->
+                  <div class="friend-menu-wrap">
                     <button
-                      type="button"
-                      class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100"
+                      class="btn-more"
+                      :class="{ 'btn-more--open': openFriendMenuId === friend.id }"
                       @click="toggleFriendMenu(friend.id)"
                     >
-                      <i class="fa-solid fa-ellipsis"></i>
+                      <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+                        <circle cx="8" cy="3" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="8" cy="13" r="1.3"/>
+                      </svg>
                     </button>
-                  </div>
 
-                  <div
-                    v-if="openFriendMenuId === friend.id"
-                    class="absolute right-3 top-12 z-10 w-32 rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
-                  >
-                    <button
-                      @click="onClickUnfriend(friend.id)"
-                      class="mb-1 w-full rounded-md px-2 py-1.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                    >
-                      Unfriend
-                    </button>
-                    <button
-                      @click="onClickBlock(friend.id)"
-                      class="w-full rounded-md px-2 py-1.5 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
-                    >
-                      Block
-                    </button>
+                    <Transition name="menu-pop">
+                      <div
+                        v-if="openFriendMenuId === friend.id"
+                        class="friend-menu"
+                        v-click-outside="() => openFriendMenuId = null"
+                      >
+                        <button class="menu-item" @click="onClickUnfriend(friend.id)">
+                          <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+                            <circle cx="6.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/>
+                            <path d="M1 14c0-2.761 2.462-4 5.5-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            <path d="M11 11l4 4M15 11l-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                          </svg>
+                          Unfriend
+                        </button>
+                        <button class="menu-item menu-item--danger" @click="onClickBlock(friend.id)">
+                          <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+                            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/>
+                            <path d="M3.8 12.2l8.4-8.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                          </svg>
+                          Block
+                        </button>
+                      </div>
+                    </Transition>
                   </div>
                 </article>
-                <p
-                  v-if="!friends.length"
-                  class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500"
-                >
-                  No friends yet.
-                </p>
               </div>
-              <div
-                v-if="connectionRowsStore.friendsPagination.last_page > 1"
-                class="mt-4 flex items-center justify-between"
-              >
+
+              <div v-if="!friends.length" class="empty-row">
+                <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                  <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M4 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                No connections yet
+              </div>
+
+              <div v-if="connectionRowsStore.friendsPagination.last_page > 1" class="pagination">
                 <button
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                  class="page-btn"
                   :disabled="connectionRowsStore.friendsPagination.current_page <= 1"
                   @click="connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page - 1)"
                 >
+                  <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   Prev
                 </button>
-                <p class="text-xs text-slate-500">
-                  Page {{ connectionRowsStore.friendsPagination.current_page }} /
-                  {{ connectionRowsStore.friendsPagination.last_page }}
-                </p>
+                <span class="page-info">
+                  {{ connectionRowsStore.friendsPagination.current_page }} / {{ connectionRowsStore.friendsPagination.last_page }}
+                </span>
                 <button
-                  class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
-                  :disabled="
-                    connectionRowsStore.friendsPagination.current_page >=
-                    connectionRowsStore.friendsPagination.last_page
-                  "
+                  class="page-btn"
+                  :disabled="connectionRowsStore.friendsPagination.current_page >= connectionRowsStore.friendsPagination.last_page"
                   @click="connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page + 1)"
                 >
                   Next
+                  <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
               </div>
-            </section>
+            </div>
           </aside>
+
         </div>
 
-        <p
-          v-if="errorMessage"
-          class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-center text-sm font-medium text-rose-700"
-        >
-          {{ errorMessage }}
-        </p>
+        <!-- Error Toast -->
+        <Transition name="toast">
+          <div v-if="errorMessage" class="error-toast" @click="errorMessage = ''">
+            <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+              <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M8 5v4M8 11h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            {{ errorMessage }}
+          </div>
+        </Transition>
+
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed, isProxy, onMounted, ref } from "vue";
-import Navbar from "@/components/ui/nav.vue";
-import api from "@/services/api";
-import fallbackAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
-import { usePendingRequestsStore } from "@/stores/pendingRequests";
-import { useSuggestionsStore } from "@/stores/suggestions";
-import { useConnectionsStore } from "@/stores/connectionRows";
+import { computed, onMounted, ref } from 'vue'
+import Navbar from '@/components/ui/nav.vue'
+import api from '@/services/api'
+import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
+import { usePendingRequestsStore } from '@/stores/pendingRequests'
+import { useSuggestionsStore } from '@/stores/suggestions'
+import { useConnectionsStore } from '@/stores/connectionRows'
 
-const pendingStore = usePendingRequestsStore();
-const suggestionsStore = useSuggestionsStore();
-const connectionRowsStore = useConnectionsStore();
+const pendingStore = usePendingRequestsStore()
+const suggestionsStore = useSuggestionsStore()
+const connectionRowsStore = useConnectionsStore()
 
-const ws = new WebSocket(import.meta.env.VITE_WS_URL || "ws://localhost:8081");
-const current_user = JSON.parse(localStorage.getItem("user"));
+// ── WebSocket ─────────────────────────────────────────────────────
+const current_user = JSON.parse(localStorage.getItem('user'))
+const ws = new WebSocket(import.meta.env.VITE_WS_URL || 'ws://localhost:8081')
+
 ws.onopen = () => {
-  console.log("connected");
-
-  ws.send(
-    JSON.stringify({
-      type: "auth",
-      user_id: current_user.id,
-    })
-  );
-};
-
+  ws.send(JSON.stringify({ type: 'auth', user_id: current_user.id }))
+}
 ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  if (message.type === "connection_request") {
-    pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+  const message = JSON.parse(event.data)
+  const cp = (store) => store.current_page ?? 1
+  if (message.type === 'connection_request') {
+    pendingStore.loadPendingRequests(cp(pendingStore.pendingPagination))
+    suggestionsStore.loadSuggestions(cp(suggestionsStore.suggestionsPagination))
+  } else if (message.type === 'accept_request') {
+    connectionRowsStore.loadMyConnections(cp(connectionRowsStore.friendsPagination))
+  } else if (['unfriend', 'reject', 'block'].includes(message.type)) {
+    suggestionsStore.loadSuggestions(cp(suggestionsStore.suggestionsPagination))
+    connectionRowsStore.loadMyConnections(cp(connectionRowsStore.friendsPagination))
+    if (message.type === 'reject') {
+      suggestionsStore.loadSuggestions(cp(suggestionsStore.suggestionsPagination))
+    }
   }
-  else if (message.type === "accept_request"){
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-  }
-  else if (message.type === "unfriend"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-  }
-  else if (message.type === "reject"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  }
-  else if (message.type === "block"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-    console.log("block", message.data)
-  }
-};
+}
 
-const errorMessage = ref("");
+// ── State ─────────────────────────────────────────────────────────
+const errorMessage = ref('')
+const openFriendMenuId = ref(null)
 
-const openFriendMenuId = ref(null);
-
+// ── Computed ──────────────────────────────────────────────────────
 const friends = computed(() => {
-  let me = null;
-  try {
-    const meRaw = localStorage.getItem("user");
-    me = meRaw ? JSON.parse(meRaw) : null;
-  } catch {
-    me = null;
-  }
-
-  if (!me?.id) return [];
-
-  return  connectionRowsStore.connectionRows
-    .map((row) => {
-      if (row.requester_id === me.id) return row.addressee;
-      return row.requester;
-    })
-    .filter(Boolean);
-});
+  let me = null
+  try { me = JSON.parse(localStorage.getItem('user')) } catch { /* noop */ }
+  if (!me?.id) return []
+  return connectionRowsStore.connectionRows
+    .map((row) => (row.requester_id === me.id ? row.addressee : row.requester))
+    .filter(Boolean)
+})
 
 const connectionsCount = computed(
   () => connectionRowsStore.friendsPagination.total || friends.value.length
-);
+)
+
+// ── Actions ───────────────────────────────────────────────────────
+const showError = (err, fallback) => {
+  errorMessage.value = err.response?.data?.message || fallback
+  setTimeout(() => { errorMessage.value = '' }, 4000)
+}
 
 const sendRequest = async (userId) => {
   try {
-    await api.post("/connections/request", { user_id: userId });
-    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to send request.";
-  }
-};
+    await api.post('/connections/request', { user_id: userId })
+    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+  } catch (e) { showError(e, 'Failed to send request.') }
+}
 
 const acceptRequest = async (connectionId) => {
   try {
-    const response = await api.post(`/connections/${connectionId}/accept`);
-    const row = response.data?.data;
-    if (row) {
-      await connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-    }
-    await pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page);
-    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to accept request.";
-  }
-};
+    const res = await api.post(`/connections/${connectionId}/accept`)
+    if (res.data?.data) await connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page)
+    await pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
+    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+  } catch (e) { showError(e, 'Failed to accept request.') }
+}
 
 const rejectRequest = async (connectionId) => {
   try {
-    await api.post(`/connections/${connectionId}/reject`);
-    await pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page);
-    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to reject request.";
-  }
-};
+    await api.post(`/connections/${connectionId}/reject`)
+    await pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
+    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+  } catch (e) { showError(e, 'Failed to reject request.') }
+}
 
 const toggleFriendMenu = (friendId) => {
-  openFriendMenuId.value =
-    openFriendMenuId.value === friendId ? null : friendId;
-};
+  openFriendMenuId.value = openFriendMenuId.value === friendId ? null : friendId
+}
 
 const unfriend = async (userId) => {
   try {
-    await api.post(`/connections/user/${userId}/unfriend`);
-    await connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to unfriend user.";
-  }
-};
+    await api.post(`/connections/user/${userId}/unfriend`)
+    await connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page)
+    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+  } catch (e) { showError(e, 'Failed to unfriend user.') }
+}
 
 const blockUser = async (userId) => {
   try {
-    await api.post(`/connections/user/${userId}/block`);
-    await connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-    await pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page);
-    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Failed to block user.";
-  }
-};
+    await api.post(`/connections/user/${userId}/block`)
+    await connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page)
+    await pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
+    await suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+  } catch (e) { showError(e, 'Failed to block user.') }
+}
 
 const onClickUnfriend = async (userId) => {
-  await unfriend(userId);
-  openFriendMenuId.value = null;
-};
-
+  openFriendMenuId.value = null
+  await unfriend(userId)
+}
 const onClickBlock = async (userId) => {
-  await blockUser(userId);
-  openFriendMenuId.value = null;
-};
+  openFriendMenuId.value = null
+  await blockUser(userId)
+}
+
+const loadSuggestions = async (page) => {
+  await suggestionsStore.loadSuggestions(page)
+}
+
+// ── Click-outside directive ───────────────────────────────────────
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (e) => { if (!el.contains(e.target)) binding.value(e) }
+    document.addEventListener('click', el._clickOutside)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside)
+  },
+}
+
 onMounted(async () => {
-  await pendingStore.loadPendingRequests();
-  await suggestionsStore.loadSuggestions();
-  await connectionRowsStore.loadMyConnections();
-});
+  await pendingStore.loadPendingRequests()
+  await suggestionsStore.loadSuggestions()
+  await connectionRowsStore.loadMyConnections()
+})
 </script>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Lora:wght@600&display=swap');
+
+/* ── Page shell ──────────────────────────────────────────────── */
+.connections-page {
+  min-height: 100vh;
+  padding: 32px 0 64px;
+  font-family: 'DM Sans', sans-serif;
+}
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Page header */
+.page-header {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.page-title {
+  font-family: 'Lora', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.1;
+  margin: 0 0 4px;
+}
+.page-sub {
+  font-size: 13.5px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── Grid ────────────────────────────────────────────────────── */
+.connections-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 1024px) {
+  .connections-grid {
+    grid-template-columns: 220px 1fr 280px;
+    align-items: start;
+  }
+}
+.col-left, .col-right { display: flex; flex-direction: column; gap: 16px; }
+.col-center { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Shared card ─────────────────────────────────────────────── */
+.side-card,
+.content-card {
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 18px;
+}
+
+/* ── Left sidebar: Manage Network ────────────────────────────── */
+.side-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+  margin: 0 0 12px 2px;
+}
+.manage-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.manage-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #475569;
+}
+.manage-item:hover { background: #f8fafc; }
+.manage-item--active {
+  background: #eff6ff;
+  color: #1d6fbd;
+}
+.manage-item--active .manage-item-icon { background: #dbeafe; }
+.manage-item--active .manage-item-icon svg { stroke: #1d6fbd; }
+.manage-item-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.manage-item-icon svg { stroke: #64748b; }
+.manage-item-label { flex: 1; }
+.manage-item-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid #bfdbfe;
+  color: #1d6fbd;
+  border-radius: 20px;
+  padding: 1px 8px;
+  min-width: 24px;
+  text-align: center;
+}
+.manage-item-count--muted {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+/* ── Card header ─────────────────────────────────────────────── */
+.card-header { margin-bottom: 16px; }
+.card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-title {
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+.count-pill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* ── Person rows ─────────────────────────────────────────────── */
+.items-list { display: flex; flex-direction: column; gap: 6px; }
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+  background: #fafafa;
+  transition: border-color 0.15s, background 0.15s;
+}
+.person-row:hover { border-color: #e2e8f0; background: #fff; }
+.person-row--friend { background: #fff; border-color: #f1f5f9; }
+
+.person-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.person-avatar-wrap { flex-shrink: 0; }
+.person-avatar-img,
+.person-avatar-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: block;
+}
+.person-avatar-img { object-fit: cover; }
+.person-avatar-fallback {
+  background: linear-gradient(135deg, #1565a8, #0b8faa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  color: #fff;
+  font-weight: 600;
+}
+.person-avatar-fallback--alt {
+  background: linear-gradient(135deg, #7c3aed, #0b8faa);
+}
+.person-avatar-fallback--friend {
+  background: linear-gradient(135deg, #16a34a, #1565a8);
+}
+
+.person-info { min-width: 0; }
+.person-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.person-sub {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.person-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #0c3d60, #1565a8 60%, #0b8faa);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.12s;
+}
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.btn-ghost-danger {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s;
+}
+.btn-ghost-danger:hover { background: #ffe4e6; }
+
+.btn-connect {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d6fbd;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-connect:hover { background: #dbeafe; border-color: #93c5fd; }
+
+/* ── Friend context menu ─────────────────────────────────────── */
+.friend-menu-wrap { position: relative; flex-shrink: 0; }
+
+.btn-more {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-more:hover, .btn-more--open {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.friend-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  width: 140px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  padding: 6px;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.menu-item:hover { background: #f1f5f9; }
+.menu-item--danger { color: #be123c; }
+.menu-item--danger:hover { background: #fff1f2; }
+
+/* ── Pagination ──────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.page-btn:hover:not(:disabled) { background: #f1f5f9; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: 12px; color: #94a3b8; }
+
+/* ── Empty row ───────────────────────────────────────────────── */
+.empty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.empty-row svg { flex-shrink: 0; stroke: #94a3b8; }
+
+/* ── Error toast ─────────────────────────────────────────────── */
+.error-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(190,18,60,0.12);
+  cursor: pointer;
+  z-index: 100;
+}
+.error-toast svg { flex-shrink: 0; stroke: #be123c; }
+
+/* ── Transitions ─────────────────────────────────────────────── */
+.slide-out-enter-active { transition: opacity 0.2s, transform 0.2s; }
+.slide-out-leave-active { transition: opacity 0.18s, transform 0.18s; }
+.slide-out-enter-from { opacity: 0; transform: translateY(6px); }
+.slide-out-leave-to { opacity: 0; transform: translateY(-4px); }
+.slide-out-move { transition: transform 0.25s ease; }
+
+.menu-pop-enter-active { transition: opacity 0.15s, transform 0.15s; }
+.menu-pop-leave-active { transition: opacity 0.1s, transform 0.1s; }
+.menu-pop-enter-from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+.menu-pop-leave-to { opacity: 0; transform: scale(0.95) translateY(-4px); }
+
+.toast-enter-active { transition: opacity 0.2s, transform 0.2s; }
+.toast-leave-active { transition: opacity 0.15s, transform 0.15s; }
+.toast-enter-from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+.toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(12px); }
+</style>
