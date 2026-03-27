@@ -39,6 +39,7 @@
         </div>
       </div>
 
+<<<<<<< HEAD
       <!-- Divider -->
       <div class="bar-divider" />
 
@@ -62,6 +63,84 @@
             <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
           New Post
+=======
+      <div
+        v-if="searchQuery.trim().length >= 2"
+        class="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white"
+      >
+        <div v-if="userSearchLoading" class="px-4 py-3 text-xs font-semibold text-slate-500">
+          Searching users...
+        </div>
+        <div v-else-if="userSearchError" class="px-4 py-3 text-xs font-semibold text-rose-700">
+          {{ userSearchError }}
+        </div>
+        <div v-else-if="userResults.length">
+          <div
+            v-for="user in userResults"
+            :key="user.id"
+            class="flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50"
+          >
+            <RouterLink
+              :to="`/profile/${user.id}`"
+              class="flex min-w-0 items-center gap-3"
+            >
+              <img
+                :src="user?.profile?.avatar || fallbackAvatar"
+                class="h-9 w-9 rounded-full border border-slate-200 object-cover"
+                alt="User avatar"
+              >
+              <div class="min-w-0">
+                <div class="truncate font-semibold text-slate-900">{{ user?.name || 'Unknown user' }}</div>
+                <div class="truncate text-xs text-slate-500">{{ user?.email }}</div>
+              </div>
+            </RouterLink>
+
+            <div class="shrink-0">
+              <button
+                v-if="shouldShowConnectAction(user)"
+                type="button"
+                @click.prevent.stop="onConnect(user.id)"
+                :disabled="isConnectingId === user.id"
+                class="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {{ isConnectingId === user.id ? 'Sending...' : 'Connect' }}
+              </button>
+
+              <span
+                v-else-if="getStatus(user.id) === 'pending'"
+                class="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Pending
+              </span>
+
+              <span
+                v-else-if="getStatus(user.id) === 'accepted'"
+                class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+              >
+                Connected
+              </span>
+
+              <span
+                v-else-if="getStatus(user.id) === 'blocked'"
+                class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700"
+              >
+                Blocked
+              </span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="px-4 py-3 text-xs font-semibold text-slate-500">
+          No users found.
+        </div>
+      </div>
+
+      <div class="mt-4 flex items-center justify-end">
+        <RouterLink
+          to="/post"
+          class="inline-flex items-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:from-cyan-700 hover:to-blue-700"
+        >
+          Create Post
+>>>>>>> a5b86f72e5129d116d6d4f26a98c90668b2643a1
         </RouterLink>
       </div>
     </div>
@@ -125,9 +204,14 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { computed, ref, defineComponent, h } from 'vue'
+=======
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+>>>>>>> a5b86f72e5129d116d6d4f26a98c90668b2643a1
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import PostCard from '@/components/ui/PostCard.vue'
+import api from '@/services/api'
 
 const props = defineProps({
   posts: { type: Array, default: () => [] },
@@ -139,6 +223,150 @@ const emit = defineEmits(['refreshPosts'])
 const searchQuery = ref('')
 const activeFilter = ref('all')
 const deletedPostIds = ref([])
+const userResults = ref([])
+const userSearchLoading = ref(false)
+const userSearchError = ref('')
+const statusByUserId = ref({})
+const isConnectingId = ref(null)
+let userSearchTimer = null
+let userSearchRequestId = 0
+let statusRequestId = 0
+
+const getApiMessage = (error, fallback) => error?.response?.data?.message || fallback
+
+const fetchUsers = async (query) => {
+  const requestId = ++userSearchRequestId
+  userSearchLoading.value = true
+  userSearchError.value = ''
+
+  try {
+    const res = await api.get('/users', {
+      params: { search: query, per_page: 6 },
+      headers: { 'X-Skip-Loading': 'true' },
+    })
+
+    if (requestId === userSearchRequestId) {
+      userResults.value = res.data?.data || []
+      await fetchStatusesForUsers(userResults.value)
+    }
+  } catch (error) {
+    if (requestId === userSearchRequestId) {
+      userResults.value = []
+      userSearchError.value = getApiMessage(error, 'Failed to search users.')
+    }
+  } finally {
+    if (requestId === userSearchRequestId) {
+      userSearchLoading.value = false
+    }
+  }
+}
+
+const getStatus = (userId) => {
+  const key = String(userId)
+  return statusByUserId.value?.[key]?.status || 'unknown'
+}
+
+const shouldShowConnectAction = (user) => {
+  const meId = Number(props.currentUser?.id || 0)
+  const targetId = Number(user?.id || 0)
+  if (!meId || !targetId || meId === targetId) return false
+
+  const status = getStatus(targetId)
+  return status === 'none' || status === 'unknown'
+}
+
+const fetchStatusesForUsers = async (users) => {
+  const requestId = ++statusRequestId
+  const list = Array.isArray(users) ? users : []
+  const ids = list
+    .map((item) => Number(item?.id || 0))
+    .filter((id) => Number.isInteger(id) && id > 0)
+
+  if (!ids.length) {
+    statusByUserId.value = {}
+    return
+  }
+
+  try {
+    const responses = await Promise.allSettled(
+      ids.map((id) =>
+        api.get(`/connections/status/${id}`, {
+          headers: { 'X-Skip-Loading': 'true' },
+        })
+      )
+    )
+
+    if (requestId !== statusRequestId) return
+
+    const next = {}
+    responses.forEach((res, index) => {
+      const id = ids[index]
+      if (res.status !== 'fulfilled') {
+        next[String(id)] = { status: 'unknown' }
+        return
+      }
+
+      const payload = res.value?.data?.data || {}
+      next[String(id)] = {
+        status: payload.status || 'none',
+        blocked_by_me: Boolean(payload.blocked_by_me),
+        blocked_me: Boolean(payload.blocked_me),
+      }
+    })
+
+    statusByUserId.value = next
+  } catch {
+    if (requestId !== statusRequestId) return
+    statusByUserId.value = {}
+  }
+}
+
+const onConnect = async (userId) => {
+  const targetId = Number(userId || 0)
+  if (!targetId) return
+
+  isConnectingId.value = targetId
+  try {
+    await api.post('/connections/request', { user_id: targetId }, { headers: { 'X-Skip-Loading': 'true' } })
+    statusByUserId.value = {
+      ...(statusByUserId.value || {}),
+      [String(targetId)]: { status: 'pending' },
+    }
+  } catch (error) {
+    userSearchError.value = getApiMessage(error, 'Failed to send connection request.')
+  } finally {
+    isConnectingId.value = null
+  }
+}
+
+watch(searchQuery, (value) => {
+  const query = value.trim()
+
+  if (userSearchTimer) {
+    clearTimeout(userSearchTimer)
+    userSearchTimer = null
+  }
+
+  if (query.length < 2) {
+    userResults.value = []
+    userSearchError.value = ''
+    userSearchLoading.value = false
+    statusByUserId.value = {}
+    userSearchRequestId++
+    statusRequestId++
+    return
+  }
+
+  userSearchTimer = setTimeout(() => {
+    fetchUsers(query)
+  }, 250)
+})
+
+onBeforeUnmount(() => {
+  if (userSearchTimer) clearTimeout(userSearchTimer)
+  userSearchRequestId++
+  statusRequestId++
+})
 
 // ── Inline SVG icon components ────────────────────────────────────
 const IconAll = defineComponent({ render: () => h('svg', { viewBox: '0 0 16 16', fill: 'none', width: 13, height: 13 }, [
@@ -169,6 +397,7 @@ const filteredPosts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   let list = props.posts.filter(p => !deletedPostIds.value.includes(p.id))
 
+<<<<<<< HEAD
   if (activeFilter.value === 'latest') {
     list = [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   } else if (activeFilter.value === 'mine') {
@@ -180,6 +409,16 @@ const filteredPosts = computed(() => {
     const title = (p?.title || '').toLowerCase()
     const content = (p?.content || '').toLowerCase()
     return title.includes(query) || content.includes(query)
+=======
+  return visiblePosts.filter((post) => {
+    const title = (post?.title || '').toLowerCase()
+    const content = (post?.content || '').toLowerCase()
+    const name =
+      (post?.user?.name ||
+        `${post?.user?.first_name || ''} ${post?.user?.last_name || ''}`.trim() ||
+        '').toLowerCase()
+    return title.includes(query) || content.includes(query) || name.includes(query)
+>>>>>>> a5b86f72e5129d116d6d4f26a98c90668b2643a1
   })
 })
 

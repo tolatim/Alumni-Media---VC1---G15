@@ -1,0 +1,18 @@
+{
+  "appManager": {
+    "driver": "array",
+    "apps": [
+      {
+        "id": "local",
+        "key": "local",
+        "secret": "local",
+        "enableClientMessages": false,
+        "enableStatistics": true
+      }
+    ]
+  },
+  "host": "127.0.0.1",
+  "port": 6001,
+  "protocol": "http",
+  "verbose": true
+}

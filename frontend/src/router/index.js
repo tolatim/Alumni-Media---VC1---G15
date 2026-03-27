@@ -1,18 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { startRouteLoading, stopRouteLoading } from '@/services/loadingService'
-import Home from '../views/Home.vue'
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
-import Profile from '../views/Profile.vue'
+import Home from '@/views/Home.vue'
+import Login from '@/views/Login.vue'
+import Register from '@/views/Register.vue'
+import Profile from '@/views/Profile.vue'
 import EditProfile from '@/views/editProfile.vue'
-import Create from '../views/CreatePost.vue'
+import Create from '@/views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
+import Notification from '@/views/Notification.vue'
+import Admin from '@/views/Admin.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  { path: '/forgot-password', component: Login }, // redirects to login since no page exists
   {
     path: '/profile',
     redirect: () => {
@@ -21,6 +24,36 @@ const routes = [
       return user?.id ? `/profile/${user.id}` : '/'
     },
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/users',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/posts',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/reports',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/admin/settings',
+    component: Admin,
+    meta: { requiresAdmin: true },
   },
   {
     path: '/connection',
@@ -38,6 +71,12 @@ const routes = [
     path: '/message/:userId',
     name: 'MessageWithUser',
     component: Message,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: Notification,
     meta: { requiresAuth: true },
   },
   {
@@ -63,7 +102,11 @@ const routes = [
     component: Profile,
     name: 'Profile',
     meta: { requiresAuth: true },
-  }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/',
+  },
 ]
 
 const router = createRouter({
@@ -71,12 +114,11 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   startRouteLoading()
 
   const token = localStorage.getItem('token')
   let user = null
-
   try {
     const savedUser = localStorage.getItem('user')
     user = savedUser ? JSON.parse(savedUser) : null
@@ -85,35 +127,21 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.meta.requiresAuth && !token) {
-    next('/login')
-    return
+    return '/login'
   }
 
   if ((to.path === '/login' || to.path === '/register') && token) {
-    next('/')
-    return
+    return '/'
   }
 
   if (to.meta.requiresAdmin) {
-    if (!token) {
-      next('/login')
-      return
-    } else if (user?.role) {
-      const roleName = typeof user.role === 'string' ? user.role : user.role?.name
-      if (roleName !== 'admin') {
-        next('/')
-        return
-      }
-    }
+    if (!token) return '/login'
+    const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name
+    if (roleName !== 'admin') return '/'
   }
 
-  next()
+  return true
 })
- 
-
-
-
-
 
 router.afterEach(() => {
   stopRouteLoading()
@@ -124,4 +152,3 @@ router.onError(() => {
 })
 
 export default router
-

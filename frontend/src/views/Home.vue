@@ -6,7 +6,7 @@
         <userLeftSideBar :user="currentUser" />
 
         <centerFeed
-          :posts="feedStore.posts"
+          :posts="posts"
           :current-user="currentUser"
           @post-created="prependPost"
           @refresh-posts="refreshPosts"
@@ -38,9 +38,8 @@ import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import centerFeed from "@/components/ui/centerFeed.vue";
 import userRightSideBar from "@/components/ui/userRightSideBar.vue";
 import api from "@/services/api";
-import { useFeedStore } from "@/store/feed";
 
-const feedStore = useFeedStore()
+const posts = ref([])
 
 const currentUser = ref(null);
 const suggestions = ref([]);
@@ -68,8 +67,11 @@ const loadHomeData = async () => {
     localStorage.setItem("user", JSON.stringify(meRes.value.data));
   } else {
     currentUser.value = null;
-    errorMessage.value =
-      meRes.reason?.response?.data?.message || "Failed to load your account.";
+    const status = meRes.reason?.response?.status;
+    const serverMessage = meRes.reason?.response?.data?.message;
+    errorMessage.value = meRes.reason?.response
+      ? serverMessage || `Failed to load your account${status ? ` (HTTP ${status})` : ""}.`
+      : "Cannot reach the API server. Check that the backend is running and CORS/VITE_API_URL are configured.";
     return;
   }
 
@@ -129,6 +131,18 @@ const loadHomeData = async () => {
   } else if (pendingRes.status === "rejected") {
     errorMessage.value = "Pending requests failed to load.";
   }
+};
+
+const loadFeedPage = async (page, append) => {
+  const response = await api.get("/feed", { params: { page, per_page: FEED_PER_PAGE } });
+  const pagination = response.data?.pagination || {};
+
+  const newPosts = response.data?.data || [];
+  posts.value = append ? [...posts.value, ...newPosts] : newPosts;
+
+  feedPage.value = Number(pagination.current_page || page || 1);
+  feedLastPage.value = Number(pagination.last_page || 1);
+  hasMorePosts.value = feedPage.value < feedLastPage.value;
 };
 
 const loadMorePosts = async () => {
@@ -213,7 +227,6 @@ const refreshSuggestions = async () => {
 };
 
 onMounted(() => {
-  feedStore.loadFeedPage();
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
 
