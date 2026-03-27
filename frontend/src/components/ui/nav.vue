@@ -47,6 +47,11 @@
           <span>Notification</span>
         </RouterLink>
 
+        <RouterLink v-if="isAdminUser" to="/admin" :class="adminNavClass">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Admin</span>
+        </RouterLink>
+
         <RouterLink
           v-if="user"
           :to="{ name: 'Profile', params: { id: user.id } }"
@@ -64,7 +69,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
@@ -86,6 +91,21 @@ const navClass = (prefix) => {
     ? `${base} border-cyan-200 bg-cyan-50 text-cyan-700`
     : `${base} border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900`
 }
+
+const isAdminUser = computed(() => {
+  const role = user.value?.role
+  const roleName = typeof role === 'string' ? role : role?.name
+  return roleName === 'admin'
+})
+
+const adminNavClass = computed(() => {
+  const base = 'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition'
+  const adminPaths = ['/admin', '/users', '/posts', '/reports', '/settings', '/admin/settings']
+  const isActive = adminPaths.some((path) => route.path === path || route.path.startsWith(`${path}/`))
+  return isActive
+    ? `${base} border-cyan-200 bg-cyan-50 text-cyan-700`
+    : `${base} border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900`
+})
 
 const fetchMe = async () => {
   try {

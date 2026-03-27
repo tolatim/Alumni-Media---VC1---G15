@@ -52,6 +52,28 @@ const FEED_PER_PAGE = 8;
 
 const hasMorePosts = ref(true);
 
+const loadFeedPage = async (page = 1, append = false) => {
+  const response = await api.get("/feed", {
+    params: { page, per_page: FEED_PER_PAGE },
+  });
+
+  const pagination = response.data?.pagination || {};
+  const incomingPosts = response.data?.data || [];
+
+  if (append) {
+    const existingIds = new Set(posts.value.map((post) => post.id));
+    const uniqueIncoming = incomingPosts.filter((post) => !existingIds.has(post.id));
+    posts.value = [...posts.value, ...uniqueIncoming];
+  } else {
+    posts.value = incomingPosts;
+  }
+
+  feedPage.value = Number(pagination.current_page || page || 1);
+  feedLastPage.value = Number(pagination.last_page || feedPage.value || 1);
+  hasMorePosts.value = feedPage.value < feedLastPage.value;
+
+};
+
 const loadHomeData = async () => {
   errorMessage.value = "";
 

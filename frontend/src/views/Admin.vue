@@ -142,9 +142,55 @@ const closeReportedPostViewer = () => {
   selectedReportedPost.value = null
 }
 
-const getReportedPostMediaSrc = (media: { media_url?: string | null; file_path?: string | null }) => {
-  return media?.media_url || media?.file_path || ''
+const getApiOrigin = () => {
+  const baseUrl = String(api?.defaults?.baseURL || '')
+  if (!baseUrl) return window.location.origin
+
+  try {
+    return new URL(baseUrl, window.location.origin).origin
+  } catch {
+    return window.location.origin
+  }
 }
+
+const toAbsoluteMediaUrl = (value: string | null | undefined) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (/^(data:|blob:)/i.test(raw)) return raw
+  if (/^https?:/i.test(raw)) {
+    try {
+      const absolute = new URL(raw)
+      absolute.pathname = absolute.pathname
+        .replace(/^\/api\//i, '/')
+        .replace(/^\/public\//i, '/')
+        .replace(/\/public\/storage\//i, '/storage/')
+      return absolute.toString()
+    } catch {
+      return raw
+    }
+  }
+
+  let normalized = raw.replace(/\\/g, '/')
+  normalized = normalized.replace(/^\/?api\//i, '/')
+  normalized = normalized.replace(/^\/?public\//i, '/')
+  normalized = normalized.replace(/\/public\/storage\//i, '/storage/')
+
+  if (!normalized.startsWith('/')) {
+    if (normalized.startsWith('storage/')) {
+      normalized = `/${normalized}`
+    } else if (/^[^/]+\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|mov|avi|webm|mkv)$/i.test(normalized)) {
+      normalized = `/storage/${normalized}`
+    } else {
+      normalized = `/${normalized}`
+    }
+  }
+
+  const apiOrigin = getApiOrigin()
+  return `${apiOrigin}${normalized}`
+}
+
+const getReportedPostMediaSrc = (media: { media_url?: string | null; file_path?: string | null }) =>
+  toAbsoluteMediaUrl(media?.media_url || media?.file_path || '')
 
 const getReportedPostMediaType = (media: { type?: string | null; media_url?: string | null; file_path?: string | null }) => {
   const explicitType = String(media?.type || '').toLowerCase()
@@ -600,7 +646,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-gray-50">
+  <div class="flex h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/40">
     <Sidebar :logo-url="appearanceLogoUrl" />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -611,34 +657,52 @@ onUnmounted(() => {
         :pending-reports="pendingReviewCount"
       />
 
-      <main class="h-full overflow-y-auto p-6 space-y-8">
+      <main class="h-full overflow-y-auto p-6 md:p-8 space-y-8">
+        <div class="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Admin Console</p>
+              <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Welcome back, {{ adminProfile.name }}</h1>
+              <p class="mt-2 text-sm text-slate-600">Monitor reports, moderate content, and manage users from one place.</p>
+            </div>
+
+            <RouterLink
+              to="/"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <i class="fa-solid fa-house"></i>
+              <span>Back To Home</span>
+            </RouterLink>
+          </div>
+        </div>
+
         <div v-if="activeSection === 'dashboard'" class="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div class="rounded-xl border border-red-100 bg-red-50 p-4">
-            <h1 class="text-xl font-semibold text-gray-900">Reported Posts Moderation</h1>
-            <p class="mt-1 text-sm text-gray-700">
+          <div class="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-white p-5 shadow-sm">
+            <h1 class="text-lg font-semibold text-slate-900">Reported Posts Moderation</h1>
+            <p class="mt-2 text-sm text-slate-700">
               Active reported posts: <span class="font-semibold">{{ activeReportsCount }}</span>
             </p>
           </div>
-          <div class="rounded-xl border border-amber-100 bg-amber-50 p-4">
-            <h2 class="text-xl font-semibold text-gray-900">User Suspension</h2>
-            <p class="mt-1 text-sm text-gray-700">
+          <div class="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold text-slate-900">User Suspension</h2>
+            <p class="mt-2 text-sm text-slate-700">
               Suspended users: <span class="font-semibold">{{ suspendedUsersCount }}</span>
             </p>
           </div>
-          <div class="rounded-xl border border-blue-100 bg-blue-50 p-4">
-            <h2 class="text-xl font-semibold text-gray-900">Reports Review</h2>
-            <p class="mt-1 text-sm text-gray-700">
+          <div class="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm">
+            <h2 class="text-lg font-semibold text-slate-900">Reports Review</h2>
+            <p class="mt-2 text-sm text-slate-700">
               Pending reports: <span class="font-semibold">{{ pendingReviewCount }}</span>
             </p>
           </div>
         </div>
 
-        <section v-if="activeSection === 'settings'" class="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div class="border-b border-gray-200 px-5 py-4">
-            <h2 class="text-lg font-semibold text-gray-900">Admin Settings</h2>
+        <section v-if="activeSection === 'settings'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+          <div class="border-b border-slate-200 px-6 py-5">
+            <h2 class="text-lg font-semibold tracking-tight text-slate-900">Admin Settings</h2>
           </div>
 
-          <div class="space-y-4 px-5 py-4">
+          <div class="space-y-5 px-6 py-5">
             <p v-if="appearanceMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
               {{ appearanceMessage }}
             </p>
@@ -646,27 +710,27 @@ onUnmounted(() => {
               {{ appearanceError }}
             </p>
 
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Theme Mode</p>
-                <div class="flex items-center gap-4">
-                  <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Theme Mode</p>
+                <div class="flex items-center gap-5">
+                  <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input v-model="appearanceMode" type="radio" value="light">
                     <span>Light mode</span>
                   </label>
-                  <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input v-model="appearanceMode" type="radio" value="dark">
                     <span>Dark mode</span>
                   </label>
                 </div>
               </div>
 
-              <div class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">App Logo</p>
+              <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">App Logo</p>
                 <input
                   type="file"
                   accept="image/*"
-                  class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-700"
+                  class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
                   @change="onAppearanceLogoSelected"
                 >
                 <img
@@ -678,15 +742,15 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="space-y-2">
-              <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Registration Key</p>
+            <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Registration Key</p>
               <input
                 v-model="registrationKey"
                 type="text"
                 placeholder="Set registration key for new users"
-                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-              <p class="text-xs text-gray-500">
+              <p class="text-xs text-slate-500">
                 New users must enter this key during registration.
               </p>
             </div>
@@ -694,7 +758,7 @@ onUnmounted(() => {
             <div class="flex justify-end">
               <button
                 type="button"
-                class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
                 :disabled="savingAppearance"
                 @click="saveAppearance"
               >
@@ -704,12 +768,12 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <section v-if="activeSection === 'reports'" class="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <h2 class="text-lg font-semibold text-gray-900">Reports Review</h2>
+        <section v-if="activeSection === 'reports'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <h2 class="text-lg font-semibold tracking-tight text-slate-900">Reports Review</h2>
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               @click="loadReportsForReview"
               :disabled="loadingReports"
             >
@@ -717,26 +781,26 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <p v-if="reviewMessage" class="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <p v-if="reviewMessage" class="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
             {{ reviewMessage }}
           </p>
 
-          <p v-if="reviewError" class="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p v-if="reviewError" class="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
             {{ reviewError }}
           </p>
 
-          <div v-if="loadingReports" class="px-5 py-6 text-sm text-gray-500">
+          <div v-if="loadingReports" class="px-6 py-8 text-sm text-slate-500">
             Loading reports...
           </div>
 
-          <div v-else-if="!reviewReports.length" class="px-5 py-6 text-sm text-gray-500">
+          <div v-else-if="!reviewReports.length" class="px-6 py-8 text-sm text-slate-500">
             No pending reports.
           </div>
 
           <div v-else class="overflow-x-auto">
             <table class="w-full min-w-[1100px] text-sm">
               <thead>
-                <tr class="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th class="px-4 py-3 font-semibold">Reporter</th>
                   <th class="px-4 py-3 font-semibold">Target</th>
                   <th class="px-4 py-3 font-semibold">Reason</th>
@@ -746,7 +810,7 @@ onUnmounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="report in reviewReports" :key="report.id" class="border-b border-gray-100 align-top">
+                <tr v-for="report in reviewReports" :key="report.id" class="border-b border-slate-100 align-top transition hover:bg-slate-50/70">
                   <td class="px-4 py-3">
                     <p class="font-semibold text-gray-900">{{ getReporterName(report) }}</p>
                     <p class="mt-1 text-xs text-gray-600">ID: {{ report.reporter?.id || 'N/A' }}</p>
@@ -757,7 +821,7 @@ onUnmounted(() => {
                   <td class="px-4 py-3">
                     <select
                       v-model="suspensionDurationByReportId[report.id]"
-                      class="rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-700"
+                      class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700"
                     >
                       <option value="7_days">7 days</option>
                       <option value="permanent">Permanent</option>
@@ -767,7 +831,7 @@ onUnmounted(() => {
                     <div class="flex gap-2">
                       <button
                         type="button"
-                        class="rounded-md bg-gray-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
+                        class="rounded-md bg-slate-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
                         :disabled="actingReportId === report.id"
                         @click="ignoreReport(report)"
                       >
@@ -797,12 +861,12 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <section v-if="activeSection === 'posts'" class="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <h2 class="text-lg font-semibold text-gray-900">Reported Posts</h2>
+        <section v-if="activeSection === 'posts'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <h2 class="text-lg font-semibold tracking-tight text-slate-900">Reported Posts</h2>
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               @click="loadReportedPosts"
               :disabled="loadingReportedPosts"
             >
@@ -810,26 +874,26 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <p v-if="reportMessage" class="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <p v-if="reportMessage" class="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
             {{ reportMessage }}
           </p>
 
-          <p v-if="reportError" class="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p v-if="reportError" class="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
             {{ reportError }}
           </p>
 
-          <div v-if="loadingReportedPosts" class="px-5 py-6 text-sm text-gray-500">
+          <div v-if="loadingReportedPosts" class="px-6 py-8 text-sm text-slate-500">
             Loading reported posts...
           </div>
 
-          <div v-else-if="!reportedPosts.length" class="px-5 py-6 text-sm text-gray-500">
+          <div v-else-if="!reportedPosts.length" class="px-6 py-8 text-sm text-slate-500">
             No reported posts right now.
           </div>
 
           <div v-else class="overflow-x-auto">
             <table class="w-full min-w-[900px] text-sm">
               <thead>
-                <tr class="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th class="px-4 py-3 font-semibold">Post</th>
                   <th class="px-4 py-3 font-semibold">Author</th>
                   <th class="px-4 py-3 font-semibold">Reports</th>
@@ -839,7 +903,7 @@ onUnmounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in reportedPosts" :key="item.post_id" class="border-b border-gray-100 align-top">
+                <tr v-for="item in reportedPosts" :key="item.post_id" class="border-b border-slate-100 align-top transition hover:bg-slate-50/70">
                   <td class="px-4 py-3">
                     <p class="font-semibold text-gray-900">
                       {{ item.post?.title || `Post #${item.post_id}` }}
@@ -883,22 +947,22 @@ onUnmounted(() => {
 
         <div
           v-if="selectedReportedPost"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
           @click.self="closeReportedPostViewer"
         >
-          <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl">
-            <div class="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
+          <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div class="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
               <div>
-                <h3 class="text-base font-semibold text-gray-900">
+                <h3 class="text-base font-semibold tracking-tight text-slate-900">
                   Reported Post #{{ selectedReportedPost.post_id }}
                 </h3>
-                <p class="mt-1 text-xs text-gray-500">
+                <p class="mt-1 text-xs text-slate-500">
                   Author: {{ getPosterName(selectedReportedPost) }}
                 </p>
               </div>
               <button
                 type="button"
-                class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                class="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 @click="closeReportedPostViewer"
               >
                 Close
@@ -906,10 +970,10 @@ onUnmounted(() => {
             </div>
 
             <div class="space-y-4 px-5 py-4">
-              <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-                <p><span class="font-semibold text-gray-800">Reports:</span> {{ selectedReportedPost.report_count }}</p>
-                <p class="mt-1"><span class="font-semibold text-gray-800">Latest Reason:</span> {{ selectedReportedPost.latest_reason || 'No reason provided.' }}</p>
-                <p class="mt-1"><span class="font-semibold text-gray-800">Reported At:</span> {{ formatDateTime(selectedReportedPost.latest_report_at) }}</p>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                <p><span class="font-semibold text-slate-800">Reports:</span> {{ selectedReportedPost.report_count }}</p>
+                <p class="mt-1"><span class="font-semibold text-slate-800">Latest Reason:</span> {{ selectedReportedPost.latest_reason || 'No reason provided.' }}</p>
+                <p class="mt-1"><span class="font-semibold text-slate-800">Reported At:</span> {{ formatDateTime(selectedReportedPost.latest_report_at) }}</p>
               </div>
 
               <div>
@@ -949,20 +1013,20 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <section v-if="activeSection === 'users'" class="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <h2 class="text-lg font-semibold text-gray-900">User Profiles</h2>
+        <section v-if="activeSection === 'users'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
+            <h2 class="text-lg font-semibold tracking-tight text-slate-900">User Profiles</h2>
             <div class="flex items-center gap-2">
               <input
                 v-model="userSearchQuery"
                 type="text"
                 placeholder="Search alumni by name or email"
-                class="w-64 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 @keyup.enter="loadUsers"
               >
               <button
                 type="button"
-                class="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                class="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
                 :disabled="loadingUsers"
                 @click="loadUsers"
               >
@@ -970,7 +1034,7 @@ onUnmounted(() => {
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 :disabled="loadingUsers"
                 @click="clearUserSearch"
               >
@@ -979,26 +1043,26 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <p v-if="userMessage" class="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <p v-if="userMessage" class="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
             {{ userMessage }}
           </p>
 
-          <p v-if="userError" class="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p v-if="userError" class="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
             {{ userError }}
           </p>
 
-          <div v-if="loadingUsers" class="px-5 py-6 text-sm text-gray-500">
+          <div v-if="loadingUsers" class="px-6 py-8 text-sm text-slate-500">
             Loading users...
           </div>
 
-          <div v-else-if="!users.length" class="px-5 py-6 text-sm text-gray-500">
+          <div v-else-if="!users.length" class="px-6 py-8 text-sm text-slate-500">
             No users found.
           </div>
 
           <div v-else class="max-h-[520px] overflow-auto" @scroll.passive="onUsersScroll">
             <table class="w-full min-w-[920px] text-sm">
               <thead>
-                <tr class="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th class="px-4 py-3 font-semibold">User Profile</th>
                   <th class="px-4 py-3 font-semibold">Role</th>
                   <th class="px-4 py-3 font-semibold">Status</th>
@@ -1007,7 +1071,7 @@ onUnmounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in users" :key="user.id" class="border-b border-gray-100 align-top">
+                <tr v-for="user in users" :key="user.id" class="border-b border-slate-100 align-top transition hover:bg-slate-50/70">
                   <td class="px-4 py-3">
                     <p class="font-semibold text-gray-900">{{ getUserName(user) }}</p>
                     <p class="mt-1 text-xs text-gray-600">{{ user.email || 'No email' }}</p>
@@ -1026,7 +1090,7 @@ onUnmounted(() => {
                   <td class="px-4 py-3">
                     <select
                       v-model="suspensionDurationByUserId[user.id]"
-                      class="rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-700"
+                      class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700"
                     >
                       <option value="7_days">7 days</option>
                       <option value="permanent">Permanent</option>

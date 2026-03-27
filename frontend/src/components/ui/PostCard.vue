@@ -144,12 +144,14 @@
             <img
               v-if="isImageMedia(post.media[0])"
               :src="getMediaSrc(post.media[0])"
+              @error="handleMediaLoadError($event, post.media[0])"
               alt="Post image"
               class="h-full max-h-80 w-full object-cover"
             >
             <video
               v-else-if="isVideoMedia(post.media[0])"
               :src="getMediaSrc(post.media[0])"
+              @error="handleMediaLoadError($event, post.media[0])"
               class="h-full max-h-80 w-full bg-black object-cover"
               controls
               preload="metadata"
@@ -167,12 +169,14 @@
               <img
                 v-if="isImageMedia(media)"
                 :src="getMediaSrc(media)"
+                @error="handleMediaLoadError($event, media)"
                 alt="Post image"
                 class="h-32 w-full object-cover"
               >
               <video
                 v-else-if="isVideoMedia(media)"
                 :src="getMediaSrc(media)"
+                @error="handleMediaLoadError($event, media)"
                 class="h-32 w-full bg-black object-cover"
                 preload="metadata"
               ></video>
@@ -201,12 +205,14 @@
               <img
                 v-if="isImageMedia(media)"
                 :src="getMediaSrc(media)"
+                @error="handleMediaLoadError($event, media)"
                 alt="Post image"
                 class="h-full max-h-80 w-full rounded-lg border border-slate-200 object-cover"
               >
               <video
                 v-else-if="isVideoMedia(media)"
                 :src="getMediaSrc(media)"
+                @error="handleMediaLoadError($event, media)"
                 class="h-full max-h-80 w-full rounded-lg border border-slate-200 bg-black object-cover"
                 controls
                 preload="metadata"
@@ -659,7 +665,93 @@ const formatDate = (value) => {
   return new Date(value).toLocaleString()
 }
 
-const getMediaSrc = (media) => media?.media_url || media?.file_path || ''
+const getApiOrigin = () => {
+  const baseUrl = String(api?.defaults?.baseURL || '')
+  if (!baseUrl) return window.location.origin
+
+  try {
+    return new URL(baseUrl, window.location.origin).origin
+  } catch {
+    return window.location.origin
+  }
+}
+
+const toAbsoluteMediaUrl = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  if (/^(data:|blob:)/i.test(raw)) return raw
+  if (/^https?:/i.test(raw)) {
+    try {
+      const absolute = new URL(raw)
+      absolute.pathname = absolute.pathname
+        .replace(/^\/api\//i, '/')
+        .replace(/^\/public\//i, '/')
+        .replace(/\/public\/storage\//i, '/storage/')
+      return absolute.toString()
+    } catch {
+      return raw
+    }
+  }
+
+  let normalized = raw.replace(/\\/g, '/')
+  normalized = normalized.replace(/^\/?api\//i, '/')
+  normalized = normalized.replace(/^\/?public\//i, '/')
+  normalized = normalized.replace(/\/public\/storage\//i, '/storage/')
+
+  if (!normalized.startsWith('/')) {
+    if (normalized.startsWith('storage/')) {
+      normalized = `/${normalized}`
+    } else if (/^[^/]+\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|mov|avi|webm|mkv)$/i.test(normalized)) {
+      normalized = `/storage/${normalized}`
+    } else {
+      normalized = `/${normalized}`
+    }
+  }
+
+  const apiOrigin = getApiOrigin()
+  return `${apiOrigin}${normalized}`
+}
+
+const uniqueValues = (items) => [...new Set(items.filter(Boolean))]
+
+const toApiStorageCandidate = (urlValue) => {
+  try {
+    const url = new URL(urlValue)
+    if (url.pathname.startsWith('/storage/')) {
+      const candidate = new URL(url.toString())
+      candidate.pathname = `/api${url.pathname}`
+      return candidate.toString()
+    }
+  } catch {
+    return ''
+  }
+  return ''
+}
+
+const getMediaCandidates = (media) => {
+  const values = typeof media === 'string'
+    ? [media]
+    : [
+        media?.media_url,
+        media?.file_path,
+        media?.path,
+        media?.url,
+        media?.src,
+      ]
+
+  const normalized = values
+    .map((value) => toAbsoluteMediaUrl(value))
+    .filter(Boolean)
+
+  const apiStorage = normalized.map((value) => toApiStorageCandidate(value))
+  return uniqueValues([...normalized, ...apiStorage])
+}
+
+const getMediaSrc = (media) => {
+  const candidates = getMediaCandidates(media)
+  return candidates[0] || ''
+}
 
 const getMediaType = (media) => {
   const explicitType = String(media?.type || '').toLowerCase()
@@ -673,6 +765,24 @@ const getMediaType = (media) => {
 
 const isImageMedia = (media) => getMediaType(media) === 'image'
 const isVideoMedia = (media) => getMediaType(media) === 'video'
+
+const handleMediaLoadError = (event, media) => {
+  const target = event?.target
+  if (!target) return
+
+  const candidates = getMediaCandidates(media)
+  if (!candidates.length) return
+
+  const currentSrc = String(target.getAttribute?.('src') || target.src || '')
+  const currentIndex = Number(target.dataset?.mediaTryIndex || 0)
+  const matchedIndex = Math.max(currentIndex, candidates.findIndex((value) => value === currentSrc))
+  const nextIndex = matchedIndex + 1
+
+  if (nextIndex >= candidates.length) return
+
+  target.dataset.mediaTryIndex = String(nextIndex)
+  target.src = candidates[nextIndex]
+}
 
 const togglePostActionsMenu = () => {
   openPostActionsMenu.value = !openPostActionsMenu.value

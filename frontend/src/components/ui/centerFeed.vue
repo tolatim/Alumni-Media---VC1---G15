@@ -125,9 +125,10 @@
 </template>
 
 <script setup>
-import { computed, ref, defineComponent, h } from 'vue'
+import { computed, ref, defineComponent, h, watch } from 'vue'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import PostCard from '@/components/ui/PostCard.vue'
+import api from '@/services/api'
 
 const props = defineProps({
   posts: { type: Array, default: () => [] },
@@ -139,6 +140,9 @@ const emit = defineEmits(['refreshPosts'])
 const searchQuery = ref('')
 const activeFilter = ref('all')
 const deletedPostIds = ref([])
+const minePosts = ref([])
+const minePostsLoading = ref(false)
+const minePostsLoadedForUserId = ref(null)
 
 // ── Inline SVG icon components ────────────────────────────────────
 const IconAll = defineComponent({ render: () => h('svg', { viewBox: '0 0 16 16', fill: 'none', width: 13, height: 13 }, [
@@ -164,16 +168,159 @@ const filters = [
   { label: 'Mine', value: 'mine', icon: IconMine },
 ]
 
+const toNumericId = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const getPostOwnerId = (post) => toNumericId(post?.user_id ?? post?.user?.id)
+
+const getPostTimestamp = (post) => {
+  const time = new Date(post?.created_at || 0).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+const normalizeMediaEntry = (entry) => {
+  if (typeof entry === 'string') {
+    return { media_url: entry, file_path: entry }
+  }
+
+  if (!entry || typeof entry !== 'object') return null
+
+  const fallbackPath =
+    entry.media_url ||
+    entry.file_path ||
+    entry.path ||
+    entry.url ||
+    entry.src ||
+    entry.original_url ||
+    entry.preview_url ||
+    entry?.pivot?.file_path ||
+    ''
+
+  return {
+    ...entry,
+    media_url: entry.media_url || fallbackPath,
+    file_path: entry.file_path || fallbackPath,
+  }
+}
+
+const normalizeMediaCollection = (input) => {
+  if (!input) return []
+
+  if (Array.isArray(input)) {
+    return input.map(normalizeMediaEntry).filter(Boolean)
+  }
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        return normalizeMediaCollection(JSON.parse(trimmed))
+      } catch {
+        return [normalizeMediaEntry(trimmed)].filter(Boolean)
+      }
+    }
+    return [normalizeMediaEntry(trimmed)].filter(Boolean)
+  }
+
+  if (typeof input === 'object') {
+    if (Array.isArray(input.data)) return normalizeMediaCollection(input.data)
+    if (Array.isArray(input.media)) return normalizeMediaCollection(input.media)
+    if (Array.isArray(input.attachments)) return normalizeMediaCollection(input.attachments)
+  }
+
+  return []
+}
+
+const normalizePostMedia = (post) => {
+  const source = post?.media ?? post?.media_items ?? post?.attachments ?? []
+  return {
+    ...post,
+    media: normalizeMediaCollection(source),
+  }
+}
+
+const mergePostsById = (first = [], second = []) => {
+  const merged = [...first]
+  const seen = new Set(first.map((post) => post?.id))
+
+  second.forEach((post) => {
+    const id = post?.id
+    if (!seen.has(id)) {
+      seen.add(id)
+      merged.push(post)
+    }
+  })
+
+  return merged
+}
+
+const extractPostsList = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.posts)) return payload.posts
+  return []
+}
+
+const loadMinePosts = async () => {
+  const currentUserId = toNumericId(props.currentUser?.id)
+  if (currentUserId === null) return
+  if (minePostsLoading.value) return
+  if (minePostsLoadedForUserId.value === currentUserId) return
+
+  minePostsLoading.value = true
+  try {
+    const response = await api.get('/posts')
+    const allPosts = extractPostsList(response.data)
+    minePosts.value = allPosts
+      .map(normalizePostMedia)
+      .filter((post) => getPostOwnerId(post) === currentUserId)
+  } catch {
+    minePosts.value = []
+  } finally {
+    minePostsLoadedForUserId.value = currentUserId
+    minePostsLoading.value = false
+  }
+}
+
+watch(activeFilter, (next) => {
+  if (next === 'mine') {
+    loadMinePosts()
+  }
+})
+
+watch(
+  () => props.currentUser?.id,
+  (nextId, prevId) => {
+    if (toNumericId(nextId) === toNumericId(prevId)) return
+    minePosts.value = []
+    minePostsLoadedForUserId.value = null
+    if (activeFilter.value === 'mine') {
+      loadMinePosts()
+    }
+  }
+)
+
 // ── Computed ──────────────────────────────────────────────────────
 const filteredPosts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  let list = props.posts.filter(p => !deletedPostIds.value.includes(p.id))
+  let list = props.posts.map(normalizePostMedia)
 
   if (activeFilter.value === 'latest') {
-    list = [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    list = [...list].sort((a, b) => getPostTimestamp(b) - getPostTimestamp(a))
   } else if (activeFilter.value === 'mine') {
-    list = list.filter(p => p.user_id === props.currentUser?.id)
+    const currentUserId = toNumericId(props.currentUser?.id)
+    if (currentUserId === null) {
+      list = []
+    } else {
+      const combined = mergePostsById(list, minePosts.value)
+      list = combined.filter((p) => getPostOwnerId(p) === currentUserId)
+    }
   }
+
+  list = list.filter((p) => !deletedPostIds.value.includes(p.id))
 
   if (!query) return list
   return list.filter(p => {

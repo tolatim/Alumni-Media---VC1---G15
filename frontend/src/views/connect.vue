@@ -273,9 +273,9 @@
 
                     <Transition name="menu-pop">
                       <div
-                        v-if="openFriendMenuId === friend.id"
+                         v-if="openFriendMenuId === friend.id" 
                         class="friend-menu"
-                        v-click-outside="() => openFriendMenuId = null"
+                        v-click-outside="() => openFriendMenuId.value"
                       >
                         <button class="menu-item" @click="onClickUnfriend(friend.id)">
                           <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
