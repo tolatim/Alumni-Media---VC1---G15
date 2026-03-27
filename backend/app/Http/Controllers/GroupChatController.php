@@ -6,6 +6,7 @@ use App\Models\Connection;
 use App\Models\GroupChat;
 use App\Models\GroupChatMessage;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -207,6 +208,20 @@ class GroupChatController extends Controller
             'media_path' => $mediaPath,
             'media_type' => $mediaType,
         ])->load('sender');
+
+        $targetUserIds = $group->members()
+            ->where('users.id', '!=', $me->id)
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        WebsocketNotifier::send('group_message', [
+            'target_user_ids' => $targetUserIds,
+            'group_id' => (int) $group->id,
+            'sender_id' => (int) $me->id,
+            'message' => $message->toArray(),
+        ]);
 
         return response()->json([
             'message' => 'Group message sent successfully',

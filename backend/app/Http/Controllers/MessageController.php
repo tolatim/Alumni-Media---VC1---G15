@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Message;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -144,6 +145,13 @@ class MessageController extends Controller
             'media_type' => $mediaType,
             'status' => 'sent',
         ])->load(['sender', 'receiver']);
+
+        WebsocketNotifier::send('direct_message', [
+            'target_user_id' => $targetId,
+            'sender_id' => (int) $me->id,
+            'receiver_id' => $targetId,
+            'message' => $message->toArray(),
+        ]);
 
         return response()->json([
             'message' => 'Message sent successfully',

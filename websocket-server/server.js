@@ -9,59 +9,55 @@ app.use(bodyParser.json());
 
 
 app.post('/event', (req, res) => {
-
     const { type, data = {}, audience } = req.body || {};
 
     if (audience === 'admins') {
-        sendToAdmins({
-            type,
-            data,
-            audience: 'admins',
-        });
-
-        return res.json({
-            status: 'event processed',
-            delivered_to: 'admins',
-        });
+        sendToAdmins({ type, data, audience: 'admins' });
+        return res.json({ status: 'event processed', delivered_to: 'admins' });
     }
 
-    let targetUser;
+    const getTargetUserId = () => {
+        switch (type) {
+            case 'connection_request':
+                return data.addressee_id;
+            case 'accept_request':
+            case 'reject':
+            case 'unfriend':
+                return data.requester_id;
+            case 'block':
+                return data.blocker_id;
+            default:
+                return null;
+        }
+    };
 
-    if(type === 'connection_request'){
-        targetUser = clients[data.addressee_id];
-    }
-    else if(type === 'accept_request'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'unfriend'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'reject'){
-        targetUser = clients[data.requester_id]
-    }
-    else if(type === 'block'){
-        targetUser = clients[data.blocker_id]
-    }
+    const targetIdsFromPayload = Array.isArray(data.target_user_ids)
+        ? data.target_user_ids
+        : (data.target_user_id != null ? [data.target_user_id] : []);
 
-    if (targetUser && targetUser.readyState === WebSocket.OPEN) {
+    const recipientIds = targetIdsFromPayload.length
+        ? targetIdsFromPayload
+        : [getTargetUserId()].filter((value) => value != null);
 
-        targetUser.send(JSON.stringify({
-            type: type,
-            data: data
-        }));
+    const deliveredTo = [];
+    const failedTo = [];
 
-        console.log(`Event sent to user ${data.addressee_id || data.requester_id || data.blocker_id}`);
+    recipientIds.forEach((rawId) => {
+        const userId = Number(rawId);
+        const targetUser = clients[userId];
 
-    } else {
+        if (targetUser && targetUser.readyState === WebSocket.OPEN) {
+            targetUser.send(JSON.stringify({ type, data }));
+            deliveredTo.push(userId);
+            console.log(`Event sent to user ${userId}`);
+            return;
+        }
 
-        console.log('Target user is offline or not specified');
-
-    }
-
-    res.json({
-        status: 'event processed'
+        failedTo.push(userId);
+        console.log("User offline or socket closed:", userId);
     });
 
+    res.json({ status: 'event processed', delivered_to: deliveredTo, failed_to: failedTo });
 });
 
 const server = app.listen(3000, () => {
