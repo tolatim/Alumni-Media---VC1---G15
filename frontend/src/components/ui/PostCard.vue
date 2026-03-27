@@ -28,7 +28,7 @@
             type="button"
             :disabled="saveSubmitting"
             @click.stop="toggleSave"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-60"
+            class="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-60"
             :class="isPostSaved ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:ring-amber-300' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 focus-visible:ring-slate-200'"
             :aria-label="isPostSaved ? 'Unsave post' : 'Save post'"
             :title="isPostSaved ? 'Unsave' : 'Save for later'"
@@ -43,6 +43,7 @@
             >
               <path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z" />
             </svg>
+            <span v-if="showSaveLabel" class="text-[11px]">{{ isPostSaved ? 'Unsave' : 'Save' }}</span>
           </button>
 
           <div v-if="canDeletePost" class="relative">
@@ -578,9 +579,13 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  showSaveLabel: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['deleted', 'refresh-posts'])
+const emit = defineEmits(['deleted', 'refresh-posts', 'unsaved'])
 
 const isEditing = ref(false)
 const editTitle = ref('')
@@ -759,7 +764,11 @@ const toggleSave = async () => {
   saveSubmitting.value = true
   try {
     const response = await api.post(`/posts/${props.post.id}/save`)
-    savedByMeOverride.value = Boolean(response.data?.saved)
+    const savedFlag = Boolean(response.data?.saved)
+    savedByMeOverride.value = savedFlag
+    if (!savedFlag) {
+      emit('unsaved', props.post.id)
+    }
   } catch (error) {
     console.error(error.response?.data || error)
     alert(getApiMessage(error, 'Failed to toggle saved state.'))

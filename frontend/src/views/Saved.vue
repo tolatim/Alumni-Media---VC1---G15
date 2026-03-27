@@ -23,11 +23,14 @@
           <p v-else-if="!savedPosts.length" class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">You have no saved posts yet.</p>
 
           <div v-else class="space-y-4">
+            <p v-if="feedback" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">{{ feedback }}</p>
             <PostCard
               v-for="post in savedPosts"
               :key="post.id"
               :post="post"
               :current-user="currentUser"
+              :show-save-label="true"
+              @unsaved="handleUnsave(post.id)"
             />
           </div>
         </section>
@@ -37,7 +40,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import Navbar from "@/components/ui/nav.vue";
 import userLeftSideBar from "@/components/ui/userLeftSideBar.vue";
 import PostCard from "@/components/ui/PostCard.vue";
@@ -47,6 +50,8 @@ const currentUser = ref(null);
 const savedPosts = ref([]);
 const loading = ref(true);
 const errorMessage = ref("");
+const feedback = ref("");
+let feedbackTimer = null;
 
 const loadCurrentUser = async () => {
   try {
@@ -73,7 +78,18 @@ const loadSaved = async () => {
   }
 };
 
+const handleUnsave = (postId) => {
+  savedPosts.value = savedPosts.value.filter((post) => post.id !== postId);
+};
+
 onMounted(async () => {
   await Promise.all([loadCurrentUser(), loadSaved()]);
+});
+
+onUnmounted(() => {
+  if (feedbackTimer) {
+    clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+  }
 });
 </script>
