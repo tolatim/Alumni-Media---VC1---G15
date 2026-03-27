@@ -8,6 +8,7 @@ import EditProfile from '@/views/editProfile.vue'
 import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
+import Saved from '@/views/Saved.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -38,6 +39,12 @@ const routes = [
     path: '/message/:userId',
     name: 'MessageWithUser',
     component: Message,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/saved',
+    name: 'Saved',
+    component: Saved,
     meta: { requiresAuth: true },
   },
   {

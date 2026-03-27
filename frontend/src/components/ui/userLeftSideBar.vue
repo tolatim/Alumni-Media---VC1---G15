@@ -116,6 +116,16 @@
           <span class="nav-label">Messages</span>
           <i class="fa-solid fa-chevron-right nav-chevron"></i>
         </RouterLink>
+
+        <RouterLink to="/saved" class="nav-item" active-class="nav-item--active">
+          <span class="nav-icon">
+            <svg viewBox="0 0 20 20" fill="none">
+              <path d="M6 3.5h8a1 1 0 011 1v11l-5-3-5 3v-11a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="nav-label">Saved</span>
+          <i class="fa-solid fa-chevron-right nav-chevron"></i>
+        </RouterLink>
       </nav>
 
       <button

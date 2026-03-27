@@ -23,55 +23,78 @@
           </div>
         </div>
 
-        <div v-if="canDeletePost" class="relative">
+        <div class="flex items-center gap-2">
           <button
             type="button"
-            @click.stop="togglePostActionsMenu(post.id)"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1"
-            aria-label="Post actions"
-            title="Post actions"
+            :disabled="saveSubmitting"
+            @click.stop="toggleSave"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-60"
+            :class="isPostSaved ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:ring-amber-300' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 focus-visible:ring-slate-200'"
+            :aria-label="isPostSaved ? 'Unsave post' : 'Save post'"
+            :title="isPostSaved ? 'Unsave' : 'Save for later'"
           >
             <svg
               viewBox="0 0 24 24"
               class="h-4 w-4"
-              fill="currentColor"
+              :fill="isPostSaved ? 'currentColor' : 'none'"
+              stroke="currentColor"
+              stroke-width="2"
               aria-hidden="true"
             >
-              <circle cx="12" cy="5" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="12" cy="19" r="2" />
+              <path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z" />
             </svg>
           </button>
 
-          <div
-            v-if="openPostActionsMenu"
-            class="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
-          >
+          <div v-if="canDeletePost" class="relative">
             <button
               type="button"
-              @click="handleStartEdit"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              @click.stop="togglePostActionsMenu(post.id)"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-1"
+              aria-label="Post actions"
+              title="Post actions"
             >
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              <svg
+                viewBox="0 0 24 24"
+                class="h-4 w-4"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
               </svg>
-              <span>Edit</span>
             </button>
-            <button
-              type="button"
-              @click="handleDeletePost"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+
+            <div
+              v-if="openPostActionsMenu"
+              class="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
             >
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M3 6h18" />
-                <path d="M8 6V4h8v2" />
-                <path d="M19 6l-1 14H6L5 6" />
-                <path d="M10 11v6" />
-                <path d="M14 11v6" />
-              </svg>
-              <span>Delete</span>
-            </button>
+              <button
+                type="button"
+                @click="handleStartEdit"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                <span>Edit</span>
+              </button>
+              <button
+                type="button"
+                @click="handleDeletePost"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+              >
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+                <span>Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -251,7 +274,6 @@
             </svg>
             <span>{{ likesCount }}</span>
           </button>
-
           <button
             type="button"
             :disabled="commentsLoading"
@@ -568,7 +590,9 @@ const isSavingEdit = ref(false)
 const openPostActionsMenu = ref(false)
 
 const likeSubmitting = ref(false)
+const saveSubmitting = ref(false)
 const likedByMeOverride = ref(null)
+const savedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
 
 const commentsOpen = ref(props.autoOpenComments ?? false)
@@ -611,6 +635,11 @@ const canDeletePost = computed(() => {
 const isPostLiked = computed(() => {
   if (likedByMeOverride.value !== null) return Boolean(likedByMeOverride.value)
   return Boolean(props.post?.liked_by_me)
+})
+
+const isPostSaved = computed(() => {
+  if (savedByMeOverride.value !== null) return Boolean(savedByMeOverride.value)
+  return Boolean(props.post?.saved_by_me)
 })
 
 const likesCount = computed(() => {
@@ -723,6 +752,19 @@ const toggleLike = async () => {
     alert(getApiMessage(error, 'Failed to toggle like.'))
   } finally {
     likeSubmitting.value = false
+  }
+}
+
+const toggleSave = async () => {
+  saveSubmitting.value = true
+  try {
+    const response = await api.post(`/posts/${props.post.id}/save`)
+    savedByMeOverride.value = Boolean(response.data?.saved)
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to toggle saved state.'))
+  } finally {
+    saveSubmitting.value = false
   }
 }
 

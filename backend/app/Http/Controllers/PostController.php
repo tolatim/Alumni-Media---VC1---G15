@@ -7,14 +7,35 @@ use Illuminate\Http\Request;
 use App\Models\Post;
 use Illuminate\Support\Facades\Storage;
 
+
 class PostController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Post::with(['user', 'media'])
-            ->withCount(['likes', 'comments'])
+        $userId = optional($request->user())->id;
+
+        $posts = Post::with(['user', 'media'])
+            ->withCount([
+                'likes',
+                'comments',
+                'saves',
+                'likes as liked_by_me' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId ?? 0);
+                },
+                'saves as saved_by_me' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId ?? 0);
+                },
+            ])
             ->latest()
             ->get();
+
+        $posts->transform(function ($post) {
+            $post->liked_by_me = (bool) ($post->liked_by_me ?? false);
+            $post->saved_by_me = (bool) ($post->saved_by_me ?? false);
+            return $post;
+        });
+
+        return $posts;
     }
 
     // store post
@@ -70,16 +91,31 @@ class PostController extends Controller
         // Return post with media
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments'])
+            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments', 'saves'])
         ], 201);
     }
 
     // show post
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        $userId = optional($request->user())->id;
+
         $post = Post::with(['user', 'media'])
-            ->withCount(['likes', 'comments'])
+            ->withCount([
+                'likes',
+                'comments',
+                'saves',
+                'likes as liked_by_me' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId ?? 0);
+                },
+                'saves as saved_by_me' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId ?? 0);
+                },
+            ])
             ->findOrFail($id);
+
+        $post->liked_by_me = (bool) ($post->liked_by_me ?? false);
+        $post->saved_by_me = (bool) ($post->saved_by_me ?? false);
 
         return response()->json($post);
     }
@@ -183,7 +219,7 @@ class PostController extends Controller
 
         return response()->json([
             'message' => 'Post updated successfully',
-            'post' => $post->fresh()->load('media', 'user')->loadCount(['likes', 'comments']),
+            'post' => $post->fresh()->load('media', 'user')->loadCount(['likes', 'comments', 'saves']),
         ]);
     }
 

@@ -107,6 +107,10 @@ class UserController extends Controller
             $countableRelations[] = 'comments';
         }
 
+        if (Schema::hasTable('saves')) {
+            $countableRelations[] = 'saves';
+        }
+
         if (!empty($countableRelations)) {
             $query->withCount($countableRelations);
         }
@@ -115,6 +119,14 @@ class UserController extends Controller
             $query->withExists([
                 'likes as liked_by_me' => function ($likeQuery) use ($user) {
                     $likeQuery->where('user_id', $user->id);
+                },
+            ]);
+        }
+
+        if ($user && Schema::hasTable('saves')) {
+            $query->withExists([
+                'saves as saved_by_me' => function ($saveQuery) use ($user) {
+                    $saveQuery->where('user_id', $user->id);
                 },
             ]);
         }
