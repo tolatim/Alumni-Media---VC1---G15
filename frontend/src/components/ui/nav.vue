@@ -47,6 +47,11 @@
           <span>Notification</span>
         </RouterLink>
 
+        <RouterLink to="/favorites" :class="navClass('/favorites')">
+          <i class="fa-solid fa-bookmark"></i>
+          <span>Favorites</span>
+        </RouterLink>
+
         <RouterLink v-if="isAdminUser" to="/admin" :class="adminNavClass">
           <i class="fa-solid fa-shield-halved"></i>
           <span>Admin</span>
@@ -116,6 +121,11 @@
         <RouterLink to="/notification" :class="mobileNavClass('/notification')" @click="isMenuOpen = false">
           <i class="fa-solid fa-bell"></i>
           <span>Notification</span>
+        </RouterLink>
+
+        <RouterLink to="/favorites" :class="mobileNavClass('/favorites')" @click="isMenuOpen = false">
+          <i class="fa-solid fa-bookmark"></i>
+          <span>Favorites</span>
         </RouterLink>
 
         <RouterLink v-if="isAdminUser" to="/admin" :class="mobileAdminNavClass" @click="isMenuOpen = false">

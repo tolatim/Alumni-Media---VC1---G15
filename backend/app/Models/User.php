@@ -72,6 +72,11 @@ class User extends Authenticatable
         return $this->hasMany(Like::class);
     }
 
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
     public function sentMessages()
     {
         return $this->hasMany(Message::class, 'sender_id');

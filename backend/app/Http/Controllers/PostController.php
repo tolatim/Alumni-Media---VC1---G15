@@ -6,16 +6,31 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Report;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
     public function index()
     {
-        return Post::with(['user', 'media'])
-            ->withCount(['likes', 'comments'])
-            ->latest()
-            ->get();
+        $user = auth()->user();
+        $query = Post::with(['user', 'media'])->latest();
+
+        $countableRelations = ['likes', 'comments'];
+        if (Schema::hasTable('favorites')) {
+            $countableRelations[] = 'favorites';
+        }
+        $query->withCount($countableRelations);
+
+        if ($user && Schema::hasTable('favorites')) {
+            $query->withExists([
+                'favorites as favorited_by_me' => function ($favoriteQuery) use ($user) {
+                    $favoriteQuery->where('user_id', $user->id);
+                },
+            ]);
+        }
+
+        return $query->get();
     }
 
     // store post
@@ -69,18 +84,32 @@ class PostController extends Controller
         }
 
         // Return post with media
+        $countableRelations = ['likes', 'comments'];
+        if (Schema::hasTable('favorites')) {
+            $countableRelations[] = 'favorites';
+        }
+
         return response()->json([
             'message' => 'Post created successfully!',
-            'post' => $post->load('media', 'user')->loadCount(['likes', 'comments'])
+            'post' => $post->load('media', 'user')->loadCount($countableRelations)
         ], 201);
     }
 
     // show post
     public function show($id)
     {
+        $countableRelations = ['likes', 'comments'];
+        if (Schema::hasTable('favorites')) {
+            $countableRelations[] = 'favorites';
+        }
+
         $post = Post::with(['user', 'media'])
-            ->withCount(['likes', 'comments'])
+            ->withCount($countableRelations)
             ->findOrFail($id);
+
+        if (auth()->check()) {
+            $post->setAttribute('favorited_by_me', $post->favorites()->where('user_id', auth()->id())->exists());
+        }
 
         return response()->json($post);
     }
@@ -182,9 +211,14 @@ class PostController extends Controller
             }
         }
 
+        $countableRelations = ['likes', 'comments'];
+        if (Schema::hasTable('favorites')) {
+            $countableRelations[] = 'favorites';
+        }
+
         return response()->json([
             'message' => 'Post updated successfully',
-            'post' => $post->fresh()->load('media', 'user')->loadCount(['likes', 'comments']),
+            'post' => $post->fresh()->load('media', 'user')->loadCount($countableRelations),
         ]);
     }
 

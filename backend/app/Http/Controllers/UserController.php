@@ -106,6 +106,9 @@ class UserController extends Controller
         if (Schema::hasTable('comments')) {
             $countableRelations[] = 'comments';
         }
+        if (Schema::hasTable('favorites')) {
+            $countableRelations[] = 'favorites';
+        }
 
         if (!empty($countableRelations)) {
             $query->withCount($countableRelations);
@@ -115,6 +118,14 @@ class UserController extends Controller
             $query->withExists([
                 'likes as liked_by_me' => function ($likeQuery) use ($user) {
                     $likeQuery->where('user_id', $user->id);
+                },
+            ]);
+        }
+
+        if ($user && Schema::hasTable('favorites')) {
+            $query->withExists([
+                'favorites as favorited_by_me' => function ($favoriteQuery) use ($user) {
+                    $favoriteQuery->where('user_id', $user->id);
                 },
             ]);
         }
@@ -545,6 +556,9 @@ class UserController extends Controller
                     if (Schema::hasTable('comments')) {
                         $countableRelations[] = 'comments';
                     }
+                    if (Schema::hasTable('favorites')) {
+                        $countableRelations[] = 'favorites';
+                    }
 
                     if (!empty($countableRelations)) {
                         $postQuery->withCount($countableRelations);
@@ -554,6 +568,14 @@ class UserController extends Controller
                         $postQuery->withExists([
                             'likes as liked_by_me' => function ($likeQuery) use ($authUser) {
                                 $likeQuery->where('user_id', $authUser->id);
+                            },
+                        ]);
+                    }
+
+                    if ($authUser && Schema::hasTable('favorites')) {
+                        $postQuery->withExists([
+                            'favorites as favorited_by_me' => function ($favoriteQuery) use ($authUser) {
+                                $favoriteQuery->where('user_id', $authUser->id);
                             },
                         ]);
                     }

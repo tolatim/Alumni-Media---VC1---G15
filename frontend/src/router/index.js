@@ -10,6 +10,7 @@ import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
 import { component } from 'vue-fullscreen'
 import Admin from '@/views/Admin.vue'
+import Favorites from '@/views/Favorites.vue'
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },
@@ -70,6 +71,12 @@ const routes = [
     path: '/message/:userId',
     name: 'MessageWithUser',
     component: Message,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/favorites',
+    name: 'Favorites',
+    component: Favorites,
     meta: { requiresAuth: true },
   },
   {

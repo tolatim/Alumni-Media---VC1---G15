@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminReportModerationController;
 use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Controllers\AppAppearanceController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\GroupChatController;
@@ -82,6 +83,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/settings/appearance', [AppAppearanceController::class, 'showAdmin']);
     Route::post('/admin/settings/appearance', [AppAppearanceController::class, 'update']);
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
+    Route::post('/posts/{post}/favorite', [FavoriteController::class, 'toggle']);
+    Route::get('/favorites', [FavoriteController::class, 'index']);
     Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
     Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
     Route::put('/comments/{comment}', [CommentController::class, 'update']);

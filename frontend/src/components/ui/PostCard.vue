@@ -260,6 +260,26 @@
 
           <button
             type="button"
+            :disabled="favoriteSubmitting"
+            @click="toggleFavorite"
+            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-60"
+            :class="isPostFavorited ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:ring-amber-300' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-300'"
+            :aria-label="isPostFavorited ? 'Remove from favorites' : 'Add to favorites'"
+            :title="isPostFavorited ? 'Unfavorite' : 'Favorite'"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+            </svg>
+            <span>{{ favoritesCount }}</span>
+          </button>
+
+          <button
+            type="button"
             :disabled="commentsLoading"
             @click="toggleComments"
             class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 disabled:opacity-60"
@@ -587,7 +607,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['deleted', 'refresh-posts'])
+const emit = defineEmits(['deleted', 'refresh-posts', 'favorite-changed'])
 
 const isEditing = ref(false)
 const editTitle = ref('')
@@ -599,6 +619,9 @@ const openPostActionsMenu = ref(false)
 const likeSubmitting = ref(false)
 const likedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
+const favoriteSubmitting = ref(false)
+const favoritedByMeOverride = ref(null)
+const favoritesCountOverride = ref(null)
 const reportSubmitting = ref(false)
 
 const commentsOpen = ref(props.autoOpenComments ?? false)
@@ -658,6 +681,16 @@ const likesCount = computed(() => {
 const commentsCount = computed(() => {
   if (commentsCountOverride.value !== null) return toSafeCount(commentsCountOverride.value)
   return toSafeCount(props.post?.comments_count)
+})
+
+const isPostFavorited = computed(() => {
+  if (favoritedByMeOverride.value !== null) return Boolean(favoritedByMeOverride.value)
+  return Boolean(props.post?.favorited_by_me)
+})
+
+const favoritesCount = computed(() => {
+  if (favoritesCountOverride.value !== null) return toSafeCount(favoritesCountOverride.value)
+  return toSafeCount(props.post?.favorites_count)
 })
 
 const formatDate = (value) => {
@@ -891,6 +924,25 @@ const toggleLike = async () => {
     alert(getApiMessage(error, 'Failed to toggle like.'))
   } finally {
     likeSubmitting.value = false
+  }
+}
+
+const toggleFavorite = async () => {
+  favoriteSubmitting.value = true
+  try {
+    const response = await api.post(`/posts/${props.post.id}/favorite`)
+    favoritedByMeOverride.value = Boolean(response.data?.favorited)
+    favoritesCountOverride.value = toSafeCount(response.data?.favorites_count)
+    emit('favorite-changed', {
+      postId: props.post.id,
+      favorited: Boolean(response.data?.favorited),
+      favoritesCount: toSafeCount(response.data?.favorites_count),
+    })
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to toggle favorite.'))
+  } finally {
+    favoriteSubmitting.value = false
   }
 }
 
