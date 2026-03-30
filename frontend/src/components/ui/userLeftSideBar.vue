@@ -49,12 +49,12 @@
         <!-- Stats row -->
         <div class="stats-row">
           <div class="stat">
-            <span class="stat-num">{{ user?.stats?.connections ?? 142 }}</span>
+            <span class="stat-num">{{ user?.stats?.connections ?? 0 }}</span>
             <span class="stat-label">Connections</span>
           </div>
           <div class="stat-divider" />
           <div class="stat">
-            <span class="stat-num">{{ user?.stats?.posts ?? 28 }}</span>
+            <span class="stat-num">{{ user?.stats?.posts ?? 0 }}</span>
             <span class="stat-label">Posts</span>
           </div>
           <div class="stat-divider" />

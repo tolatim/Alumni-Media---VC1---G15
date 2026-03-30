@@ -18,6 +18,15 @@
           </div>
         </div>
 
+        <div class="mb-3">
+          <input
+            v-model.trim="contactSearch"
+            type="text"
+            placeholder="Search friends..."
+            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+          />
+        </div>
+
         <div v-if="loadingContacts" class="space-y-3">
           <div v-for="n in 5" :key="`skeleton-contact-${n}`" class="flex items-center gap-3">
             <div class="h-10 w-10 animate-pulse rounded-full bg-slate-200"></div>
@@ -30,7 +39,7 @@
 
         <div v-else class="space-y-2">
           <button
-            v-for="contact in contacts"
+            v-for="contact in filteredContacts"
             :key="contact.id"
             @click="selectContact(contact)"
             class="flex w-full items-center justify-between gap-3 rounded-2xl p-2.5 text-left transition hover:bg-slate-100/90 hover:shadow-sm"
@@ -50,17 +59,27 @@
               {{ contact.unread_count > 99 ? '99+' : contact.unread_count }}
             </span>
           </button>
-          <p v-if="!contacts.length" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No direct chats yet.</p>
+          <p v-if="!filteredContacts.length" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
+            {{ contactSearch ? 'No matching friends found.' : 'No direct chats yet.' }}
+          </p>
         </div>
 
         <div class="mt-4">
           <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Groups</h3>
+          <div class="mb-2">
+            <input
+              v-model.trim="groupSearch"
+              type="text"
+              placeholder="Search groups..."
+              class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+            />
+          </div>
           <div v-if="loadingGroups" class="space-y-2">
             <div v-for="n in 3" :key="`skeleton-group-${n}`" class="h-10 animate-pulse rounded bg-slate-200"></div>
           </div>
           <div v-else class="space-y-2">
             <button
-              v-for="group in groups"
+              v-for="group in filteredGroups"
               :key="`group-${group.id}`"
               @click="selectGroup(group)"
               class="flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition hover:bg-slate-100/90 hover:shadow-sm"
@@ -74,7 +93,9 @@
                 <p class="truncate text-xs text-slate-500">{{ (group.members || []).length }} members</p>
               </div>
             </button>
-            <p v-if="!groups.length" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No groups yet.</p>
+            <p v-if="!filteredGroups.length" class="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
+              {{ groupSearch ? 'No matching groups found.' : 'No groups yet.' }}
+            </p>
           </div>
         </div>
 
@@ -446,6 +467,8 @@ const savingEdit = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 const createGroupError = ref('')
+const contactSearch = ref('')
+const groupSearch = ref('')
 const groupForm = ref({
   name: '',
   search: '',
@@ -516,6 +539,27 @@ const filteredGroupFriends = computed(() => {
     const name = String(friend.name || '').toLowerCase()
     const headline = String(friend.profile?.headline || '').toLowerCase()
     return name.includes(keyword) || headline.includes(keyword)
+  })
+})
+
+const filteredContacts = computed(() => {
+  const keyword = contactSearch.value.toLowerCase()
+  if (!keyword) return contacts.value
+
+  return contacts.value.filter((contact) => {
+    const name = String(contact?.name || '').toLowerCase()
+    const headline = String(contact?.profile?.headline || '').toLowerCase()
+    return name.includes(keyword) || headline.includes(keyword)
+  })
+})
+
+const filteredGroups = computed(() => {
+  const keyword = groupSearch.value.toLowerCase()
+  if (!keyword) return groups.value
+
+  return groups.value.filter((group) => {
+    const name = String(group?.name || '').toLowerCase()
+    return name.includes(keyword)
   })
 })
 

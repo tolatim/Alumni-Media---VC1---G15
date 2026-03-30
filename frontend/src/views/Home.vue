@@ -51,6 +51,179 @@ const feedLastPage = ref(1);
 const FEED_PER_PAGE = 8;
 
 const hasMorePosts = ref(true);
+let homeSocket = null;
+let homeReconnectTimer = null;
+let shouldReconnectHomeSocket = true;
+
+const applyConnectionCount = (count = 0) => {
+  if (!currentUser.value) return;
+  const parsed = Number(count);
+  const safeCount = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  currentUser.value = {
+    ...currentUser.value,
+    stats: {
+      ...(currentUser.value.stats || {}),
+      connections: safeCount,
+    },
+  };
+  localStorage.setItem("user", JSON.stringify(currentUser.value));
+};
+
+const applyPostCount = (count = 0) => {
+  if (!currentUser.value) return;
+  const parsed = Number(count);
+  const safeCount = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  currentUser.value = {
+    ...currentUser.value,
+    stats: {
+      ...(currentUser.value.stats || {}),
+      posts: safeCount,
+    },
+  };
+  localStorage.setItem("user", JSON.stringify(currentUser.value));
+};
+
+const resolveWsUrl = () => {
+  const configured = String(import.meta.env.VITE_WS_URL || "").trim();
+  if (!configured) {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.hostname}:3000/ws`;
+  }
+
+  try {
+    const parsed = new URL(configured);
+    const pageHost = window.location.hostname;
+    const isLocalWsHost =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const isRemotePage = pageHost !== "localhost" && pageHost !== "127.0.0.1";
+
+    if (isLocalWsHost && isRemotePage) {
+      parsed.hostname = pageHost;
+      parsed.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return parsed.toString();
+    }
+
+    return parsed.toString();
+  } catch {
+    return configured;
+  }
+};
+
+const refreshCurrentUser = async () => {
+  try {
+    const response = await api.get("/me", {
+      headers: { "X-Skip-Loading": "true" },
+    });
+    currentUser.value = response.data || null;
+    if (currentUser.value) {
+      localStorage.setItem("user", JSON.stringify(currentUser.value));
+    }
+  } catch {
+    // keep old state if refresh fails
+  }
+};
+
+const refreshConnectionCount = async () => {
+  try {
+    const response = await api.get("/connections/my", {
+      params: { page: 1, per_page: 1 },
+      headers: { "X-Skip-Loading": "true" },
+    });
+    const total =
+      Number(response.data?.pagination?.total) ||
+      Number(response.data?.data?.length || 0);
+    applyConnectionCount(total);
+  } catch {
+    // keep old count if refresh fails
+  }
+};
+
+const refreshPostCount = async () => {
+  const myId = Number(currentUser.value?.id || 0);
+  if (!myId) return;
+
+  try {
+    const response = await api.get(`/users/${myId}`, {
+      headers: { "X-Skip-Loading": "true" },
+    });
+    const posts = response.data?.data?.posts;
+    const total = Array.isArray(posts) ? posts.length : 0;
+    applyPostCount(total);
+  } catch {
+    // keep old count if refresh fails
+  }
+};
+
+const scheduleHomeReconnect = () => {
+  if (!shouldReconnectHomeSocket || homeReconnectTimer) return;
+  homeReconnectTimer = setTimeout(() => {
+    homeReconnectTimer = null;
+    connectHomeSocket();
+  }, 2000);
+};
+
+const handleHomeSocketPayload = async (payload) => {
+  const eventType = String(payload?.type || "");
+  if (!["accept_request", "unfriend", "block"].includes(eventType)) return;
+  await Promise.all([refreshCurrentUser(), refreshConnectionCount()]);
+};
+
+const connectHomeSocket = () => {
+  const wsUrl = resolveWsUrl();
+  const userId = Number(currentUser.value?.id || 0);
+  if (!userId || !wsUrl) return;
+
+  if (
+    homeSocket &&
+    (homeSocket.readyState === WebSocket.OPEN ||
+      homeSocket.readyState === WebSocket.CONNECTING)
+  ) {
+    return;
+  }
+
+  try {
+    homeSocket = new WebSocket(wsUrl);
+  } catch {
+    scheduleHomeReconnect();
+    return;
+  }
+
+  homeSocket.onopen = () => {
+    const role =
+      typeof currentUser.value?.role === "string"
+        ? currentUser.value.role
+        : currentUser.value?.role?.name;
+    homeSocket?.send(
+      JSON.stringify({
+        type: "auth",
+        user_id: userId,
+        role: role || "",
+      })
+    );
+  };
+
+  homeSocket.onmessage = async (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      await handleHomeSocketPayload(payload);
+    } catch {
+      // ignore invalid payload
+    }
+  };
+
+  homeSocket.onerror = () => {
+    try {
+      homeSocket?.close();
+    } catch {
+      // ignore close errors
+    }
+  };
+
+  homeSocket.onclose = () => {
+    homeSocket = null;
+    scheduleHomeReconnect();
+  };
+};
 
 const loadFeedPage = async (page = 1, append = false) => {
   const response = await api.get("/feed", {
@@ -176,11 +349,22 @@ const onScroll = () => {
 
 const prependPost = (newPost) => {
   posts.value = [newPost, ...posts.value];
+  if (!currentUser.value) return;
+  const currentPosts = Number(currentUser.value?.stats?.posts || 0);
+  currentUser.value = {
+    ...currentUser.value,
+    stats: {
+      ...(currentUser.value.stats || {}),
+      posts: currentPosts + 1,
+    },
+  };
+  localStorage.setItem("user", JSON.stringify(currentUser.value));
 };
 
 const refreshPosts = async () => {
   try {
     await loadFeedPage(1, false);
+    await Promise.all([refreshCurrentUser(), refreshPostCount()]);
   } catch (error) {
     console.error(error.response?.data || error);
   }
@@ -204,6 +388,7 @@ const acceptConnectionRequest = async (requestId) => {
     pendingRequests.value = pendingRequests.value.filter(
       (request) => request.id !== requestId
     );
+    await Promise.all([refreshCurrentUser(), refreshConnectionCount()]);
     await refreshSuggestions();
   } catch (error) {
     errorMessage.value =
@@ -233,13 +418,27 @@ const refreshSuggestions = async () => {
   }
 };
 
-onMounted(() => {
-  loadHomeData();
+onMounted(async () => {
+  await loadHomeData();
+  await Promise.all([refreshConnectionCount(), refreshPostCount()]);
+  connectHomeSocket();
   window.addEventListener("scroll", onScroll, { passive: true });
-
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("scroll", onScroll);
+  shouldReconnectHomeSocket = false;
+  if (homeReconnectTimer) {
+    clearTimeout(homeReconnectTimer);
+    homeReconnectTimer = null;
+  }
+  if (homeSocket) {
+    try {
+      homeSocket.close();
+    } catch {
+      // ignore close errors
+    }
+    homeSocket = null;
+  }
 });
 </script>

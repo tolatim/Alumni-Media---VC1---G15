@@ -44,10 +44,32 @@ app.post('/event', (req, res) => {
 
     recipientIds.forEach((rawId) => {
         const userId = Number(rawId);
-        const targetUser = clients[userId];
+        const sockets = clients.get(userId);
 
-        if (targetUser && targetUser.readyState === WebSocket.OPEN) {
-            targetUser.send(JSON.stringify({ type, data }));
+        if (!sockets || sockets.size === 0) {
+            failedTo.push(userId);
+            console.log("User offline or socket closed:", userId);
+            return;
+        }
+
+        let sent = false;
+        const deadSockets = [];
+
+        sockets.forEach((socket) => {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type, data }));
+                sent = true;
+                return;
+            }
+            deadSockets.push(socket);
+        });
+
+        deadSockets.forEach((socket) => sockets.delete(socket));
+        if (sockets.size === 0) {
+            clients.delete(userId);
+        }
+
+        if (sent) {
             deliveredTo.push(userId);
             console.log(`Event sent to user ${userId}`);
             return;
@@ -68,7 +90,7 @@ const wss = new WebSocket.Server({ server, path: '/ws'  }, () => {
     console.log('WebSocket server running on port 3000');
 });
 
-let clients = {};
+const clients = new Map();
 const adminClients = new Set();
 
 const sendToAdmins = (payload) => {
@@ -98,7 +120,10 @@ wss.on('connection', (ws) => {
             if (data.type === 'auth') {
 
                 ws.user_id = data.user_id;
-                clients[data.user_id] = ws;
+                const key = Number(data.user_id);
+                const existing = clients.get(key) || new Set();
+                existing.add(ws);
+                clients.set(key, existing);
                 const role = String(data.role || '').toLowerCase();
                 const channel = String(data.channel || '').toLowerCase();
 
@@ -118,12 +143,16 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
 
-        if (ws.user_id && clients[ws.user_id] === ws) {
-
-            delete clients[ws.user_id];
-
+        if (ws.user_id != null) {
+            const key = Number(ws.user_id);
+            const existing = clients.get(key);
+            if (existing) {
+                existing.delete(ws);
+                if (existing.size === 0) {
+                    clients.delete(key);
+                }
+            }
             console.log(`User ${ws.user_id} disconnected`);
-
         }
 
         if (ws.isAdmin) {

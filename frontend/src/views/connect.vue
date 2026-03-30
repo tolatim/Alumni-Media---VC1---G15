@@ -33,27 +33,6 @@
                   <span class="manage-item-label">My Connections</span>
                   <span class="manage-item-count">{{ connectionsCount }}</span>
                 </div>
-                <div class="manage-item">
-                  <div class="manage-item-icon">
-                    <svg viewBox="0 0 18 18" fill="none" width="15" height="15">
-                      <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.4"/>
-                      <path d="M2 7h14" stroke="currentColor" stroke-width="1.4"/>
-                      <path d="M6 2v2M12 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                  <span class="manage-item-label">Events</span>
-                  <span class="manage-item-count manage-item-count--muted">0</span>
-                </div>
-                <div class="manage-item">
-                  <div class="manage-item-icon">
-                    <svg viewBox="0 0 18 18" fill="none" width="15" height="15">
-                      <path d="M3 6h12M3 9h8M3 12h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                      <rect x="1" y="2" width="16" height="14" rx="3" stroke="currentColor" stroke-width="1.4"/>
-                    </svg>
-                  </div>
-                  <span class="manage-item-label">Groups</span>
-                  <span class="manage-item-count manage-item-count--muted">0</span>
-                </div>
               </nav>
             </div>
           </aside>
@@ -150,11 +129,19 @@
                 <div class="card-title-wrap">
                   <h2 class="card-title">People You May Know</h2>
                 </div>
+                <div class="friends-search-wrap">
+                  <input
+                    v-model.trim="suggestionsSearch"
+                    type="text"
+                    class="friends-search-input"
+                    placeholder="Search people..."
+                  />
+                </div>
               </div>
 
               <div class="items-list">
                 <div
-                  v-for="person in suggestionsStore.suggestions"
+                  v-for="person in filteredSuggestions"
                   :key="person.id"
                   class="person-row"
                 >
@@ -187,14 +174,14 @@
                 </div>
               </div>
 
-              <div v-if="!suggestionsStore.suggestions.length" class="empty-row">
+              <div v-if="!filteredSuggestions.length" class="empty-row">
                 <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
                   <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
                   <circle cx="14" cy="7" r="2.5" stroke="currentColor" stroke-width="1.4"/>
                   <path d="M1 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                   <path d="M14 12c1.657 0 3 1.119 3 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                 </svg>
-                No suggestions right now
+                {{ suggestionsSearch ? 'No matching people found' : 'No suggestions right now' }}
               </div>
 
               <div v-if="suggestionsStore.suggestionsPagination.last_page > 1" class="pagination">
@@ -230,11 +217,19 @@
                   <h2 class="card-title">My Friends</h2>
                   <span class="count-pill">{{ connectionRowsStore.friendsPagination.total }}</span>
                 </div>
+                <div class="friends-search-wrap">
+                  <input
+                    v-model.trim="friendsSearch"
+                    type="text"
+                    class="friends-search-input"
+                    placeholder="Search connections..."
+                  />
+                </div>
               </div>
 
               <div class="items-list">
                 <article
-                  v-for="friend in friends"
+                  v-for="friend in filteredFriends"
                   :key="friend.id"
                   class="person-row person-row--friend"
                 >
@@ -298,12 +293,12 @@
                 </article>
               </div>
 
-              <div v-if="!friends.length" class="empty-row">
+              <div v-if="!filteredFriends.length" class="empty-row">
                 <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
                   <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
                   <path d="M4 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                 </svg>
-                No connections yet
+                {{ friendsSearch ? 'No matching connections found' : 'No connections yet' }}
               </div>
 
               <div v-if="connectionRowsStore.friendsPagination.last_page > 1" class="pagination">
@@ -388,6 +383,8 @@ ws.onmessage = (event) => {
 // ── State ─────────────────────────────────────────────────────────
 const errorMessage = ref('')
 const openFriendMenuId = ref(null)
+const friendsSearch = ref('')
+const suggestionsSearch = ref('')
 
 // ── Computed ──────────────────────────────────────────────────────
 const friends = computed(() => {
@@ -402,6 +399,28 @@ const friends = computed(() => {
 const connectionsCount = computed(
   () => connectionRowsStore.friendsPagination.total || friends.value.length
 )
+
+const filteredFriends = computed(() => {
+  const keyword = friendsSearch.value.toLowerCase()
+  if (!keyword) return friends.value
+
+  return friends.value.filter((friend) => {
+    const name = String(friend?.name || '').toLowerCase()
+    const headline = String(friend?.profile?.headline || '').toLowerCase()
+    return name.includes(keyword) || headline.includes(keyword)
+  })
+})
+
+const filteredSuggestions = computed(() => {
+  const keyword = suggestionsSearch.value.toLowerCase()
+  if (!keyword) return suggestionsStore.suggestions
+
+  return suggestionsStore.suggestions.filter((person) => {
+    const name = String(person?.name || '').toLowerCase()
+    const headline = String(person?.profile?.headline || '').toLowerCase()
+    return name.includes(keyword) || headline.includes(keyword)
+  })
+})
 
 // ── Actions ───────────────────────────────────────────────────────
 const showError = (err, fallback) => {
@@ -630,6 +649,32 @@ onMounted(async () => {
   font-size: 11px;
   font-weight: 500;
   color: #64748b;
+}
+
+.friends-search-wrap {
+  margin-top: 10px;
+}
+
+.friends-search-input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.friends-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.friends-search-input:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 /* ── Person rows ─────────────────────────────────────────────── */

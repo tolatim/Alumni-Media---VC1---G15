@@ -69,20 +69,22 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import { fetchPublicAppearance } from '@/services/appearanceService'
+import { useMessageStore } from '@/stores/message'
 
 const route = useRoute()
+const messageStore = useMessageStore()
+const { unreadCount } = storeToRefs(messageStore)
 const user = ref(null)
 const appLogoUrl = ref(null)
-const unreadCount = ref(0)
-let unreadTimer = null
-const handleMessagesUpdated = () => {
-  fetchUnreadCount()
-}
+let unreadSocket = null
+let unreadReconnectTimer = null
+let shouldReconnectUnreadSocket = true
 
 const navClass = (prefix) => {
   const base = 'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition'
@@ -121,39 +123,125 @@ const fetchMe = async () => {
   }
 }
 
-const fetchUnreadCount = async () => {
+const resolveWsUrl = () => {
+  const configured = String(import.meta.env.VITE_WS_URL || '').trim()
+  if (!configured) {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    return `${protocol}://${window.location.hostname}:3000/ws`
+  }
+
   try {
-    const response = await api.get('/messages/unread-count', {
-      headers: {
-        'X-Skip-Loading': 'true',
-      },
-    })
-    unreadCount.value = response.data?.data?.count || 0
+    const parsed = new URL(configured)
+    const pageHost = window.location.hostname
+    const isLocalWsHost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
+    const isRemotePage = pageHost !== 'localhost' && pageHost !== '127.0.0.1'
+
+    if (isLocalWsHost && isRemotePage) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      parsed.hostname = pageHost
+      parsed.protocol = protocol
+      return parsed.toString()
+    }
+
+    return parsed.toString()
   } catch {
-    unreadCount.value = 0
+    return configured
   }
 }
 
-watch(
-  () => route.fullPath,
-  async () => {
-    await fetchUnreadCount()
+const scheduleUnreadReconnect = () => {
+  if (!shouldReconnectUnreadSocket || unreadReconnectTimer) return
+  unreadReconnectTimer = setTimeout(() => {
+    unreadReconnectTimer = null
+    connectUnreadSocket()
+  }, 2000)
+}
+
+const handleUnreadSocketPayload = async (payload) => {
+  const eventType = String(payload?.type || '')
+  if (eventType !== 'direct_message') return
+
+  const myId = Number(user.value?.id || 0)
+  const senderId = Number(payload?.data?.sender_id ?? payload?.data?.message?.sender_id ?? 0)
+  const receiverId = Number(payload?.data?.receiver_id ?? payload?.data?.message?.receiver_id ?? 0)
+  const isIncomingForMe = senderId > 0 && receiverId > 0 && senderId !== myId && receiverId === myId
+  if (!isIncomingForMe) return
+
+  const activeChatUserId = Number(route.params.userId || 0)
+  const isViewingSenderChat = route.path.startsWith('/message') && activeChatUserId === senderId
+  if (!isViewingSenderChat) {
+    messageStore.setUnreadCount(unreadCount.value + 1)
   }
-)
+}
+
+const connectUnreadSocket = () => {
+  const wsUrl = resolveWsUrl()
+  const userId = Number(user.value?.id || 0)
+  if (!userId || !wsUrl) return
+
+  if (unreadSocket && (unreadSocket.readyState === WebSocket.OPEN || unreadSocket.readyState === WebSocket.CONNECTING)) {
+    return
+  }
+
+  try {
+    unreadSocket = new WebSocket(wsUrl)
+  } catch {
+    scheduleUnreadReconnect()
+    return
+  }
+
+  unreadSocket.onopen = () => {
+    const role = typeof user.value?.role === 'string' ? user.value.role : user.value?.role?.name
+    unreadSocket?.send(JSON.stringify({
+      type: 'auth',
+      user_id: userId,
+      role: role || '',
+    }))
+  }
+
+  unreadSocket.onmessage = async (event) => {
+    try {
+      const payload = JSON.parse(event.data)
+      await handleUnreadSocketPayload(payload)
+    } catch {
+      // ignore invalid payload
+    }
+  }
+
+  unreadSocket.onerror = () => {
+    try {
+      unreadSocket?.close()
+    } catch {
+      // ignore close errors
+    }
+  }
+
+  unreadSocket.onclose = () => {
+    unreadSocket = null
+    scheduleUnreadReconnect()
+  }
+}
 
 onMounted(async () => {
   const appearance = await fetchPublicAppearance()
   appLogoUrl.value = appearance.logo_url || null
   await fetchMe()
-  await fetchUnreadCount()
-  unreadTimer = setInterval(fetchUnreadCount, 15000)
-  window.addEventListener('messages:updated', handleMessagesUpdated)
+  connectUnreadSocket()
 })
 
 onUnmounted(() => {
-  if (unreadTimer) {
-    clearInterval(unreadTimer)
+  shouldReconnectUnreadSocket = false
+  if (unreadReconnectTimer) {
+    clearTimeout(unreadReconnectTimer)
+    unreadReconnectTimer = null
   }
-  window.removeEventListener('messages:updated', handleMessagesUpdated)
+  if (unreadSocket) {
+    try {
+      unreadSocket.close()
+    } catch {
+      // ignore close errors
+    }
+    unreadSocket = null
+  }
 })
 </script>

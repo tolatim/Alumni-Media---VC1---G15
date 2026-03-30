@@ -27,6 +27,7 @@ const normalizePagination = (payload, fallbackPerPage) => {
 export const useMessageStore = defineStore('messageStore', {
   state: () => ({
     me: null,
+    unreadCount: 0,
     contacts: [],
     groups: [],
     selectedUser: null,
@@ -50,6 +51,14 @@ export const useMessageStore = defineStore('messageStore', {
   }),
 
   actions: {
+    recomputeUnreadCountFromContacts() {
+      const total = (this.contacts || []).reduce((sum, contact) => {
+        const count = Number(contact?.unread_count || 0)
+        return sum + (Number.isFinite(count) && count > 0 ? count : 0)
+      }, 0)
+      this.setUnreadCount(total)
+    },
+
     resetMessagesPagination() {
       this.messagesPagination = defaultPagination(MESSAGES_PER_PAGE)
     },
@@ -57,6 +66,24 @@ export const useMessageStore = defineStore('messageStore', {
     async loadMe() {
       const response = await api.get('/me')
       this.me = response.data
+    },
+
+    setUnreadCount(count = 0) {
+      const parsed = Number(count)
+      this.unreadCount = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+    },
+
+    async loadUnreadCount() {
+      try {
+        const response = await api.get('/messages/unread-count', {
+          headers: {
+            'X-Skip-Loading': 'true',
+          },
+        })
+        this.setUnreadCount(response.data?.data?.count || 0)
+      } catch {
+        this.setUnreadCount(0)
+      }
     },
 
     async loadContacts(page = 1) {
@@ -67,6 +94,7 @@ export const useMessageStore = defineStore('messageStore', {
         })
         this.contacts = response.data?.data || []
         this.contactsPagination = normalizePagination(response.data, CONTACTS_PER_PAGE)
+        this.recomputeUnreadCountFromContacts()
       } finally {
         this.loadingContacts = false
       }
@@ -145,6 +173,11 @@ export const useMessageStore = defineStore('messageStore', {
 
         if (markRead) {
           await api.post(`/messages/${targetId}/read`)
+          this.contacts = this.contacts.map((contact) => {
+            if (Number(contact?.id) !== Number(targetId)) return contact
+            return { ...contact, unread_count: 0 }
+          })
+          this.recomputeUnreadCountFromContacts()
         }
       } finally {
         this.loadingMessages = false
