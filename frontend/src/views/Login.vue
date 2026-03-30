@@ -50,9 +50,9 @@
 <style scoped>
 .login-container {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  overflow: hidden;
+  overflow-x: hidden;
   background: #f8fafc;
 }
 
@@ -120,7 +120,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 .login-card {
@@ -264,8 +264,54 @@ button.loading .spinner {
 
 @media (max-width: 768px) {
   .login-container { flex-direction: column; }
-  .left-panel { flex: none; height: 45vh; padding: 3rem 1.5rem; }
-  .right-panel { flex: none; padding: 2rem 1rem; }
+  .left-panel {
+    flex: none;
+    min-height: 34vh;
+    padding: 2rem 1.25rem;
+    align-items: flex-end;
+  }
+  .overlay h1 {
+    font-size: clamp(1.8rem, 6vw, 2.4rem);
+    margin-bottom: 0.9rem;
+  }
+  .overlay p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+  .right-panel { flex: none; padding: 1rem; }
+  .login-card {
+    max-width: 100%;
+    padding: 2rem 1.25rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+  .login-card:hover {
+    transform: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (max-width: 480px) {
+  .left-panel {
+    display: none;
+  }
+  .right-panel {
+    min-height: 100vh;
+    padding: 1rem 0.75rem;
+  }
+  .login-card {
+    border-radius: 14px;
+    padding: 1.5rem 1rem;
+  }
+  .login-card h2 {
+    font-size: 1.65rem;
+  }
+  .subtitle {
+    margin-bottom: 1.5rem;
+  }
+  button {
+    font-size: 1rem;
+    padding: 0.9rem;
+  }
 }
 </style>
 

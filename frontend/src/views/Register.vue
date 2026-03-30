@@ -187,7 +187,7 @@ async function register() {
   justify-content: center;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: url('https://www.passerellesnumeriques.org/wp-content/uploads/2025/05/488904386_1067237218774477_7287190704021364614_n-1.jpg')
-              center/cover no-repeat fixed;
+              center/cover no-repeat;
   position: relative;
   padding: 2rem 1rem;
 }
@@ -418,13 +418,69 @@ input:disabled {
 }
 
 /* Responsive adjustments */
-@media (max-width: 480px) {
-  .card {
-    padding: 2rem 1.5rem;
+@media (max-width: 900px) {
+  .page {
+    padding: 1.25rem 0.9rem;
   }
+
+  .card {
+    max-width: 560px;
+    padding: 2.25rem 1.75rem;
+  }
+
+  h1 {
+    font-size: 1.9rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+    margin-bottom: 1.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1.9rem 1.2rem;
+    border-radius: 14px;
+  }
+
+  .card:hover {
+    transform: none;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  }
+
   .row {
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .primary-btn {
+    font-size: 1rem;
+    padding: 0.9rem;
+  }
+
+  .footer {
+    margin-top: 1.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.5rem 1rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 1.3rem;
   }
 }
 </style>

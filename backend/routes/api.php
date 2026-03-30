@@ -8,6 +8,7 @@ use App\Http\Controllers\AppAppearanceController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\GroupChatController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
@@ -46,6 +47,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/messages/{userId}/read', [MessageController::class, 'markRead']);
     Route::get('/messages/{userId}', [MessageController::class, 'index']);
     Route::post('/messages/{userId}', [MessageController::class, 'store']);
+    Route::get('/groups', [GroupChatController::class, 'index']);
+    Route::post('/groups', [GroupChatController::class, 'store']);
+    Route::post('/groups/{groupId}/invite', [GroupChatController::class, 'invite']);
+    Route::get('/groups/{groupId}/messages', [GroupChatController::class, 'messages']);
+    Route::post('/groups/{groupId}/messages', [GroupChatController::class, 'sendMessage']);
 
     Route::get('/users/suggestions', [UserController::class, 'suggestions']);
     Route::get('/users', [UserController::class, 'index']);

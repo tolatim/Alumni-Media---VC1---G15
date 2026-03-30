@@ -1,6 +1,6 @@
 <template>
-  <aside class="w-64 bg-primary-900 text-white flex flex-col">
-    <div class="p-6 border-b border-primary-800">
+  <aside class="w-full bg-primary-900 text-white lg:w-64 lg:flex lg:flex-col">
+    <div class="border-b border-primary-800 p-4 lg:p-6">
       <div class="flex items-center gap-3">
         <img
           v-if="logoUrl"
@@ -13,12 +13,12 @@
       </div>
     </div>
 
-    <nav class="flex-1 px-3 py-6">
+    <nav class="flex gap-2 overflow-x-auto px-3 py-3 lg:flex-1 lg:flex-col lg:py-6">
       <RouterLink
         v-for="item in menu"
         :key="item.to"
         :to="item.to"
-        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-800 transition mb-1"
+        class="mb-0 inline-flex items-center gap-3 whitespace-nowrap rounded-lg px-4 py-2.5 transition hover:bg-primary-800 lg:mb-1"
         active-class="bg-primary-800"
       >
         <!-- You can use heroicons or lucide icons here -->
@@ -26,7 +26,7 @@
       </RouterLink>
     </nav>
 
-    <div class="p-4 border-t border-primary-800 text-sm opacity-70">
+    <div class="hidden border-t border-primary-800 p-4 text-sm opacity-70 lg:block">
       Admin Panel
     </div>
   </aside>

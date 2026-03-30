@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -50,6 +51,7 @@ class User extends Authenticatable
     protected $appends = [
         'name',
         'profile',
+        'stats',
     ];
 
     public function role()
@@ -157,6 +159,32 @@ class User extends Authenticatable
             'graduate_year' => $this->graduate_year,
             'current_job' => $this->current_job,
             'company' => $this->company,
+        ];
+    }
+
+    public function getStatsAttribute(): array
+    {
+        $postsCount = 0;
+        $connectionsCount = 0;
+
+        if (Schema::hasTable('posts')) {
+            $postsCount = $this->posts()->count();
+        }
+
+        if (Schema::hasTable('connections')) {
+            $connectionsCount = Connection::query()
+                ->where('status', 'accepted')
+                ->where(function ($query) {
+                    $query
+                        ->where('requester_id', $this->id)
+                        ->orWhere('addressee_id', $this->id);
+                })
+                ->count();
+        }
+
+        return [
+            'posts' => $postsCount,
+            'connections' => $connectionsCount,
         ];
     }
 }

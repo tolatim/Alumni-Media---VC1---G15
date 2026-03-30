@@ -9,7 +9,7 @@ use App\Support\WebsocketNotifier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+
 
 class AuthController extends Controller
 {
@@ -21,25 +21,21 @@ class AuthController extends Controller
             'last_name' => 'required|string|max:100',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
-            'registration_key' => 'required|string|max:255',
+            'registration_key' => 'nullable|string|max:255',
         ]);
 
-        $configuredKey = AppSetting::query()->where('key', 'registration_key')->value('value');
+        $configuredKey = trim((string) AppSetting::query()->where('key', 'registration_key')->value('value'));
+        $fallbackKey = trim((string) env('REGISTRATION_KEY', ''));
+        $effectiveRegistrationKey = $configuredKey !== '' ? $configuredKey : $fallbackKey;
 
-        if (!$configuredKey) {
-            return response()->json([
-                'message' => 'Registration is currently closed. Please contact admin.',
-            ], 403);
-        }
-
-        if (!hash_equals((string) $configuredKey, (string) $validated['registration_key'])) {
+        if ($effectiveRegistrationKey !== '' && !hash_equals($effectiveRegistrationKey, (string) ($validated['registration_key'] ?? ''))) {
             return response()->json([
                 'message' => 'Invalid registration key.',
             ], 403);
         }
 
         // Assign default role
-        $userRole = Role::firstOrCreate(['name' => 'user']);
+        $userRole = Role::firstOrCreate(['name' => 'alumni']);
 
         // Create the user
         $user = User::create([
@@ -64,19 +60,11 @@ class AuthController extends Controller
         // ----------------------------
         // Send event to Node.js server
         // ----------------------------
-        try {
-            Http::post('http://localhost:3000/event', [
-                'type' => 'new_user',
-                'data' => [
-                    'id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            // Optional: log errors if Node.js is not running
-            \Log::error('Failed to send new user event: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('new_user', [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+        ]);
 
         WebsocketNotifier::send('admin_activity', [
             'event' => 'user_registered',
@@ -91,13 +79,16 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'User created successfully',
             'token' => $token,
-            'user' => $user,
+            'user' => $user->load('role'),
         ], 201);
     }
     // Login
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
         if (!Auth::attempt($credentials)) {
             return response()->json([
@@ -116,20 +107,11 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-
-         try {
-            Http::post('http://localhost:3000/event', [
-                'type' => 'login',
-                'data' => [
-                    'id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            // Optional: log errors if Node.js is not running
-            \Log::error('Failed to send new user event: ' . $e->getMessage());
-        }
+        WebsocketNotifier::send('login', [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+        ]);
 
         return response()->json([
             'status' => 'Login successfully',

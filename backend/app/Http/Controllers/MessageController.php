@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Message;
 use App\Models\User;
+use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -113,7 +114,7 @@ class MessageController extends Controller
         $me = $request->user();
         $targetId = (int) $userId;
 
-        $this->assertCanMessage($me->id, $targetId);
+        $this->assertCanMessage($me->id, $targetId, true);
 
         $validated = $request->validate([
             'content' => 'nullable|string|max:5000',
@@ -144,6 +145,13 @@ class MessageController extends Controller
             'media_type' => $mediaType,
             'status' => 'sent',
         ])->load(['sender', 'receiver']);
+
+        WebsocketNotifier::send('direct_message', [
+            'target_user_id' => $targetId,
+            'sender_id' => (int) $me->id,
+            'receiver_id' => $targetId,
+            'message' => $message->toArray(),
+        ]);
 
         return response()->json([
             'message' => 'Message sent successfully',
@@ -252,7 +260,7 @@ class MessageController extends Controller
         ]);
     }
 
-    private function assertCanMessage(int $meId, int $targetId): void
+    private function assertCanMessage(int $meId, int $targetId, bool $forSending = false): void
     {
         if ($meId === $targetId) {
             abort(response()->json([
@@ -282,10 +290,18 @@ class MessageController extends Controller
             ], 403));
         }
 
-        if ($connection->status === 'blocked' && (int) $connection->addressee_id === $meId) {
-            abort(response()->json([
-                'message' => 'You are blocked and cannot message this user.',
-            ], 403));
+        if ($connection->status === 'blocked') {
+            if ($forSending) {
+                abort(response()->json([
+                    'message' => 'Blocked users cannot send messages to each other.',
+                ], 403));
+            }
+
+            if ((int) $connection->addressee_id === $meId) {
+                abort(response()->json([
+                    'message' => 'You are blocked and cannot message this user.',
+                ], 403));
+            }
         }
 
         if ($connection->status !== 'accepted' && $connection->status !== 'blocked') {
