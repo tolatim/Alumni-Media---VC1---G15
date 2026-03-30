@@ -49,6 +49,7 @@ const loadingMore = ref(false);
 const feedPage = ref(1);
 const feedLastPage = ref(1);
 const FEED_PER_PAGE = 8;
+const SUGGESTIONS_PER_PAGE = 5;
 
 const hasMorePosts = ref(true);
 let homeSocket = null;
@@ -253,7 +254,7 @@ const loadHomeData = async () => {
   const [meRes, feedRes, suggestionRes, pendingRes] = await Promise.allSettled([
     api.get("/me"),
     api.get("/feed", { params: { page: 1, per_page: FEED_PER_PAGE } }),
-    api.get("/users/suggestions"),
+    api.get("/users/suggestions", { params: { page: 1, per_page: SUGGESTIONS_PER_PAGE } }),
     api.get("/connections/pending"),
   ]);
 
@@ -282,7 +283,7 @@ const loadHomeData = async () => {
 
   suggestions.value =
     suggestionRes.status === "fulfilled"
-      ? suggestionRes.value.data?.data || []
+      ? (suggestionRes.value.data?.data || []).slice(0, SUGGESTIONS_PER_PAGE)
       : [];
   pendingRequests.value =
     pendingRes.status === "fulfilled" ? pendingRes.value.data?.data || [] : [];
@@ -312,7 +313,7 @@ const loadHomeData = async () => {
 
       suggestions.value = allUsers
         .filter((user) => Number(user.id) !== meId && !existingIds.has(Number(user.id)))
-        .slice(0, 8);
+        .slice(0, SUGGESTIONS_PER_PAGE);
     } catch {
       suggestions.value = [];
     }
@@ -411,8 +412,10 @@ const rejectConnectionRequest = async (requestId) => {
 
 const refreshSuggestions = async () => {
   try {
-    const response = await api.get("/users/suggestions");
-    suggestions.value = response.data?.data || [];
+    const response = await api.get("/users/suggestions", {
+      params: { page: 1, per_page: SUGGESTIONS_PER_PAGE },
+    });
+    suggestions.value = (response.data?.data || []).slice(0, SUGGESTIONS_PER_PAGE);
   } catch {
     suggestions.value = [];
   }

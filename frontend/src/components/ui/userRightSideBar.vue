@@ -93,12 +93,12 @@
     <section class="side-card">
       <div class="card-header">
         <h4 class="card-title">People You May Know</h4>
-        <span class="count-badge">{{ suggestions.length }}</span>
+        <span class="count-badge">{{ limitedSuggestions.length }}</span>
       </div>
 
       <div class="suggestions-list">
         <div
-          v-for="person in suggestions"
+          v-for="person in limitedSuggestions"
           :key="person.id"
           class="suggestion-item"
         >
@@ -135,7 +135,7 @@
         </div>
       </div>
 
-      <div v-if="!suggestions.length" class="empty-inline">
+      <div v-if="!limitedSuggestions.length" class="empty-inline">
         <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
           <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
           <circle cx="14" cy="7" r="2.5" stroke="currentColor" stroke-width="1.4"/>
@@ -150,14 +150,17 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
-defineProps({
+const props = defineProps({
   suggestions: { type: Array, default: () => [] },
   pendingRequests: { type: Array, default: () => [] },
 })
 
 defineEmits(['send-request', 'accept-request', 'reject-request'])
+
+const limitedSuggestions = computed(() => props.suggestions.slice(0, 5))
 
 const trendingTags = [
   { label: '#AlumniUpdates', count: '2.4k', bg: '#eff6ff', border: '#bfdbfe', color: '#1d6fbd' },
