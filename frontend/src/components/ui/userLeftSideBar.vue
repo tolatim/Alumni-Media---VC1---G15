@@ -49,18 +49,16 @@
         <!-- Stats row -->
         <div class="stats-row">
           <div class="stat">
-            <span class="stat-num">{{ user?.stats?.connections ?? 0 }}</span>
             <span class="stat-label">Connections</span>
+            <span class="stat-num">{{ user?.stats?.connections ?? 0 }}</span>
           </div>
-          <div class="stat-divider" />
           <div class="stat">
-            <span class="stat-num">{{ user?.stats?.posts ?? 0 }}</span>
             <span class="stat-label">Posts</span>
+            <span class="stat-num">{{ user?.stats?.posts ?? 0 }}</span>
           </div>
-          <div class="stat-divider" />
           <div class="stat">
-            <span class="stat-num">{{ user?.profile?.class_year ?? "—" }}</span>
-            <span class="stat-label">Class</span>
+            <span class="stat-label">Graduate Year</span>
+            <span class="stat-num">{{ user?.profile?.graduate_year ?? user?.profile?.class_year ?? "—" }}</span>
           </div>
         </div>
 
@@ -304,38 +302,35 @@ const logout = () => {
 
 /* Stats */
 .stats-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 12px 0;
-  border-top: 1px solid #f1f5f9;
-  border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 12px;
 }
 .stat {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 7px 6px;
 }
 .stat-num {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 650;
   color: #0f172a;
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 .stat-label {
-  font-size: 10px;
-  color: #94a3b8;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.stat-divider {
-  width: 1px;
-  height: 28px;
-  background: #e2e8f0;
+  font-size: 9px;
+  color: #64748b;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* CTA */
@@ -479,5 +474,54 @@ const logout = () => {
 .logout-btn:hover {
   background: #ffe4e6;
   border-color: #fda4af;
+}
+
+@media (max-width: 768px) {
+  .card-body {
+    padding: 8px 14px 14px;
+  }
+
+  .nav-card {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .cover-area {
+    height: 96px;
+  }
+
+  .avatar-img,
+  .avatar-initials {
+    width: 62px;
+    height: 62px;
+    border-radius: 12px;
+  }
+
+  .online-dot {
+    left: calc(50% + 23px);
+  }
+
+  .card-name {
+    font-size: 16px;
+  }
+
+  .stats-row {
+    gap: 5px;
+  }
+
+  .stat {
+    padding: 6px 5px;
+  }
+
+  .stat-num {
+    font-size: 15px;
+  }
+
+  .stat-label {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.1;
+  }
 }
 </style>

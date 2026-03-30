@@ -20,7 +20,7 @@
         </div>
       </RouterLink>
 
-      <div class="flex items-center gap-2 md:gap-3">
+      <div class="hidden items-center gap-2 md:flex md:gap-3">
         <RouterLink to="/" :class="navClass('/')">
           <i class="fa-solid fa-house"></i>
           <span>Home</span>
@@ -64,12 +64,71 @@
           >
         </RouterLink>
       </div>
+
+      <div class="flex items-center gap-2 md:hidden">
+        <RouterLink
+          v-if="user"
+          :to="{ name: 'Profile', params: { id: user.id } }"
+          class="overflow-hidden rounded-xl border border-cyan-200 bg-white p-0.5 shadow-sm"
+          @click="isMenuOpen = false"
+        >
+          <img
+            :src="user.profile?.avatar || fallbackAvatar"
+            alt="User Profile"
+            class="h-9 w-9 rounded-lg object-cover"
+          >
+        </RouterLink>
+
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+          @click="isMenuOpen = !isMenuOpen"
+          aria-label="Toggle navigation menu"
+        >
+          <i :class="isMenuOpen ? 'fa-solid fa-xmark text-base' : 'fa-solid fa-bars text-sm'"></i>
+        </button>
+      </div>
+    </div>
+
+    <div v-if="isMenuOpen" class="border-t border-slate-200/80 px-5 pb-3 md:hidden">
+      <div class="flex flex-col gap-2 pt-3">
+        <RouterLink to="/" :class="mobileNavClass('/')" @click="isMenuOpen = false">
+          <i class="fa-solid fa-house"></i>
+          <span>Home</span>
+        </RouterLink>
+
+        <RouterLink to="/connection" :class="mobileNavClass('/connection')" @click="isMenuOpen = false">
+          <i class="fa-solid fa-user-group"></i>
+          <span>Connection</span>
+        </RouterLink>
+
+        <RouterLink to="/message" :class="mobileNavClass('/message')" @click="isMenuOpen = false">
+          <i class="fa-solid fa-message"></i>
+          <span>Message</span>
+          <span
+            v-if="unreadCount > 0"
+            class="ml-auto min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white"
+          >
+            {{ unreadCount > 99 ? '99+' : unreadCount }}
+          </span>
+        </RouterLink>
+
+        <RouterLink to="/notification" :class="mobileNavClass('/notification')" @click="isMenuOpen = false">
+          <i class="fa-solid fa-bell"></i>
+          <span>Notification</span>
+        </RouterLink>
+
+        <RouterLink v-if="isAdminUser" to="/admin" :class="mobileAdminNavClass" @click="isMenuOpen = false">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Admin</span>
+        </RouterLink>
+      </div>
     </div>
   </nav>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/services/api'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -82,6 +141,7 @@ const messageStore = useMessageStore()
 const { unreadCount } = storeToRefs(messageStore)
 const user = ref(null)
 const appLogoUrl = ref(null)
+const isMenuOpen = ref(false)
 let unreadSocket = null
 let unreadReconnectTimer = null
 let shouldReconnectUnreadSocket = true
@@ -92,6 +152,14 @@ const navClass = (prefix) => {
   return isActive
     ? `${base} border-cyan-200 bg-cyan-50 text-cyan-700`
     : `${base} border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900`
+}
+
+const mobileNavClass = (prefix) => {
+  const base = 'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition'
+  const isActive = route.path === prefix || route.path.startsWith(`${prefix}/`)
+  return isActive
+    ? `${base} border-cyan-200 bg-cyan-50 text-cyan-700`
+    : `${base} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`
 }
 
 const isAdminUser = computed(() => {
@@ -107,6 +175,15 @@ const adminNavClass = computed(() => {
   return isActive
     ? `${base} border-cyan-200 bg-cyan-50 text-cyan-700`
     : `${base} border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900`
+})
+
+const mobileAdminNavClass = computed(() => {
+  const base = 'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition'
+  const adminPaths = ['/admin', '/users', '/posts', '/reports', '/settings', '/admin/settings']
+  const isActive = adminPaths.some((path) => route.path === path || route.path.startsWith(`${path}/`))
+  return isActive
+    ? `${base} border-cyan-200 bg-cyan-50 text-cyan-700`
+    : `${base} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`
 })
 
 const fetchMe = async () => {
@@ -228,6 +305,13 @@ onMounted(async () => {
   await fetchMe()
   connectUnreadSocket()
 })
+
+watch(
+  () => route.fullPath,
+  () => {
+    isMenuOpen.value = false
+  }
+)
 
 onUnmounted(() => {
   shouldReconnectUnreadSocket = false

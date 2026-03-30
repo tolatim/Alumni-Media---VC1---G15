@@ -1,5 +1,5 @@
 <template>
-  <div class="col-span-6 space-y-5">
+  <div class="col-span-12 space-y-5 lg:col-span-6">
 
     <!-- ─── Compose / Search Bar ─────────────────────────────────── -->
     <div class="feed-bar">
@@ -571,4 +571,51 @@ const handlePostDeleted = (postId) => {
 .post-list-enter-from { opacity: 0; transform: translateY(8px); }
 .post-list-leave-to { opacity: 0; transform: translateY(-4px); }
 .post-list-move { transition: transform 0.3s ease; }
+
+@media (max-width: 768px) {
+  .feed-bar {
+    padding: 12px;
+  }
+
+  .bar-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .filter-chips {
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    justify-content: center;
+  }
+
+  .create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .bar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .search-input {
+    font-size: 13px;
+    padding: 8px 34px 8px 34px;
+  }
+
+  .empty-state {
+    padding: 30px 16px;
+  }
+
+  .results-banner {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+}
 </style>

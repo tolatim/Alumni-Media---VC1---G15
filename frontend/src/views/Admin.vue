@@ -646,10 +646,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/40">
+  <div class="flex min-h-screen flex-col bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/40 lg:h-screen lg:flex-row lg:overflow-hidden">
     <Sidebar :logo-url="appearanceLogoUrl" />
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex min-w-0 flex-col overflow-hidden">
       <Topbar
         :admin-name="adminProfile.name"
         :admin-email="adminProfile.email"
@@ -657,12 +657,12 @@ onUnmounted(() => {
         :pending-reports="pendingReviewCount"
       />
 
-      <main class="h-full overflow-y-auto p-6 md:p-8 space-y-8">
-        <div class="rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
+      <main class="h-full overflow-y-auto p-4 sm:p-5 md:p-8 space-y-6 md:space-y-8">
+        <div class="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-6">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Admin Console</p>
-              <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Welcome back, {{ adminProfile.name }}</h1>
+              <h1 class="mt-2 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl md:text-3xl">Welcome back, {{ adminProfile.name }}</h1>
               <p class="mt-2 text-sm text-slate-600">Monitor reports, moderate content, and manage users from one place.</p>
             </div>
 
@@ -698,11 +698,11 @@ onUnmounted(() => {
         </div>
 
         <section v-if="activeSection === 'settings'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <div class="border-b border-slate-200 px-6 py-5">
+          <div class="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
             <h2 class="text-lg font-semibold tracking-tight text-slate-900">Admin Settings</h2>
           </div>
 
-          <div class="space-y-5 px-6 py-5">
+          <div class="space-y-5 px-4 py-4 sm:px-6 sm:py-5">
             <p v-if="appearanceMessage" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
               {{ appearanceMessage }}
             </p>
@@ -713,7 +713,7 @@ onUnmounted(() => {
             <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Theme Mode</p>
-                <div class="flex items-center gap-5">
+                <div class="flex flex-wrap items-center gap-4">
                   <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input v-model="appearanceMode" type="radio" value="light">
                     <span>Light mode</span>
@@ -769,7 +769,7 @@ onUnmounted(() => {
         </section>
 
         <section v-if="activeSection === 'reports'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
             <h2 class="text-lg font-semibold tracking-tight text-slate-900">Reports Review</h2>
             <button
               type="button"
@@ -781,19 +781,19 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <p v-if="reviewMessage" class="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <p v-if="reviewMessage" class="mx-4 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 sm:mx-6 sm:mt-5">
             {{ reviewMessage }}
           </p>
 
-          <p v-if="reviewError" class="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p v-if="reviewError" class="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 sm:mx-6 sm:mt-5">
             {{ reviewError }}
           </p>
 
-          <div v-if="loadingReports" class="px-6 py-8 text-sm text-slate-500">
+          <div v-if="loadingReports" class="px-4 py-6 text-sm text-slate-500 sm:px-6 sm:py-8">
             Loading reports...
           </div>
 
-          <div v-else-if="!reviewReports.length" class="px-6 py-8 text-sm text-slate-500">
+          <div v-else-if="!reviewReports.length" class="px-4 py-6 text-sm text-slate-500 sm:px-6 sm:py-8">
             No pending reports.
           </div>
 
@@ -862,7 +862,7 @@ onUnmounted(() => {
         </section>
 
         <section v-if="activeSection === 'posts'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
             <h2 class="text-lg font-semibold tracking-tight text-slate-900">Reported Posts</h2>
             <button
               type="button"
@@ -874,19 +874,19 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <p v-if="reportMessage" class="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <p v-if="reportMessage" class="mx-4 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 sm:mx-6 sm:mt-5">
             {{ reportMessage }}
           </p>
 
-          <p v-if="reportError" class="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p v-if="reportError" class="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 sm:mx-6 sm:mt-5">
             {{ reportError }}
           </p>
 
-          <div v-if="loadingReportedPosts" class="px-6 py-8 text-sm text-slate-500">
+          <div v-if="loadingReportedPosts" class="px-4 py-6 text-sm text-slate-500 sm:px-6 sm:py-8">
             Loading reported posts...
           </div>
 
-          <div v-else-if="!reportedPosts.length" class="px-6 py-8 text-sm text-slate-500">
+          <div v-else-if="!reportedPosts.length" class="px-4 py-6 text-sm text-slate-500 sm:px-6 sm:py-8">
             No reported posts right now.
           </div>
 
@@ -1014,14 +1014,14 @@ onUnmounted(() => {
         </div>
 
         <section v-if="activeSection === 'users'" class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
             <h2 class="text-lg font-semibold tracking-tight text-slate-900">User Profiles</h2>
-            <div class="flex items-center gap-2">
+            <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <input
                 v-model="userSearchQuery"
                 type="text"
                 placeholder="Search alumni by name or email"
-                class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-64"
                 @keyup.enter="loadUsers"
               >
               <button
@@ -1043,19 +1043,19 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <p v-if="userMessage" class="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <p v-if="userMessage" class="mx-4 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 sm:mx-6 sm:mt-5">
             {{ userMessage }}
           </p>
 
-          <p v-if="userError" class="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p v-if="userError" class="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 sm:mx-6 sm:mt-5">
             {{ userError }}
           </p>
 
-          <div v-if="loadingUsers" class="px-6 py-8 text-sm text-slate-500">
+          <div v-if="loadingUsers" class="px-4 py-6 text-sm text-slate-500 sm:px-6 sm:py-8">
             Loading users...
           </div>
 
-          <div v-else-if="!users.length" class="px-6 py-8 text-sm text-slate-500">
+          <div v-else-if="!users.length" class="px-4 py-6 text-sm text-slate-500 sm:px-6 sm:py-8">
             No users found.
           </div>
 

@@ -3,8 +3,8 @@
   <main class="relative min-h-screen overflow-hidden bg-slate-100 py-6 md:py-8">
     <div class="pointer-events-none absolute -left-28 -top-24 h-72 w-72 rounded-full bg-cyan-200/40 blur-3xl"></div>
     <div class="pointer-events-none absolute -bottom-28 right-0 h-80 w-80 rounded-full bg-blue-200/35 blur-3xl"></div>
-    <div class="mx-auto grid max-w-7xl grid-cols-12 gap-5 px-4 sm:px-5">
-      <aside class="col-span-12 rounded-3xl border border-white/70 bg-white/85 p-4 shadow-[0_18px_45px_-24px_rgba(14,116,144,0.45)] backdrop-blur-xl lg:col-span-3">
+    <div class="mx-auto grid max-w-7xl grid-cols-12 items-start gap-5 px-4 sm:px-5">
+      <aside class="col-span-12 rounded-3xl border border-white/70 bg-white/85 p-4 shadow-[0_18px_45px_-24px_rgba(14,116,144,0.45)] backdrop-blur-xl md:col-span-4 lg:col-span-3">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-base font-semibold text-slate-800">Conversations</h2>
           <div class="flex items-center gap-2">
@@ -120,7 +120,7 @@
         </div>
       </aside>
 
-      <section class="col-span-12 flex h-[80vh] flex-col rounded-3xl border border-white/70 bg-white/90 shadow-[0_20px_55px_-26px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:col-span-6">
+      <section class="col-span-12 flex h-[80vh] flex-col rounded-3xl border border-white/70 bg-white/90 shadow-[0_20px_55px_-26px_rgba(15,23,42,0.5)] backdrop-blur-xl md:col-span-8 lg:col-span-6">
         <div class="flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 py-3 backdrop-blur">
           <div class="flex items-center gap-3">
             <img v-if="isDirectChat && selectedUser" :src="selectedUser.profile?.avatar || fallbackAvatar" class="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-sm" />
@@ -293,7 +293,7 @@
         </form>
       </section>
 
-      <aside class="col-span-12 space-y-4 lg:col-span-3">
+      <aside class="col-span-12 hidden space-y-4 lg:col-span-3 lg:block">
         <div class="rounded-3xl border border-white/70 bg-white/85 p-4 shadow-[0_14px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-xl">
           <h3 class="mb-3 text-base font-semibold text-slate-800">Friends</h3>
           <div v-if="loadingSidebar" class="space-y-3">

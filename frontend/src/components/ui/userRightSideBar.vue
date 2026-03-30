@@ -444,4 +444,41 @@ const trendingTags = [
 .list-enter-from { opacity: 0; transform: translateY(6px); }
 .list-leave-to { opacity: 0; transform: translateY(-4px); height: 0; margin: 0; padding: 0; overflow: hidden; }
 .list-move { transition: transform 0.25s ease; }
+
+@media (max-width: 768px) {
+  .side-card {
+    padding: 14px;
+  }
+
+  .request-item {
+    padding: 9px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .side-card {
+    padding: 12px;
+  }
+
+  .req-actions {
+    flex-direction: column;
+  }
+
+  .btn-accept,
+  .btn-reject,
+  .btn-connect {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-reject {
+    min-height: 30px;
+  }
+
+  .suggestion-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+}
 </style>
