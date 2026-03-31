@@ -543,7 +543,7 @@ const connectAdminRealtime = () => {
   const roleName = typeof currentUser?.role === 'string' ? currentUser.role : currentUser?.role?.name
   if (roleName !== 'admin' || !currentUser?.id) return
 
-  const socket = new WebSocket(import.meta.env.VITE_WS_URL || 'ws://localhost:8081')
+  const socket = new WebSocket(import.meta.env.VITE_WS_URL || 'ws://localhost:3000/ws')
   adminRealtimeSocket.value = socket
 
   socket.onopen = () => {

@@ -349,7 +349,7 @@ const pendingStore = usePendingRequestsStore();
 const suggestionsStore = useSuggestionsStore();
 const connectionRowsStore = useConnectionsStore();
 
-const ws = new WebSocket(import.meta.env.VITE_WS_URL || "ws://localhost:8081");
+const ws = new WebSocket(import.meta.env.VITE_WS_URL || "ws://localhost:3000/ws");
 const current_user = JSON.parse(localStorage.getItem("user"));
 ws.onopen = () => {
   console.log("connected");

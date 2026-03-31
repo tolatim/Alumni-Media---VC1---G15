@@ -265,10 +265,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
 import api from '@/services/api'
+import { createMessageSocket } from '@/services/messageSocket'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
 const route = useRoute()
@@ -299,6 +300,9 @@ const successMessage = ref('')
 const connectionStatus = ref('none')
 const blockedByMe = ref(false)
 const blockedMe = ref(false)
+
+const socketStatus = ref('idle')
+let messageSocket = null
 
 const form = ref({
   content: '',
@@ -338,6 +342,195 @@ const formatTime = (value) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleString()
+}
+
+const toMessageId = (value) => {
+  if (value === null || value === undefined) return null
+  return String(value)
+}
+
+const extractMessageFromPayload = (payload) => {
+  const data = payload?.data ?? payload?.message ?? payload?.payload ?? payload
+  if (!data) return null
+
+  const message = data?.message ?? data
+  if (!message?.id) return null
+
+  // Normalize sender/receiver fields (backend uses snake_case).
+  const senderId = message.sender_id ?? message.senderId
+  const receiverId = message.receiver_id ?? message.receiverId
+  if (!senderId || !receiverId) return null
+
+  return {
+    ...message,
+    sender_id: senderId,
+    receiver_id: receiverId,
+  }
+}
+
+const touchContact = (contactId) => {
+  if (!contactId) return
+  const index = contacts.value.findIndex((contact) => String(contact.id) === String(contactId))
+  if (index <= 0) return
+
+  const nextContacts = contacts.value.slice()
+  const [contact] = nextContacts.splice(index, 1)
+  nextContacts.unshift(contact)
+  contacts.value = nextContacts
+}
+
+const bumpUnreadForContact = (contactId) => {
+  const entry = contacts.value.find((contact) => String(contact.id) === String(contactId))
+  if (!entry) return
+  entry.unread_count = Number(entry.unread_count || 0) + 1
+}
+
+const clearUnreadForContact = (contactId) => {
+  const entry = contacts.value.find((contact) => String(contact.id) === String(contactId))
+  if (!entry) return
+  entry.unread_count = 0
+}
+
+const upsertMessageInView = (message) => {
+  const idKey = toMessageId(message?.id)
+  if (!idKey) return
+
+  const exists = messages.value.some((m) => toMessageId(m?.id) === idKey)
+  if (!exists) {
+    messages.value = [...messages.value, message]
+    return
+  }
+
+  messages.value = messages.value.map((m) => (toMessageId(m?.id) === idKey ? message : m))
+}
+
+const removeMessageFromView = (deletedId) => {
+  const idKey = toMessageId(deletedId)
+  if (!idKey) return
+
+  messages.value = messages.value.filter((m) => toMessageId(m?.id) !== idKey)
+
+  if (toMessageId(editingMessageId.value) === idKey) {
+    editingMessageId.value = null
+    editingContent.value = ''
+    savingEdit.value = false
+  }
+}
+
+const markReadConversation = async (conversationUserId) => {
+  if (!conversationUserId) return
+  try {
+    await api.post(`/messages/${conversationUserId}/read`)
+  } catch {
+    // Ignore read failures; the periodic refresh will correct state.
+  }
+}
+
+const handleIncomingMessage = async (message) => {
+  const meId = me.value?.id
+  if (!meId) return
+
+  const counterpartId = message.sender_id === meId ? message.receiver_id : message.sender_id
+  if (!counterpartId) return
+
+  touchContact(counterpartId)
+
+  const isActiveChat = !!selectedUser.value?.id && String(selectedUser.value.id) === String(counterpartId)
+  if (isActiveChat) {
+    if (messagesPagination.value.current_page === 1) {
+      upsertMessageInView(message)
+    } else {
+      await loadMessages(counterpartId, 1, false)
+    }
+
+    clearUnreadForContact(counterpartId)
+    await markReadConversation(counterpartId)
+    window.dispatchEvent(new Event('messages:updated'))
+    return
+  }
+
+  bumpUnreadForContact(counterpartId)
+  window.dispatchEvent(new Event('messages:updated'))
+}
+
+const handleUpdatedMessage = async (message) => {
+  const meId = me.value?.id
+  if (!meId) return
+
+  const counterpartId = message.sender_id === meId ? message.receiver_id : message.sender_id
+  if (!counterpartId) return
+
+  touchContact(counterpartId)
+
+  const isActiveChat = !!selectedUser.value?.id && String(selectedUser.value.id) === String(counterpartId)
+  if (isActiveChat && messagesPagination.value.current_page === 1) {
+    upsertMessageInView(message)
+  }
+
+  window.dispatchEvent(new Event('messages:updated'))
+}
+
+const handleDeletedMessage = (deletedId) => {
+  if (!deletedId) return
+
+  // If the message is currently visible in this chat, remove it.
+  removeMessageFromView(deletedId)
+  window.dispatchEvent(new Event('messages:updated'))
+}
+
+const handleSocketPayload = (payload) => {
+  if (!payload) return
+
+  const eventName = payload?.event || payload?.type || payload?.name || payload?.action
+  const normalizedEvent = typeof eventName === 'string' ? eventName.toLowerCase() : ''
+
+  if (normalizedEvent.includes('deleted') || normalizedEvent.includes('removed')) {
+    const deletedId = payload?.message_id || payload?.id || payload?.data?.id
+    handleDeletedMessage(deletedId)
+    return
+  }
+
+  const message = extractMessageFromPayload(payload)
+  if (!message) return
+
+  if (normalizedEvent.includes('updated') || normalizedEvent.includes('edited')) {
+    void handleUpdatedMessage(message)
+    return
+  }
+
+  void handleIncomingMessage(message)
+}
+
+const connectRealtimeSocket = () => {
+  if (messageSocket) return
+  const token = localStorage.getItem('token')
+  if (!token || !me.value?.id) return
+
+  socketStatus.value = 'connecting'
+  messageSocket = createMessageSocket({
+    getAuthToken: () => localStorage.getItem('token'),
+    getUserId: () => me.value?.id,
+    onOpen: () => {
+      socketStatus.value = 'connected'
+    },
+    onClose: () => {
+      socketStatus.value = 'disconnected'
+    },
+    onError: () => {
+      socketStatus.value = 'error'
+    },
+    onMessage: handleSocketPayload,
+  })
+
+  socketStatus.value = 'connecting'
+  messageSocket.connect()
+}
+
+const disconnectRealtimeSocket = () => {
+  if (!messageSocket) return
+  messageSocket.disconnect()
+  messageSocket = null
+  socketStatus.value = 'idle'
 }
 
 const loadMe = async () => {
@@ -608,6 +801,7 @@ const unblockUserFromSide = async (userId) => {
 onMounted(async () => {
   try {
     await loadMe()
+    connectRealtimeSocket()
     await Promise.all([loadContacts(1), loadSidebarConnections()])
 
     const contactId = route.params.userId
@@ -630,5 +824,9 @@ onMounted(async () => {
   } catch {
     errorMessage.value = 'Failed to load messages.'
   }
+})
+
+onUnmounted(() => {
+  disconnectRealtimeSocket()
 })
 </script>

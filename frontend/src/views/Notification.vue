@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref } from "vue"
 import Navbar from "@/components/ui/nav.vue"
 import { useRouter } from "vue-router"
 import { useNotificationStore } from "@/stores/notifications"
@@ -166,5 +166,22 @@ const formatTime = (dateStr) => {
 
 onMounted(async () => {
   await notificationStore.fetchNotifications()
+
+  // Start realtime updates for this user (Echo/Reverb).
+  let userId = null
+  try {
+    const rawUser = localStorage.getItem("user")
+    userId = rawUser ? JSON.parse(rawUser)?.id : null
+  } catch {
+    userId = null
+  }
+
+  if (userId) {
+    notificationStore.connect(userId)
+  }
+})
+
+onUnmounted(() => {
+  notificationStore.disconnect()
 })
 </script>
