@@ -9,22 +9,18 @@ class Notification extends Model
 {
     use HasFactory;
 
-    public const UPDATED_AT = null;
-
     protected $fillable = [
         'user_id',
-        'notifiable_id',
-        'notifiable_type',
         'type',
         'data',
-        'read_at',
-        'created_at',
+        'seen',
     ];
 
     protected $casts = [
         'data' => 'array',
-        'read_at' => 'datetime',
+        'seen' => 'boolean',
         'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function user()
@@ -32,8 +28,4 @@ class Notification extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function notifiable()
-    {
-        return $this->morphTo();
-    }
 }

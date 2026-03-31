@@ -42,9 +42,15 @@
           </span>
         </RouterLink>
 
-        <RouterLink to="/notification" :class="navClass('/notification')">
+        <RouterLink to="/notification" :class="navClass('/notification')" class="relative">
           <i class="fa-solid fa-bell"></i>
           <span>Notification</span>
+          <span
+            v-if="notificationUnreadCount > 0"
+            class="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white"
+          >
+            {{ notificationUnreadCount > 99 ? '99+' : notificationUnreadCount }}
+          </span>
         </RouterLink>
 
         <RouterLink v-if="isAdminUser" to="/admin" :class="adminNavClass">
@@ -116,6 +122,12 @@
         <RouterLink to="/notification" :class="mobileNavClass('/notification')" @click="isMenuOpen = false">
           <i class="fa-solid fa-bell"></i>
           <span>Notification</span>
+          <span
+            v-if="notificationUnreadCount > 0"
+            class="ml-auto min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white"
+          >
+            {{ notificationUnreadCount > 99 ? '99+' : notificationUnreadCount }}
+          </span>
         </RouterLink>
 
         <RouterLink v-if="isAdminUser" to="/admin" :class="mobileAdminNavClass" @click="isMenuOpen = false">
@@ -135,10 +147,13 @@ import { storeToRefs } from 'pinia'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 import { fetchPublicAppearance } from '@/services/appearanceService'
 import { useMessageStore } from '@/stores/message'
+import { useNotificationStore } from '@/stores/notifications'
 
 const route = useRoute()
 const messageStore = useMessageStore()
+const notificationStore = useNotificationStore()
 const { unreadCount } = storeToRefs(messageStore)
+const { unreadCount: notificationUnreadCount } = storeToRefs(notificationStore)
 const user = ref(null)
 const appLogoUrl = ref(null)
 const isMenuOpen = ref(false)
@@ -236,6 +251,16 @@ const scheduleUnreadReconnect = () => {
 
 const handleUnreadSocketPayload = async (payload) => {
   const eventType = String(payload?.type || '')
+  if (eventType === 'notification_created') {
+    const notification = payload?.data?.notification
+    if (notification?.id) {
+      notificationStore.pushRealtimeNotification(notification)
+    } else {
+      await notificationStore.loadUnreadCount()
+    }
+    return
+  }
+
   if (eventType !== 'direct_message') return
 
   const myId = Number(user.value?.id || 0)
@@ -303,6 +328,10 @@ onMounted(async () => {
   const appearance = await fetchPublicAppearance()
   appLogoUrl.value = appearance.logo_url || null
   await fetchMe()
+  await Promise.all([
+    messageStore.loadUnreadCount(),
+    notificationStore.loadUnreadCount(),
+  ])
   connectUnreadSocket()
 })
 

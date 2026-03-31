@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Post;
+use App\Support\NotificationService;
 use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,7 @@ class CommentController extends Controller
         ]);
 
         $parentId = $validated['parent_id'] ?? null;
+        $parentComment = null;
         if ($parentId) {
             $parentComment = Comment::query()
                 ->where('id', $parentId)
@@ -75,6 +77,42 @@ class CommentController extends Controller
             'comments_count' => $commentsCount,
             'action' => $parentId ? 'reply_created' : 'comment_created',
         ]);
+
+        $actorName = $user->name;
+
+        if ($parentComment) {
+            if ((int) $parentComment->user_id !== (int) $user->id) {
+                NotificationService::create((int) $parentComment->user_id, 'post_reply', [
+                    'actor_user_id' => $user->id,
+                    'actor_name' => $actorName,
+                    'post_id' => $post->id,
+                    'post_owner_id' => (int) $post->user_id,
+                    'comment_id' => $comment->id,
+                    'parent_comment_id' => $parentComment->id,
+                    'message' => "{$actorName} replied to your comment.",
+                ]);
+            }
+
+            if ((int) $post->user_id !== (int) $user->id && (int) $post->user_id !== (int) $parentComment->user_id) {
+                NotificationService::create((int) $post->user_id, 'post_comment', [
+                    'actor_user_id' => $user->id,
+                    'actor_name' => $actorName,
+                    'post_id' => $post->id,
+                    'post_owner_id' => (int) $post->user_id,
+                    'comment_id' => $comment->id,
+                    'message' => "{$actorName} commented on your post.",
+                ]);
+            }
+        } elseif ((int) $post->user_id !== (int) $user->id) {
+            NotificationService::create((int) $post->user_id, 'post_comment', [
+                'actor_user_id' => $user->id,
+                'actor_name' => $actorName,
+                'post_id' => $post->id,
+                'post_owner_id' => (int) $post->user_id,
+                'comment_id' => $comment->id,
+                'message' => "{$actorName} commented on your post.",
+            ]);
+        }
 
         return response()->json([
             'message' => 'Comment added successfully',

@@ -8,6 +8,7 @@ import EditProfile from '@/views/editProfile.vue'
 import Create from '../views/CreatePost.vue'
 import Connect from '@/views/connect.vue'
 import Message from '@/views/Message.vue'
+import Notification from '@/views/Notification.vue'
 import { component } from 'vue-fullscreen'
 import Admin from '@/views/Admin.vue'
 
@@ -70,6 +71,12 @@ const routes = [
     path: '/message/:userId',
     name: 'MessageWithUser',
     component: Message,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: Notification,
     meta: { requiresAuth: true },
   },
   {

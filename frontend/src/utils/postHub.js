@@ -1,4 +1,3 @@
-const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL ;
 const POST_EVENTS = new Set(["post_created", "post_updated", "post_deleted", "post_comment_updated", "post_like_updated"]);
 const RECONNECT_DELAY_MS = 1500;
 const CROSS_TAB_CHANNEL = "alumni-media-post-hub";
@@ -11,6 +10,38 @@ let authenticatedUserId = null;
 let reconnectTimer = null;
 let broadcastChannel = null;
 let crossTabBound = false;
+
+const resolveWsUrl = () => {
+  const configured = String(
+    import.meta.env.VITE_WS_URL || import.meta.env.VITE_WEBSOCKET_URL || ""
+  ).trim();
+
+  if (!configured) {
+    if (typeof window === "undefined") return null;
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.hostname}:3000/ws`;
+  }
+
+  try {
+    const parsed = new URL(configured);
+
+    if (typeof window !== "undefined") {
+      const pageHost = window.location.hostname;
+      const isLocalWsHost =
+        parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+      const isRemotePage = pageHost !== "localhost" && pageHost !== "127.0.0.1";
+
+      if (isLocalWsHost && isRemotePage) {
+        parsed.hostname = pageHost;
+        parsed.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      }
+    }
+
+    return parsed.toString();
+  } catch {
+    return configured;
+  }
+};
 
 const rememberEvent = (eventId) => {
   if (!eventId) return;
@@ -138,9 +169,21 @@ const openSocket = () => {
     return;
   }
 
+  const wsUrl = resolveWsUrl();
+  if (!wsUrl) {
+    scheduleReconnect();
+    return;
+  }
+
   clearReconnectTimer();
 
-  socket = new WebSocket(WEBSOCKET_URL);
+  try {
+    socket = new WebSocket(wsUrl);
+  } catch {
+    socket = null;
+    scheduleReconnect();
+    return;
+  }
 
   socket.addEventListener("open", () => {
     sendAuth();

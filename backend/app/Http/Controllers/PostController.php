@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\Report;
+use App\Support\NotificationService;
 use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -86,6 +87,17 @@ class PostController extends Controller
         if ($updatedSourcePost) {
             WebsocketNotifier::send('post_updated', [
                 'post' => $updatedSourcePost,
+            ]);
+        }
+
+        if ((int) $sourcePost->user_id !== (int) $request->user()->id) {
+            NotificationService::create((int) $sourcePost->user_id, 'post_share', [
+                'actor_user_id' => $request->user()->id,
+                'actor_name' => $request->user()->name,
+                'post_id' => $sourcePost->id,
+                'post_owner_id' => (int) $sourcePost->user_id,
+                'share_post_id' => $sharePost->id,
+                'message' => "{$request->user()->name} shared your post.",
             ]);
         }
 

@@ -77,15 +77,23 @@
       </div>
 
       <div class="tags-wrap">
-        <span
+        <button
           v-for="tag in trendingTags"
           :key="tag.label"
+          type="button"
           class="tag"
           :style="`--tag-bg:${tag.bg};--tag-border:${tag.border};--tag-color:${tag.color}`"
+          @click="$emit('open-trending', tag.label)"
         >
           {{ tag.label }}
           <span class="tag-count">{{ tag.count }}</span>
-        </span>
+        </button>
+      </div>
+      <div v-if="!trendingTags.length" class="empty-inline">
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+          <path d="M4 14l4-4 3 3 5-7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        No trending tags yet
       </div>
     </section>
 
@@ -154,21 +162,61 @@ import { computed } from 'vue'
 import fallbackAvatar from '@/assets/images/blank-profile-picture-973460_1280.webp'
 
 const props = defineProps({
+  posts: { type: Array, default: () => [] },
   suggestions: { type: Array, default: () => [] },
   pendingRequests: { type: Array, default: () => [] },
 })
 
-defineEmits(['send-request', 'accept-request', 'reject-request'])
+defineEmits(['send-request', 'accept-request', 'reject-request', 'open-trending'])
 
 const limitedSuggestions = computed(() => props.suggestions.slice(0, 5))
-
-const trendingTags = [
-  { label: '#AlumniUpdates', count: '2.4k', bg: '#eff6ff', border: '#bfdbfe', color: '#1d6fbd' },
-  { label: '#HiringNow',    count: '1.8k', bg: '#f0fdf4', border: '#bbf7d0', color: '#16a34a' },
-  { label: '#CareerGrowth', count: '987',  bg: '#faf5ff', border: '#e9d5ff', color: '#7c3aed' },
-  { label: '#Networking',   count: '754',  bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
-  { label: '#ClassOf2019',  count: '412',  bg: '#f0fdfa', border: '#99f6e4', color: '#0f766e' },
+const TAG_STYLES = [
+  { bg: '#eff6ff', border: '#bfdbfe', color: '#1d6fbd' },
+  { bg: '#f0fdf4', border: '#bbf7d0', color: '#16a34a' },
+  { bg: '#faf5ff', border: '#e9d5ff', color: '#7c3aed' },
+  { bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
+  { bg: '#f0fdfa', border: '#99f6e4', color: '#0f766e' },
 ]
+
+const HASHTAG_PATTERN = /#[A-Za-z0-9_]+/g
+
+const formatCount = (value) => {
+  const count = Number(value || 0)
+  if (!Number.isFinite(count) || count <= 0) return '0'
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1).replace(/\.0$/, '')}m`
+  if (count >= 1000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return String(Math.floor(count))
+}
+
+const trendingTags = computed(() => {
+  const scoreByTag = new Map()
+
+  props.posts.forEach((post) => {
+    const text = `${post?.title || ''} ${post?.content || ''}`
+    const matches = text.match(HASHTAG_PATTERN)
+    if (!matches?.length) return
+
+    const likes = Number(post?.likes_count || 0)
+    const comments = Number(post?.comments_count || 0)
+    const shares = Number(post?.shares_count || 0)
+    const engagementScore = 1 + likes + comments * 2 + shares * 3
+
+    matches.forEach((rawTag) => {
+      const tag = rawTag.toLowerCase()
+      const previous = scoreByTag.get(tag) || 0
+      scoreByTag.set(tag, previous + engagementScore)
+    })
+  })
+
+  return Array.from(scoreByTag.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([tag, score], index) => ({
+      label: tag,
+      count: formatCount(score),
+      ...TAG_STYLES[index % TAG_STYLES.length],
+    }))
+})
 </script>
 
 <style scoped>
@@ -330,6 +378,8 @@ const trendingTags = [
   gap: 7px;
 }
 .tag {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -340,10 +390,10 @@ const trendingTags = [
   color: var(--tag-color);
   font-size: 11.5px;
   font-weight: 500;
-  cursor: default;
-  transition: filter 0.15s;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.12s;
 }
-.tag:hover { filter: brightness(0.96); }
+.tag:hover { filter: brightness(0.96); transform: translateY(-1px); }
 .tag-count {
   font-size: 10px;
   font-weight: 400;

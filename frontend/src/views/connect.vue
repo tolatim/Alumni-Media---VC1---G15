@@ -257,9 +257,10 @@
                   <!-- Context menu trigger -->
                   <div class="friend-menu-wrap">
                     <button
+                      type="button"
                       class="btn-more"
                       :class="{ 'btn-more--open': openFriendMenuId === friend.id }"
-                      @click="toggleFriendMenu(friend.id)"
+                      @click.stop="toggleFriendMenu(friend.id)"
                     >
                       <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
                         <circle cx="8" cy="3" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="8" cy="13" r="1.3"/>
@@ -270,6 +271,7 @@
                       <div
                          v-if="openFriendMenuId === friend.id" 
                         class="friend-menu"
+                        @click.stop
                         v-click-outside="closeFriendMenu"
                       >
                         <button class="menu-item" @click="onClickUnfriend(friend.id)">

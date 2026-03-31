@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Like;
 use App\Models\Post;
+use App\Support\NotificationService;
 use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 
@@ -54,6 +55,16 @@ class LikeController extends Controller
             'actor_user_id' => $user->id,
             'liked' => true,
         ]);
+
+        if ((int) $post->user_id !== (int) $user->id) {
+            NotificationService::create((int) $post->user_id, 'post_like', [
+                'actor_user_id' => $user->id,
+                'actor_name' => $user->name,
+                'post_id' => $post->id,
+                'post_owner_id' => (int) $post->user_id,
+                'message' => "{$user->name} liked your post.",
+            ]);
+        }
 
         return response()->json([
             'message' => 'Post liked successfully',

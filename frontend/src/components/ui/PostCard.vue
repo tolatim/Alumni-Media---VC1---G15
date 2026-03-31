@@ -1,5 +1,6 @@
 <template>
   <article
+    :data-post-id="post?.id"
     class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
   >
     <div class="border-b border-slate-100 px-5 pt-5 pb-4">

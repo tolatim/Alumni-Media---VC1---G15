@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Connection;
 use App\Models\Post;
 use App\Models\User;
+use App\Support\NotificationService;
 use App\Support\WebsocketNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -269,6 +270,12 @@ class UserController extends Controller
             'addressee_id' => $targetId,
             'status' => 'pending',
         ]);
+        NotificationService::create($targetId, 'connection_request', [
+            'actor_user_id' => $me->id,
+            'actor_name' => $me->name,
+            'connection_id' => $connection->id,
+            'message' => "{$me->name} sent you a connection request.",
+        ]);
 
         return response()->json([
             'message' => 'Connection request sent successfully',
@@ -298,6 +305,12 @@ class UserController extends Controller
             'requester_id' => $connection->requester_id,
             'addressee_id' => $connection->addressee_id,
             'status' => 'accepted',
+        ]);
+        NotificationService::create((int) $connection->requester_id, 'connection_accepted', [
+            'actor_user_id' => $me->id,
+            'actor_name' => $me->name,
+            'connection_id' => $connection->id,
+            'message' => "{$me->name} accepted your connection request.",
         ]);
 
         return response()->json([

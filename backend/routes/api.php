@@ -8,6 +8,7 @@ use App\Http\Controllers\AppAppearanceController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GroupChatController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/groups/{groupId}/invite', [GroupChatController::class, 'invite']);
     Route::get('/groups/{groupId}/messages', [GroupChatController::class, 'messages']);
     Route::post('/groups/{groupId}/messages', [GroupChatController::class, 'sendMessage']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/{notification}/seen', [NotificationController::class, 'markSeen']);
+    Route::post('/notifications/mark-all-seen', [NotificationController::class, 'markAllSeen']);
 
     Route::get('/users/suggestions', [UserController::class, 'suggestions']);
     Route::get('/users', [UserController::class, 'index']);

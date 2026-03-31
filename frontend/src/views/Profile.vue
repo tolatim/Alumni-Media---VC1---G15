@@ -197,7 +197,7 @@
 </template>
 
 <script setup>
-import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Navbar from '@/components/ui/nav.vue'
 import PostCard from '@/components/ui/PostCard.vue'
@@ -276,6 +276,7 @@ const loadProfile = async (id) => {
     const response = await api.get(`/profiles/${id}`)
     user.value = response.data.data
     commentsRefreshKey.value += 1
+    queueScrollToTargetPost()
   } catch (error) {
     const own = loggedInUser.value?.id && String(loggedInUser.value.id) === String(id)
     if (own) { user.value = loggedInUser.value; return }
@@ -298,6 +299,28 @@ const loadConnectionStatus = async (id) => {
 
 const commentsRefreshKey = ref(0)
 let unsubscribePostHub = null
+let postScrollTimer = null
+
+const scrollToTargetPostFromQuery = async () => {
+  const targetPostId = Number(route.query.postId || route.query.post_id || 0)
+  if (!targetPostId) return
+
+  await nextTick()
+  const target = document.querySelector(`[data-post-id="${targetPostId}"]`)
+  if (!target) return
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+const queueScrollToTargetPost = () => {
+  if (postScrollTimer) {
+    clearTimeout(postScrollTimer)
+  }
+
+  postScrollTimer = setTimeout(() => {
+    scrollToTargetPostFromQuery()
+  }, 120)
+}
 
 const refreshProfilePosts = async () => {
   if (!route.params.id) return
@@ -461,6 +484,10 @@ watch(() => route.params.id, (id) => {
   if (id) { loadProfile(id); loadConnectionStatus(id); startProfileRefreshLoop() }
 })
 
+watch(() => route.query.postId || route.query.post_id, () => {
+  queueScrollToTargetPost()
+})
+
 onMounted(async () => {
   await loadLoggedInUser()
   unsubscribePostHub = subscribeToPostEvents(handlePostEvent)
@@ -472,11 +499,14 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (postScrollTimer) {
+    clearTimeout(postScrollTimer)
+    postScrollTimer = null
+  }
   stopProfileRefreshLoop()
   if (unsubscribePostHub) {
     unsubscribePostHub()
     unsubscribePostHub = null
   }
 })
-onBeforeUnmount(() => stopProfileRefreshLoop())
 </script>
