@@ -23,6 +23,10 @@ export const createEcho = async () => {
 
   if (!token) return null
 
+  const pusherKey = String(import.meta.env.VITE_PUSHER_APP_KEY || '').trim()
+  const pusherHost = String(import.meta.env.VITE_PUSHER_HOST || '').trim()
+  if (!pusherKey && !pusherHost) return null
+
   let Echo = null
   let Pusher = null
 
@@ -44,9 +48,9 @@ export const createEcho = async () => {
 
   echoInstance = new Echo({
     broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY || 'local',
+    key: pusherKey,
     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
-    wsHost: import.meta.env.VITE_PUSHER_HOST || window.location.hostname,
+    wsHost: pusherHost || window.location.hostname,
     wsPort: Number(import.meta.env.VITE_PUSHER_PORT || 6001),
     wssPort: Number(import.meta.env.VITE_PUSHER_PORT || 6001),
     forceTLS: (import.meta.env.VITE_PUSHER_SCHEME || 'http') === 'https',

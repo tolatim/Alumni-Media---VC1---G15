@@ -337,7 +337,7 @@
 </template>
 
 <script setup>
-import { computed, isProxy, onMounted, ref } from "vue";
+import { computed, isProxy, onMounted, onUnmounted, ref } from "vue";
 import Navbar from "@/components/ui/nav.vue";
 import api from "@/services/api";
 import fallbackAvatar from "@/assets/images/blank-profile-picture-973460_1280.webp";
@@ -349,45 +349,65 @@ const pendingStore = usePendingRequestsStore();
 const suggestionsStore = useSuggestionsStore();
 const connectionRowsStore = useConnectionsStore();
 
-const ws = new WebSocket(import.meta.env.VITE_WS_URL || "ws://localhost:8081");
 const current_user = JSON.parse(localStorage.getItem("user"));
-ws.onopen = () => {
-  console.log("connected");
+let ws = null;
 
-  ws.send(
-    JSON.stringify({
-      type: "auth",
-      user_id: current_user.id,
-    })
-  );
-};
-
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  if (message.type === "connection_request") {
-    pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
-  }
-  else if (message.type === "accept_request"){
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-  }
-  else if (message.type === "unfriend"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-  }
-  else if (message.type === "reject"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-  }
-  else if (message.type === "block"){
-    suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
-    connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
-    console.log("block", message.data)
-  }
+const resolveWsUrl = () => {
+  const explicit = import.meta.env.VITE_WS_URL;
+  if (explicit) return explicit;
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.hostname || "localhost";
+  return `${protocol}//${host}:3000/ws`;
 };
 
 const errorMessage = ref("");
 
 const openFriendMenuId = ref(null);
+
+onMounted(() => {
+  if (!current_user?.id) return;
+  const wsUrl = resolveWsUrl();
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    ws?.send(
+      JSON.stringify({
+        type: "auth",
+        user_id: current_user.id,
+      })
+    );
+  };
+
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    if (message.type === "connection_request") {
+      pendingStore.loadPendingRequests(pendingStore.pendingPagination.current_page)
+      suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page)
+    }
+    else if (message.type === "accept_request"){
+      connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
+    }
+    else if (message.type === "unfriend"){
+      suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
+      connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
+    }
+    else if (message.type === "reject"){
+      suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
+    }
+    else if (message.type === "block"){
+      suggestionsStore.loadSuggestions(suggestionsStore.suggestionsPagination.current_page);
+      connectionRowsStore.loadMyConnections(connectionRowsStore.friendsPagination.current_page);
+      console.log("block", message.data)
+    }
+  };
+});
+
+onUnmounted(() => {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+});
 
 const friends = computed(() => {
   let me = null;
