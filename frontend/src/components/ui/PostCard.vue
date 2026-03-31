@@ -321,6 +321,26 @@
 
           <button
             type="button"
+            :disabled="favoriteSubmitting"
+            @click="toggleFavorite"
+            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-60"
+            :class="isPostFavorited ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:ring-amber-300' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-300'"
+            :aria-label="isPostFavorited ? 'Remove from favorites' : 'Add to favorites'"
+            :title="isPostFavorited ? 'Remove favorite' : 'Favorite'"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            <span>{{ favoritesCount }}</span>
+          </button>
+
+          <button
+            type="button"
             :disabled="commentsLoading"
             @click="toggleComments"
             class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 disabled:opacity-60"
@@ -607,9 +627,9 @@
                 </button>
               </form>
 
-              <div v-if="comment.replies?.length" class="mt-3 space-y-2 border-l border-slate-200 pl-3">
+              <div v-if="getThreadReplies(comment).length" class="mt-3 space-y-2 border-l border-slate-200 pl-3">
                 <div
-                  v-for="reply in comment.replies"
+                  v-for="reply in getThreadReplies(comment)"
                   :key="reply.id"
                   class="rounded-lg border border-slate-200 bg-slate-50 p-2.5"
                 >
@@ -701,6 +721,36 @@
                         </div>
                       </template>
                       <p v-else class="mt-1 whitespace-pre-line break-words text-sm text-slate-700">{{ reply.content }}</p>
+
+                      <div class="mt-2">
+                        <button
+                          type="button"
+                          @click="toggleReplyInput(reply.id)"
+                          class="text-[11px] font-semibold text-cyan-700 hover:text-cyan-800"
+                        >
+                          Reply
+                        </button>
+                      </div>
+
+                      <form
+                        v-if="isReplyInputOpen(reply.id)"
+                        class="mt-2 flex items-start gap-2"
+                        @submit.prevent="submitReply(reply)"
+                      >
+                        <textarea
+                          v-model="replyDraftByCommentId[reply.id]"
+                          rows="2"
+                          placeholder="Write a reply..."
+                          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                        ></textarea>
+                        <button
+                          type="submit"
+                          :disabled="isReplySubmitting(reply.id)"
+                          class="inline-flex items-center rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-60"
+                        >
+                          {{ isReplySubmitting(reply.id) ? 'Replying...' : 'Reply' }}
+                        </button>
+                      </form>
                     </div>
                   </div>
                 </div>
@@ -751,6 +801,9 @@ const openPostActionsMenu = ref(false)
 const likeSubmitting = ref(false)
 const likedByMeOverride = ref(null)
 const likesCountOverride = ref(null)
+const favoriteSubmitting = ref(false)
+const favoritedByMeOverride = ref(null)
+const favoritesCountOverride = ref(null)
 const reportSubmitting = ref(false)
 const shareSubmitting = ref(false)
 const shareComposerOpen = ref(false)
@@ -782,8 +835,24 @@ const getApiMessage = (error, fallback) => error?.response?.data?.message || fal
 const toSafeCount = (value) => Number(value) || 0
 const normalizeComment = (comment) => ({
   ...comment,
-  replies: Array.isArray(comment?.replies) ? comment.replies : [],
+  replies: Array.isArray(comment?.replies) ? comment.replies.map(normalizeComment) : [],
 })
+const flattenReplyTree = (items = []) => {
+  const source = Array.isArray(items) ? items : []
+  const flattened = []
+
+  source.forEach((item) => {
+    if (!item) return
+    flattened.push(item)
+    const nested = flattenReplyTree(item.replies || [])
+    if (nested.length) {
+      flattened.push(...nested)
+    }
+  })
+
+  return flattened
+}
+const getThreadReplies = (comment) => flattenReplyTree(comment?.replies || [])
 
 const editImageCount = computed(() => editMediaFiles.value.filter((file) => file.type.startsWith('image/')).length)
 const editVideoCount = computed(() => editMediaFiles.value.filter((file) => file.type.startsWith('video/')).length)
@@ -850,6 +919,16 @@ const likesCount = computed(() => {
 const commentsCount = computed(() => {
   if (commentsCountOverride.value !== null) return toSafeCount(commentsCountOverride.value)
   return toSafeCount(engagementPost.value?.comments_count)
+})
+
+const isPostFavorited = computed(() => {
+  if (favoritedByMeOverride.value !== null) return Boolean(favoritedByMeOverride.value)
+  return Boolean(engagementPost.value?.favorited_by_me)
+})
+
+const favoritesCount = computed(() => {
+  if (favoritesCountOverride.value !== null) return toSafeCount(favoritesCountOverride.value)
+  return toSafeCount(engagementPost.value?.favorites_count)
 })
 
 const formatDate = (value) => {
@@ -1160,6 +1239,23 @@ const toggleLike = async () => {
   }
 }
 
+const toggleFavorite = async () => {
+  if (!engagementPostId.value) return
+
+  favoriteSubmitting.value = true
+  try {
+    const response = await api.post(`/posts/${engagementPostId.value}/favorite`)
+    favoritedByMeOverride.value = Boolean(response.data?.favorited)
+    favoritesCountOverride.value = toSafeCount(response.data?.favorites_count)
+    emit('refresh-posts')
+  } catch (error) {
+    console.error(error.response?.data || error)
+    alert(getApiMessage(error, 'Failed to toggle favorite.'))
+  } finally {
+    favoriteSubmitting.value = false
+  }
+}
+
 const setCommentsCount = (count) => {
   commentsCountOverride.value = toSafeCount(count)
 }
@@ -1232,6 +1328,8 @@ watch(
   () => {
     likedByMeOverride.value = null
     likesCountOverride.value = null
+    favoritedByMeOverride.value = null
+    favoritesCountOverride.value = null
     commentsCountOverride.value = null
     comments.value = []
   }
@@ -1243,6 +1341,15 @@ watch(
     if (likeSubmitting.value) return
     likedByMeOverride.value = null
     likesCountOverride.value = null
+  }
+)
+
+watch(
+  () => [engagementPost.value?.favorites_count, engagementPost.value?.favorited_by_me],
+  () => {
+    if (favoriteSubmitting.value) return
+    favoritedByMeOverride.value = null
+    favoritesCountOverride.value = null
   }
 )
 
@@ -1337,55 +1444,46 @@ const canDeleteComment = (comment) => {
   return Number.isFinite(currentUserId) && currentUserId === Number(comment?.user_id)
 }
 
-const findCommentLocation = (commentId) => {
-  for (let i = 0; i < comments.value.length; i += 1) {
-    const parent = comments.value[i]
-    if (parent.id === commentId) {
-      return { kind: 'parent', parentIndex: i }
+const hasCommentId = (comment, commentId) => Number(comment?.id) === Number(commentId)
+
+const removeCommentFromTree = (nodes, commentId) => {
+  const source = Array.isArray(nodes) ? nodes : []
+
+  return source
+    .filter((item) => !hasCommentId(item, commentId))
+    .map((item) => ({
+      ...item,
+      replies: removeCommentFromTree(item.replies || [], commentId),
+    }))
+}
+
+const replaceCommentInTree = (nodes, commentId, updatedComment) => {
+  const source = Array.isArray(nodes) ? nodes : []
+
+  return source.map((item) => {
+    const nextReplies = replaceCommentInTree(item.replies || [], commentId, updatedComment)
+
+    if (!hasCommentId(item, commentId)) {
+      return {
+        ...item,
+        replies: nextReplies,
+      }
     }
 
-    const replies = Array.isArray(parent.replies) ? parent.replies : []
-    const replyIndex = replies.findIndex((reply) => reply.id === commentId)
-    if (replyIndex !== -1) {
-      return { kind: 'reply', parentIndex: i, replyIndex }
-    }
-  }
-
-  return null
+    return normalizeComment({
+      ...item,
+      ...updatedComment,
+      replies: nextReplies,
+    })
+  })
 }
 
 const removeCommentById = (commentId) => {
-  const location = findCommentLocation(commentId)
-  if (!location) return
-
-  if (location.kind === 'parent') {
-    comments.value = comments.value.filter((item) => item.id !== commentId)
-    return
-  }
-
-  const parent = comments.value[location.parentIndex]
-  if (!parent || !Array.isArray(parent.replies)) return
-  parent.replies = parent.replies.filter((item) => item.id !== commentId)
+  comments.value = removeCommentFromTree(comments.value, commentId)
 }
 
 const replaceCommentById = (commentId, updatedComment) => {
-  const location = findCommentLocation(commentId)
-  if (!location) return
-
-  if (location.kind === 'parent') {
-    comments.value[location.parentIndex] = normalizeComment({
-      ...comments.value[location.parentIndex],
-      ...updatedComment,
-    })
-    return
-  }
-
-  const parent = comments.value[location.parentIndex]
-  if (!parent || !Array.isArray(parent.replies)) return
-  parent.replies[location.replyIndex] = {
-    ...parent.replies[location.replyIndex],
-    ...updatedComment,
-  }
+  comments.value = replaceCommentInTree(comments.value, commentId, updatedComment)
 }
 
 const toggleCommentActionsMenu = (commentId) => {

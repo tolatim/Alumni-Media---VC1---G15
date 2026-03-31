@@ -75,7 +75,8 @@ export const useNotificationStore = defineStore('notificationStore', {
 
     async markAllSeen() {
       await api.post('/notifications/mark-all-seen')
-      this.notifications = this.notifications.map((item) => ({ ...item, seen: true }))
+      this.notifications = []
+      this.pagination = defaultPagination()
       this.unreadCount = 0
     },
   },

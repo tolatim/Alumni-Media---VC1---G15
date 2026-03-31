@@ -10,6 +10,7 @@
           :current-user="currentUser"
           @post-created="prependPost"
           @refresh-posts="refreshPosts"
+          @open-trending="openTrendingTag"
         />
 
         <userRightSideBar

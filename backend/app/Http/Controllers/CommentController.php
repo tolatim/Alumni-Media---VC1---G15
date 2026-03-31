@@ -18,12 +18,7 @@ class CommentController extends Controller
         }
 
         $comments = Comment::query()
-            ->with([
-                'user',
-                'replies' => function ($query) {
-                    $query->with('user')->oldest();
-                },
-            ])
+            ->with(['user', 'replies'])
             ->where('post_id', $post->id)
             ->whereNull('parent_id')
             ->latest()

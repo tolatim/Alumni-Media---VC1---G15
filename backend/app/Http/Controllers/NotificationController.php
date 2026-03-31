@@ -61,13 +61,15 @@ class NotificationController extends Controller
 
     public function markAllSeen(Request $request)
     {
-        Notification::query()
+        $deletedCount = Notification::query()
             ->where('user_id', $request->user()->id)
-            ->where('seen', false)
-            ->update(['seen' => true]);
+            ->delete();
 
         return response()->json([
-            'message' => 'All notifications marked as seen',
+            'message' => 'All notifications deleted successfully',
+            'data' => [
+                'deleted_count' => $deletedCount,
+            ],
         ]);
     }
 }

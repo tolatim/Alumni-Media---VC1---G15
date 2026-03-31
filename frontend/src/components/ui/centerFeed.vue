@@ -23,7 +23,7 @@
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search posts…"
+            placeholder="Search posts..."
             class="search-input"
           />
           <button
@@ -80,6 +80,24 @@
       </div>
     </Transition>
 
+    <Transition name="fade">
+      <div v-if="searchQuery && matchingTrendingTags.length" class="trending-search-box">
+        <p class="trending-search-title">Matching trending tags</p>
+        <div class="trending-search-tags">
+          <button
+            v-for="tag in matchingTrendingTags"
+            :key="tag.label"
+            type="button"
+            class="trending-search-tag"
+            @click="openTrendingFromSearch(tag.label)"
+          >
+            <span>{{ tag.label }}</span>
+            <span class="trending-search-tag-count">{{ tag.count }}</span>
+          </button>
+        </div>
+      </div>
+    </Transition>
+
     <!-- --- Posts --------------------------------------------------- -->
     <TransitionGroup name="post-list" tag="div" class="posts-stack">
       <PostCard
@@ -88,7 +106,7 @@
         :post="post"
         :current-user="currentUser"
         @deleted="handlePostDeleted"
-        @refresh-posts="emit('refreshPosts')"
+        @refresh-posts="handleRefreshPosts"
       />
     </TransitionGroup>
 
@@ -135,14 +153,18 @@ const props = defineProps({
   currentUser: { type: Object, default: null },
 })
 
-const emit = defineEmits(['refreshPosts'])
+const emit = defineEmits(['refreshPosts', 'open-trending'])
 
 const searchQuery = ref('')
 const activeFilter = ref('all')
 const deletedPostIds = ref([])
 const minePosts = ref([])
+const favoritePosts = ref([])
 const minePostsLoading = ref(false)
+const favoritePostsLoading = ref(false)
 const minePostsLoadedForUserId = ref(null)
+const favoritePostsLoadedForUserId = ref(null)
+const HASHTAG_PATTERN = /#[A-Za-z0-9_]+/g
 
 // -- Inline SVG icon components ------------------------------------
 const IconAll = defineComponent({ render: () => h('svg', { viewBox: '0 0 16 16', fill: 'none', width: 13, height: 13 }, [
@@ -162,10 +184,15 @@ const IconMine = defineComponent({ render: () => h('svg', { viewBox: '0 0 16 16'
   h('path', { d: 'M3 14c0-2.761 2.239-4 5-4s5 1.239 5 4', stroke: 'currentColor', 'stroke-width': 1.4, 'stroke-linecap': 'round' }),
 ]) })
 
+const IconFavorites = defineComponent({ render: () => h('svg', { viewBox: '0 0 16 16', fill: 'currentColor', width: 13, height: 13 }, [
+  h('path', { d: 'M8 12.8l-4.114 2.162.786-4.579L1.344 7.14l4.597-.668L8 2.306l2.059 4.166 4.597.668-3.328 3.243.786 4.579z' }),
+]) })
+
 const filters = [
   { label: 'All', value: 'all', icon: IconAll },
   { label: 'Latest', value: 'latest', icon: IconLatest },
   { label: 'Mine', value: 'mine', icon: IconMine },
+  { label: 'Favorites', value: 'favorites', icon: IconFavorites },
 ]
 
 const toNumericId = (value) => {
@@ -178,6 +205,25 @@ const getPostOwnerId = (post) => toNumericId(post?.user_id ?? post?.user?.id)
 const getPostTimestamp = (post) => {
   const time = new Date(post?.created_at || 0).getTime()
   return Number.isFinite(time) ? time : 0
+}
+
+const normalizeTag = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (!raw) return ''
+  return raw.startsWith('#') ? raw : `#${raw}`
+}
+
+const formatCount = (value) => {
+  const count = Number(value || 0)
+  if (!Number.isFinite(count) || count <= 0) return '0'
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1).replace(/\.0$/, '')}m`
+  if (count >= 1000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return String(Math.floor(count))
+}
+
+const extractTags = (post) => {
+  const text = `${post?.title || ''} ${post?.content || ''}`
+  return (text.match(HASHTAG_PATTERN) || []).map((tag) => tag.toLowerCase())
 }
 
 const normalizeMediaEntry = (entry) => {
@@ -285,20 +331,83 @@ const loadMinePosts = async () => {
   }
 }
 
+const loadFavoritePosts = async (force = false) => {
+  const currentUserId = toNumericId(props.currentUser?.id)
+  if (currentUserId === null) return
+  if (favoritePostsLoading.value) return
+  if (!force && favoritePostsLoadedForUserId.value === currentUserId) return
+
+  favoritePostsLoading.value = true
+  try {
+    const response = await api.get('/posts/favorites')
+    const favoriteItems = extractPostsList(response.data)
+    favoritePosts.value = favoriteItems.map(normalizePostMedia)
+  } catch {
+    favoritePosts.value = []
+  } finally {
+    favoritePostsLoadedForUserId.value = currentUserId
+    favoritePostsLoading.value = false
+  }
+}
+
 watch(activeFilter, (next) => {
   if (next === 'mine') {
     loadMinePosts()
   }
+
+  if (next === 'favorites') {
+    loadFavoritePosts()
+  }
 })
+
+const matchingTrendingTags = computed(() => {
+  const query = String(searchQuery.value || '').trim().toLowerCase()
+  if (!query) return []
+
+  const queryWithoutHash = query.replace(/^#/, '')
+  if (!queryWithoutHash) return []
+
+  const scoreByTag = new Map()
+  props.posts.forEach((post) => {
+    const tags = extractTags(post)
+    if (!tags.length) return
+
+    const likes = Number(post?.likes_count || 0)
+    const comments = Number(post?.comments_count || 0)
+    const shares = Number(post?.shares_count || 0)
+    const score = 1 + likes + comments * 2 + shares * 3
+
+    tags.forEach((tag) => {
+      if (!tag.includes(queryWithoutHash)) return
+      scoreByTag.set(tag, (scoreByTag.get(tag) || 0) + score)
+    })
+  })
+
+  return Array.from(scoreByTag.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([label, score]) => ({ label, count: formatCount(score) }))
+})
+
+const openTrendingFromSearch = (tag) => {
+  if (!tag) return
+  searchQuery.value = ''
+  emit('open-trending', normalizeTag(tag))
+}
 
 watch(
   () => props.currentUser?.id,
   (nextId, prevId) => {
     if (toNumericId(nextId) === toNumericId(prevId)) return
     minePosts.value = []
+    favoritePosts.value = []
     minePostsLoadedForUserId.value = null
+    favoritePostsLoadedForUserId.value = null
     if (activeFilter.value === 'mine') {
       loadMinePosts()
+    }
+    if (activeFilter.value === 'favorites') {
+      loadFavoritePosts()
     }
   }
 )
@@ -306,6 +415,7 @@ watch(
 // -- Computed ------------------------------------------------------
 const filteredPosts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
+  const normalizedTagQuery = normalizeTag(query)
   let list = props.posts.map(normalizePostMedia)
 
   if (activeFilter.value === 'latest') {
@@ -318,6 +428,9 @@ const filteredPosts = computed(() => {
       const combined = mergePostsById(list, minePosts.value)
       list = combined.filter((p) => getPostOwnerId(p) === currentUserId)
     }
+  } else if (activeFilter.value === 'favorites') {
+    const combined = mergePostsById(list, favoritePosts.value)
+    list = combined.filter((p) => Boolean(p?.favorited_by_me))
   }
 
   list = list.filter((p) => !deletedPostIds.value.includes(p.id))
@@ -326,12 +439,25 @@ const filteredPosts = computed(() => {
   return list.filter(p => {
     const title = (p?.title || '').toLowerCase()
     const content = (p?.content || '').toLowerCase()
-    return title.includes(query) || content.includes(query)
+    const tags = extractTags(p)
+    return (
+      title.includes(query) ||
+      content.includes(query) ||
+      tags.some((tag) => tag.includes(query.replace(/^#/, ''))) ||
+      (normalizedTagQuery && tags.includes(normalizedTagQuery))
+    )
   })
 })
 
 const handlePostDeleted = (postId) => {
   deletedPostIds.value = [...deletedPostIds.value, postId]
+}
+
+const handleRefreshPosts = async () => {
+  emit('refreshPosts')
+  if (activeFilter.value === 'favorites') {
+    await loadFavoritePosts(true)
+  }
 }
 </script>
 
@@ -506,6 +632,55 @@ const handlePostDeleted = (postId) => {
   color: #1d6fbd;
 }
 .results-banner strong { font-weight: 500; }
+
+.trending-search-box {
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  padding: 10px 12px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.trending-search-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d6fbd;
+}
+
+.trending-search-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trending-search-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d6fbd;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.trending-search-tag:hover {
+  filter: brightness(0.97);
+  transform: translateY(-1px);
+}
+
+.trending-search-tag-count {
+  border-radius: 999px;
+  background: #dbeafe;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
 
 /* -- Posts stack -------------------------------------------------- */
 .posts-stack {

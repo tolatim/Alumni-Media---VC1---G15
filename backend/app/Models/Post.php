@@ -38,6 +38,11 @@ class Post extends Model
         return $this->hasMany(Like::class);
     }
 
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
     public function sharedPost()
     {
         return $this->belongsTo(Post::class, 'shared_post_id');
@@ -85,6 +90,10 @@ class Post extends Model
             $countableRelations[] = 'likes';
         }
 
+        if (Schema::hasTable('favorites')) {
+            $countableRelations[] = 'favorites';
+        }
+
         if (Schema::hasTable('comments')) {
             $countableRelations[] = 'comments';
         }
@@ -101,6 +110,14 @@ class Post extends Model
             $query->withExists([
                 'likes as liked_by_me' => function ($likeQuery) use ($viewer) {
                     $likeQuery->where('user_id', $viewer->id);
+                },
+            ]);
+        }
+
+        if ($viewer && Schema::hasTable('favorites')) {
+            $query->withExists([
+                'favorites as favorited_by_me' => function ($favoriteQuery) use ($viewer) {
+                    $favoriteQuery->where('user_id', $viewer->id);
                 },
             ]);
         }

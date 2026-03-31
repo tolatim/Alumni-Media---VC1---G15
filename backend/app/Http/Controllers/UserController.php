@@ -483,18 +483,12 @@ class UserController extends Controller
     public function show(Request $request, $id)
     {
         $authUser = $request->user();
-        $canViewPosts = $this->canViewPostsOf($authUser, (int) $id);
 
         $query = User::query()->with(['role']);
 
         if (Schema::hasTable('posts')) {
             $query->with([
-                'posts' => function ($postQuery) use ($authUser, $canViewPosts) {
-                    if (!$canViewPosts) {
-                        $postQuery->whereRaw('1 = 0');
-                        return;
-                    }
-
+                'posts' => function ($postQuery) use ($authUser) {
                     $postQuery
                         ->latest()
                         ->withCardData($authUser);
@@ -540,15 +534,6 @@ class UserController extends Controller
             ->all();
 
         return array_values(array_unique(array_merge($visibleUserIds, $friendIds)));
-    }
-
-    private function canViewPostsOf(?User $viewer, int $profileUserId): bool
-    {
-        if (!$viewer) {
-            return false;
-        }
-
-        return in_array($profileUserId, $this->getVisiblePostOwnerIds($viewer), true);
     }
 
     public function suggestions(Request $request)

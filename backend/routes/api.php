@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminReportModerationController;
 use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Controllers\AppAppearanceController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -82,6 +83,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
     Route::post('/posts/{id}/report', [PostController::class, 'report']);
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle']);
+    Route::get('/posts/favorites', [FavoriteController::class, 'index']);
+    Route::post('/posts/{post}/favorite', [FavoriteController::class, 'toggle']);
     Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
     Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
     Route::put('/comments/{comment}', [CommentController::class, 'update']);
