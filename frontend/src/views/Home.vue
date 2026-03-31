@@ -174,20 +174,6 @@ const refreshPosts = async () => {
   }
 };
 
-const stopHomeRefreshLoop = () => {
-  if (!homeRefreshTimer) return;
-  window.clearInterval(homeRefreshTimer);
-  homeRefreshTimer = null;
-};
-
-const startHomeRefreshLoop = () => {
-  stopHomeRefreshLoop();
-  homeRefreshTimer = window.setInterval(async () => {
-    if (document.visibilityState !== "visible") return;
-    await refreshPosts();
-  }, HOME_REFRESH_INTERVAL_MS);
-};
-
 const sendConnectionRequest = async (userId) => {
   try {
     await api.post("/connections/request", { user_id: userId });
@@ -239,12 +225,10 @@ onMounted(() => {
   loadHomeData();
   window.addEventListener("scroll", onScroll, { passive: true });
   unsubscribePostHub = subscribeToPostEvents(handlePostEvent);
-  startHomeRefreshLoop();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("scroll", onScroll);
-  stopHomeRefreshLoop();
   if (sharePostRefreshTimer) {
     window.clearTimeout(sharePostRefreshTimer);
     sharePostRefreshTimer = null;

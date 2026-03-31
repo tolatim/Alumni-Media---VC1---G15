@@ -1,4 +1,4 @@
-const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL || "ws://localhost:8081";
+const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL ;
 const POST_EVENTS = new Set(["post_created", "post_updated", "post_deleted", "post_comment_updated", "post_like_updated"]);
 const RECONNECT_DELAY_MS = 1500;
 const CROSS_TAB_CHANNEL = "alumni-media-post-hub";
